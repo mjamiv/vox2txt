@@ -17,7 +17,7 @@ Northstar Meeting Insights is a static web application that uses OpenAI's powerf
 - **AI-Powered Analysis** - Generates summaries, key points, action items, and sentiment analysis using GPT-5.2
 
 ### Audio Briefing
-- Generate a 2-minute executive audio summary using OpenAI Text-to-Speech (TTS-1-HD)
+- Generate a 2-minute executive audio summary using OpenAI GPT-4o-mini-TTS
 - Choose from 6 voice options: Alloy, Echo, Fable, Onyx, Nova, Shimmer
 - Download as MP3 for on-the-go listening
 
@@ -45,7 +45,7 @@ Northstar Meeting Insights is a static web application that uses OpenAI's powerf
 - **AI Models**:
   - OpenAI Whisper (audio transcription)
   - GPT-5.2 (text analysis)
-  - TTS-1-HD (text-to-speech)
+  - GPT-4o-mini-TTS (text-to-speech)
   - GPT-Image-1.5 (image generation)
 - **Libraries**:
   - [docx.js](https://docx.js.org/) - Client-side DOCX generation
@@ -77,7 +77,7 @@ The app provides real-time cost estimates based on OpenAI's pricing:
 | GPT-5.2 Input | $2.50 / 1M tokens |
 | GPT-5.2 Output | $10.00 / 1M tokens |
 | Whisper | $0.006 / minute |
-| TTS-1-HD | $0.030 / 1K characters |
+| GPT-4o-mini-TTS | $0.015 / 1K characters |
 | GPT-Image-1.5 Input | $10.00 / 1M tokens |
 | GPT-Image-1.5 Output | $40.00 / 1M tokens |
 

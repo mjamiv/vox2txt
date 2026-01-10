@@ -47,8 +47,8 @@ const PRICING = {
     'whisper-1': {
         perMinute: 0.006  // $ per minute of audio
     },
-    'tts-1-hd': {
-        perKChars: 0.030  // $ per 1K characters
+    'gpt-4o-mini-tts': {
+        perKChars: 0.015  // $ per 1K characters (estimated)
     },
     'gpt-image-1.5': {
         input: 10.00,   // $ per 1M input tokens
@@ -634,7 +634,7 @@ function calculateMetrics() {
     const whisperCost = currentMetrics.whisperMinutes * PRICING['whisper-1'].perMinute;
     const gptInputCost = (currentMetrics.gptInputTokens / 1000000) * PRICING['gpt-5.2'].input;
     const gptOutputCost = (currentMetrics.gptOutputTokens / 1000000) * PRICING['gpt-5.2'].output;
-    const ttsCost = (currentMetrics.ttsCharacters / 1000) * PRICING['tts-1-hd'].perKChars;
+    const ttsCost = (currentMetrics.ttsCharacters / 1000) * PRICING['gpt-4o-mini-tts'].perKChars;
     const imageInputCost = (currentMetrics.imageInputTokens / 1000000) * PRICING['gpt-image-1.5'].input;
     const imageOutputCost = (currentMetrics.imageOutputTokens / 1000000) * PRICING['gpt-image-1.5'].output;
     const imageCost = imageInputCost + imageOutputCost;
@@ -737,7 +737,7 @@ function displayMetrics() {
                     <span>${call.name}</span>
                     <span>${call.duration}</span>
                 </div>`;
-        } else if (call.model === 'tts-1-hd') {
+        } else if (call.model === 'gpt-4o-mini-tts') {
             breakdownHtml += `
                 <div class="metric-breakdown-item">
                     <span>${call.name}</span>
@@ -1169,10 +1169,9 @@ async function textToSpeech(text, voice = 'nova') {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: 'tts-1-hd',
+            model: 'gpt-4o-mini-tts',
             input: text,
-            voice: voice,
-            response_format: 'mp3'
+            voice: voice
         })
     });
     
@@ -1185,7 +1184,7 @@ async function textToSpeech(text, voice = 'nova') {
     currentMetrics.ttsCharacters += text.length;
     currentMetrics.apiCalls.push({
         name: 'Text-to-Speech',
-        model: 'tts-1-hd',
+        model: 'gpt-4o-mini-tts',
         characters: text.length
     });
     
