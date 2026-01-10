@@ -1705,7 +1705,7 @@ async function chatWithData(context, history) {
         body: JSON.stringify({
             model: 'gpt-5.2',
             messages: messages,
-            max_tokens: 1000,
+            max_completion_tokens: 1000,
             temperature: 0.7
         })
     });
@@ -1747,7 +1747,7 @@ function appendChatMessage(role, content) {
     
     const avatar = document.createElement('div');
     avatar.className = 'chat-message-avatar';
-    avatar.innerHTML = role === 'user' ? '&#128100;' : '&#129302;';
+    avatar.textContent = role === 'user' ? '👤' : '🤖';
     
     const contentDiv = document.createElement('div');
     contentDiv.className = 'chat-message-content';
@@ -1772,9 +1772,15 @@ function formatChatContent(content) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
     
-    // Convert markdown-style bullets to HTML
+    // Convert markdown-style formatting to HTML
     formatted = formatted
+        // Bold
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        // Italic
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        // Bullets
         .replace(/^\s*[-•]\s+/gm, '▸ ')
+        // Line breaks
         .replace(/\n/g, '<br>');
     
     return `<p>${formatted}</p>`;
@@ -1786,7 +1792,7 @@ function showTypingIndicator() {
     typingDiv.id = id;
     typingDiv.className = 'chat-message assistant';
     typingDiv.innerHTML = `
-        <div class="chat-message-avatar">&#129302;</div>
+        <div class="chat-message-avatar">🤖</div>
         <div class="chat-typing">
             <div class="chat-typing-dots">
                 <span></span><span></span><span></span>
@@ -1810,8 +1816,11 @@ function resetChatHistory() {
     if (elements.chatMessages) {
         elements.chatMessages.innerHTML = `
             <div class="chat-welcome">
-                <span class="chat-welcome-icon">&#129302;</span>
-                <p>Hi! I have access to your meeting transcript and analysis. Ask me anything about the meeting - key decisions, action items, participants, or any specific details you'd like to explore.</p>
+                <div class="chat-welcome-icon">🤖</div>
+                <div class="chat-welcome-text">
+                    <strong>Meeting Assistant</strong>
+                    <p>I have access to your transcript and analysis. Ask me about decisions, action items, specific topics, or anything else from the meeting.</p>
+                </div>
             </div>
         `;
     }
