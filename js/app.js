@@ -33,7 +33,8 @@ const state = {
     inputMode: 'audio', // 'audio', 'pdf', or 'text'
     isProcessing: false,
     results: null,
-    metrics: null
+    metrics: null,
+    chatHistory: [] // Stores chat conversation history
 };
 
 // ============================================
@@ -145,7 +146,12 @@ async function init() {
         generateInfographicBtn: document.getElementById('generate-infographic-btn'),
         infographicContainer: document.getElementById('infographic-container'),
         infographicImage: document.getElementById('infographic-image'),
-        downloadInfographicBtn: document.getElementById('download-infographic-btn')
+        downloadInfographicBtn: document.getElementById('download-infographic-btn'),
+        
+        // Chat with Data
+        chatMessages: document.getElementById('chat-messages'),
+        chatInput: document.getElementById('chat-input'),
+        chatSendBtn: document.getElementById('chat-send-btn')
     };
     
     loadSavedApiKey();
@@ -210,6 +216,15 @@ function setupEventListeners() {
     // Infographic
     elements.generateInfographicBtn.addEventListener('click', generateInfographic);
     elements.downloadInfographicBtn.addEventListener('click', downloadInfographic);
+    
+    // Chat with Data
+    elements.chatSendBtn.addEventListener('click', sendChatMessage);
+    elements.chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendChatMessage();
+        }
+    });
 }
 
 // ============================================
@@ -1295,6 +1310,9 @@ function resetForNewAnalysis() {
         apiCalls: []
     };
     
+    // Reset chat history
+    resetChatHistory();
+    
     // Clean up generated audio/image URLs
     if (generatedAudioUrl) {
         URL.revokeObjectURL(generatedAudioUrl);
@@ -1588,6 +1606,214 @@ async function downloadInfographic() {
     } catch (error) {
         console.error('Download error:', error);
         showError('Failed to download infographic. Try right-clicking the image and saving.');
+    }
+}
+
+// ============================================
+// Chat with Data
+// ============================================
+async function sendChatMessage() {
+    const message = elements.chatInput.value.trim();
+    if (!message || !state.results) return;
+    
+    // Disable input while processing
+    elements.chatInput.disabled = true;
+    elements.chatSendBtn.disabled = true;
+    elements.chatInput.value = '';
+    
+    // Add user message to UI
+    appendChatMessage('user', message);
+    
+    // Add to chat history
+    state.chatHistory.push({ role: 'user', content: message });
+    
+    // Show typing indicator
+    const typingId = showTypingIndicator();
+    
+    try {
+        // Build context from transcript and analysis
+        const context = buildChatContext();
+        
+        // Call GPT with context
+        const response = await chatWithData(context, state.chatHistory);
+        
+        // Remove typing indicator
+        removeTypingIndicator(typingId);
+        
+        // Add assistant response to UI and history
+        appendChatMessage('assistant', response);
+        state.chatHistory.push({ role: 'assistant', content: response });
+        
+    } catch (error) {
+        console.error('Chat error:', error);
+        removeTypingIndicator(typingId);
+        appendChatMessage('assistant', 'Sorry, I encountered an error processing your request. Please try again.');
+    } finally {
+        elements.chatInput.disabled = false;
+        elements.chatSendBtn.disabled = false;
+        elements.chatInput.focus();
+    }
+}
+
+function buildChatContext() {
+    const results = state.results;
+    return `You have access to the following meeting data. Use this information to answer the user's questions accurately and helpfully.
+
+=== MEETING TRANSCRIPT ===
+${results.transcription}
+
+=== ANALYSIS RESULTS ===
+
+SUMMARY:
+${results.summary}
+
+KEY POINTS:
+${results.keyPoints}
+
+ACTION ITEMS:
+${results.actionItems}
+
+OVERALL SENTIMENT:
+${results.sentiment}
+
+=== END OF MEETING DATA ===
+
+Instructions:
+- Answer questions based on the meeting data above
+- Be concise but thorough
+- If something isn't mentioned in the meeting data, say so
+- Use specific quotes or details from the transcript when relevant
+- Format responses clearly with bullet points when listing multiple items`;
+}
+
+async function chatWithData(context, history) {
+    // Build messages array with system context and conversation history
+    const messages = [
+        { 
+            role: 'system', 
+            content: context 
+        },
+        ...history.slice(-10) // Keep last 10 messages to avoid token limits
+    ];
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${state.apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: 'gpt-5.2',
+            messages: messages,
+            max_tokens: 1000,
+            temperature: 0.7
+        })
+    });
+    
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error?.message || `Chat failed: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Track metrics
+    const usage = data.usage || {};
+    currentMetrics.gptInputTokens += usage.prompt_tokens || 0;
+    currentMetrics.gptOutputTokens += usage.completion_tokens || 0;
+    currentMetrics.apiCalls.push({
+        name: 'Chat Query',
+        model: 'gpt-5.2',
+        inputTokens: usage.prompt_tokens || 0,
+        outputTokens: usage.completion_tokens || 0
+    });
+    
+    // Update metrics display
+    state.metrics = calculateMetrics();
+    displayMetrics();
+    
+    return data.choices[0].message.content;
+}
+
+function appendChatMessage(role, content) {
+    // Remove welcome message if it exists
+    const welcome = elements.chatMessages.querySelector('.chat-welcome');
+    if (welcome) {
+        welcome.remove();
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${role}`;
+    
+    const avatar = document.createElement('div');
+    avatar.className = 'chat-message-avatar';
+    avatar.innerHTML = role === 'user' ? '&#128100;' : '&#129302;';
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'chat-message-content';
+    
+    // Convert markdown-style formatting to HTML
+    const formattedContent = formatChatContent(content);
+    contentDiv.innerHTML = formattedContent;
+    
+    messageDiv.appendChild(avatar);
+    messageDiv.appendChild(contentDiv);
+    
+    elements.chatMessages.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+}
+
+function formatChatContent(content) {
+    // Escape HTML first
+    let formatted = content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    
+    // Convert markdown-style bullets to HTML
+    formatted = formatted
+        .replace(/^\s*[-•]\s+/gm, '▸ ')
+        .replace(/\n/g, '<br>');
+    
+    return `<p>${formatted}</p>`;
+}
+
+function showTypingIndicator() {
+    const id = 'typing-' + Date.now();
+    const typingDiv = document.createElement('div');
+    typingDiv.id = id;
+    typingDiv.className = 'chat-message assistant';
+    typingDiv.innerHTML = `
+        <div class="chat-message-avatar">&#129302;</div>
+        <div class="chat-typing">
+            <div class="chat-typing-dots">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    `;
+    elements.chatMessages.appendChild(typingDiv);
+    elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+    return id;
+}
+
+function removeTypingIndicator(id) {
+    const typingDiv = document.getElementById(id);
+    if (typingDiv) {
+        typingDiv.remove();
+    }
+}
+
+function resetChatHistory() {
+    state.chatHistory = [];
+    if (elements.chatMessages) {
+        elements.chatMessages.innerHTML = `
+            <div class="chat-welcome">
+                <span class="chat-welcome-icon">&#129302;</span>
+                <p>Hi! I have access to your meeting transcript and analysis. Ask me anything about the meeting - key decisions, action items, participants, or any specific details you'd like to explore.</p>
+            </div>
+        `;
     }
 }
 

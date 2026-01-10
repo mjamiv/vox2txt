@@ -233,6 +233,31 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Chat with Data Section -->
+            <div class="feature-section chat-section" id="chat-section">
+                <h3><span>&#128172;</span> Chat with Your Data</h3>
+                <p class="feature-desc">Ask questions about the meeting transcript and insights</p>
+                
+                <div class="chat-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="chat-welcome">
+                            <span class="chat-welcome-icon">&#129302;</span>
+                            <p>Hi! I have access to your meeting transcript and analysis. Ask me anything about the meeting - key decisions, action items, participants, or any specific details you'd like to explore.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Ask a question about the meeting..." autocomplete="off" />
+                        <button id="chat-send-btn" class="btn-chat-send">
+                            <span class="btn-text">&#10148;</span>
+                            <span class="btn-loader hidden">
+                                <span class="spinner-small"></span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- Error Section -->
@@ -256,6 +281,6 @@
     <!-- External Libraries -->
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
-    <script src="js/app.js?v=10" type="module"></script>
+    <script src="js/app.js?v=11" type="module"></script>
 </body>
 </html>
