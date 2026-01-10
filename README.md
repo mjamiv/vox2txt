@@ -27,6 +27,13 @@ northstar.LM is a static web application that uses OpenAI's powerful AI models t
 - High-quality 1024x1024 output
 - Download as PNG
 
+### Chat with Your Data
+- Interactive AI chat powered by GPT-5.2
+- Full access to transcript and analysis results
+- Ask follow-up questions about decisions, action items, participants
+- Maintains conversation history for context-aware responses
+- Token usage tracked in real-time metrics
+
 ### Export & Metrics
 - **DOCX Export** - Download comprehensive meeting minutes including:
   - Full transcription
