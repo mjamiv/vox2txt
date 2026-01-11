@@ -49,14 +49,27 @@ function initElements() {
         toggleKeyBtn: document.getElementById('toggle-key'),
         saveKeyBtn: document.getElementById('save-key'),
 
-        // Agent Upload
+        // Knowledge Base
         agentFilesInput: document.getElementById('agent-files'),
         agentsDropZone: document.getElementById('agents-drop-zone'),
-        agentsListSection: document.getElementById('agents-list-section'),
+        knowledgeBaseContainer: document.getElementById('knowledge-base-container'),
         agentsList: document.getElementById('agents-list'),
         agentsCount: document.getElementById('agents-count'),
+        activeAgentsCount: document.getElementById('active-agents-count'),
+        chainEmptyState: document.getElementById('chain-empty-state'),
         clearAllBtn: document.getElementById('clear-all-agents'),
         generateInsightsBtn: document.getElementById('generate-insights-btn'),
+        orchestratorBrain: document.getElementById('orchestrator-brain'),
+        brainStatus: document.getElementById('brain-status'),
+        kbFlow: document.getElementById('kb-flow'),
+
+        // Chat
+        chatSection: document.getElementById('chat-section'),
+        chatMessages: document.getElementById('chat-messages'),
+        chatInput: document.getElementById('chat-input'),
+        chatSendBtn: document.getElementById('chat-send-btn'),
+        chatAgentCount: document.getElementById('chat-agent-count'),
+        chatKbIndicator: document.getElementById('chat-kb-indicator'),
 
         // Insights
         insightsSection: document.getElementById('insights-section'),
@@ -65,12 +78,6 @@ function initElements() {
         insightRisks: document.getElementById('insight-risks'),
         insightRecommendations: document.getElementById('insight-recommendations'),
         insightActions: document.getElementById('insight-actions'),
-
-        // Chat
-        chatSection: document.getElementById('chat-section'),
-        chatMessages: document.getElementById('chat-messages'),
-        chatInput: document.getElementById('chat-input'),
-        chatSendBtn: document.getElementById('chat-send-btn'),
 
         // Metrics
         metricsCard: document.getElementById('metrics-card'),
@@ -240,10 +247,18 @@ async function processAgentFiles(files) {
             const agentData = parseAgentFile(content);
             
             if (agentData) {
-                // Check for duplicates by title
-                const existingIndex = state.agents.findIndex(a => a.title === agentData.title);
+                // Add filename and enabled state
+                agentData.filename = file.name;
+                agentData.displayName = agentData.title || file.name.replace('.md', '');
+                agentData.enabled = true;
+                agentData.id = 'agent-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                
+                // Check for duplicates by filename
+                const existingIndex = state.agents.findIndex(a => a.filename === file.name);
                 if (existingIndex >= 0) {
-                    state.agents[existingIndex] = agentData; // Update existing
+                    // Preserve enabled state when updating
+                    agentData.enabled = state.agents[existingIndex].enabled;
+                    state.agents[existingIndex] = agentData;
                 } else {
                     state.agents.push(agentData);
                 }
@@ -368,58 +383,148 @@ function updateUI() {
 }
 
 function updateAgentsList() {
-    elements.agentsCount.textContent = state.agents.length;
+    const totalCount = state.agents.length;
+    const activeCount = state.agents.filter(a => a.enabled).length;
     
-    if (state.agents.length === 0) {
-        elements.agentsListSection.classList.add('hidden');
-        return;
+    elements.agentsCount.textContent = totalCount;
+    if (elements.activeAgentsCount) {
+        elements.activeAgentsCount.textContent = activeCount;
+    }
+    if (elements.chatAgentCount) {
+        elements.chatAgentCount.textContent = activeCount;
     }
     
-    elements.agentsListSection.classList.remove('hidden');
+    // Update brain status
+    updateBrainStatus();
     
-    elements.agentsList.innerHTML = state.agents.map((agent, index) => `
-        <div class="agent-card">
-            <div class="agent-info">
-                <span class="agent-icon">📋</span>
-                <div class="agent-details">
-                    <strong class="agent-title">${escapeHtml(agent.title)}</strong>
-                    <span class="agent-meta">${agent.date || 'No date'} • ${agent.sourceType}</span>
-                </div>
+    // Show/hide empty state
+    if (elements.chainEmptyState) {
+        elements.chainEmptyState.style.display = totalCount === 0 ? 'flex' : 'none';
+    }
+    
+    // Render agent nodes
+    const nodesHtml = state.agents.map((agent, index) => `
+        <div class="agent-node ${agent.enabled ? '' : 'disabled'}" data-id="${agent.id}" data-index="${index}">
+            <div class="agent-node-icon">${agent.enabled ? '📋' : '📋'}</div>
+            <input type="text" 
+                   class="agent-node-name" 
+                   value="${escapeHtml(agent.displayName)}" 
+                   data-index="${index}"
+                   title="Click to edit name" />
+            <div class="agent-node-meta">${agent.date || 'No date'}</div>
+            <div class="agent-node-controls">
+                <button class="agent-control-btn toggle-btn ${agent.enabled ? 'active' : ''}" 
+                        data-index="${index}" 
+                        title="${agent.enabled ? 'Disable agent' : 'Enable agent'}">
+                    ${agent.enabled ? '✓ On' : '○ Off'}
+                </button>
+                <button class="agent-control-btn remove-btn" 
+                        data-index="${index}" 
+                        title="Remove agent permanently">
+                    ✕
+                </button>
             </div>
-            <button class="remove-agent-btn" data-index="${index}" title="Remove agent">
-                ✕
-            </button>
         </div>
     `).join('');
     
-    // Add remove handlers
-    elements.agentsList.querySelectorAll('.remove-agent-btn').forEach(btn => {
+    // Keep the empty state element, append nodes
+    if (elements.chainEmptyState) {
+        elements.agentsList.innerHTML = '';
+        elements.agentsList.appendChild(elements.chainEmptyState);
+        elements.agentsList.insertAdjacentHTML('beforeend', nodesHtml);
+        elements.chainEmptyState.style.display = totalCount === 0 ? 'flex' : 'none';
+    } else {
+        elements.agentsList.innerHTML = nodesHtml;
+    }
+    
+    // Add event handlers
+    elements.agentsList.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            toggleAgent(parseInt(btn.dataset.index));
+        });
+    });
+    
+    elements.agentsList.querySelectorAll('.remove-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             removeAgent(parseInt(btn.dataset.index));
         });
     });
+    
+    elements.agentsList.querySelectorAll('.agent-node-name').forEach(input => {
+        input.addEventListener('change', (e) => {
+            updateAgentName(parseInt(input.dataset.index), e.target.value);
+        });
+        input.addEventListener('blur', (e) => {
+            updateAgentName(parseInt(input.dataset.index), e.target.value);
+        });
+    });
+}
+
+function toggleAgent(index) {
+    if (state.agents[index]) {
+        state.agents[index].enabled = !state.agents[index].enabled;
+        updateUI();
+    }
+}
+
+function updateAgentName(index, newName) {
+    if (state.agents[index] && newName.trim()) {
+        state.agents[index].displayName = newName.trim();
+    }
+}
+
+function updateBrainStatus() {
+    if (!elements.brainStatus) return;
+    
+    const activeCount = state.agents.filter(a => a.enabled).length;
+    
+    if (activeCount === 0) {
+        elements.brainStatus.textContent = 'Waiting for agents...';
+        elements.brainStatus.classList.remove('ready');
+    } else if (activeCount === 1) {
+        elements.brainStatus.textContent = 'Ready with 1 agent';
+        elements.brainStatus.classList.add('ready');
+    } else {
+        elements.brainStatus.textContent = `Ready with ${activeCount} agents`;
+        elements.brainStatus.classList.add('ready');
+    }
 }
 
 function updateButtonStates() {
-    const hasAgents = state.agents.length >= 2;
+    const activeAgents = state.agents.filter(a => a.enabled);
+    const hasEnoughAgents = activeAgents.length >= 2;
     const hasApiKey = state.apiKey.trim().length > 0;
     
-    elements.generateInsightsBtn.disabled = !hasAgents || !hasApiKey || state.isProcessing;
+    elements.generateInsightsBtn.disabled = !hasEnoughAgents || !hasApiKey || state.isProcessing;
     
-    if (state.agents.length === 1) {
-        elements.generateInsightsBtn.title = 'Upload at least 2 agents for cross-meeting insights';
+    if (activeAgents.length === 0) {
+        elements.generateInsightsBtn.title = 'Enable at least 2 agents for cross-meeting insights';
+    } else if (activeAgents.length === 1) {
+        elements.generateInsightsBtn.title = 'Enable at least 2 agents for cross-meeting insights';
     } else if (!hasApiKey) {
         elements.generateInsightsBtn.title = 'Enter your API key first';
     } else {
-        elements.generateInsightsBtn.title = '';
+        elements.generateInsightsBtn.title = `Generate insights from ${activeAgents.length} active agents`;
+    }
+    
+    // Update chat indicator
+    if (elements.chatKbIndicator) {
+        const indicatorDot = elements.chatKbIndicator.querySelector('.indicator-dot');
+        if (indicatorDot) {
+            if (activeAgents.length > 0) {
+                indicatorDot.classList.add('active');
+            } else {
+                indicatorDot.classList.remove('active');
+            }
+        }
     }
 }
 
 function updateSectionsVisibility() {
-    // Show insights if available
+    // Chat is always visible once agents are loaded
+    // Insights shown after generation
     if (state.insights) {
         elements.insightsSection.classList.remove('hidden');
-        elements.chatSection.classList.remove('hidden');
     } else {
         elements.insightsSection.classList.add('hidden');
         elements.chatSection.classList.add('hidden');
@@ -437,8 +542,9 @@ function escapeHtml(text) {
 // ============================================
 
 async function generateCrossInsights() {
-    if (state.agents.length < 2 || !state.apiKey) {
-        showError('Please upload at least 2 agent files and enter your API key.');
+    const activeAgents = state.agents.filter(a => a.enabled);
+    if (activeAgents.length < 2 || !state.apiKey) {
+        showError('Please enable at least 2 agents and enter your API key.');
         return;
     }
     
@@ -501,8 +607,9 @@ Each should be an array of strings (bullet points).`;
 }
 
 function buildCombinedContext() {
-    return state.agents.map((agent, index) => `
-=== MEETING ${index + 1}: ${agent.title} ===
+    const activeAgents = state.agents.filter(a => a.enabled);
+    return activeAgents.map((agent, index) => `
+=== MEETING ${index + 1}: ${agent.displayName || agent.title} ===
 Date: ${agent.date || 'Unknown'}
 Source: ${agent.sourceType}
 
@@ -518,6 +625,10 @@ ${agent.actionItems}
 SENTIMENT:
 ${agent.sentiment}
 `).join('\n\n---\n\n');
+}
+
+function getActiveAgents() {
+    return state.agents.filter(a => a.enabled);
 }
 
 function displayInsights(insights) {
@@ -671,13 +782,16 @@ function selectRelevantAgents(userQuery, allAgents, maxAgents = 5) {
 }
 
 function buildChatContext(userQuery = '') {
+    // Only use active agents
+    const activeAgents = state.agents.filter(a => a.enabled);
+    
     // Select only relevant agents for this query
     const relevantAgents = userQuery ?
-        selectRelevantAgents(userQuery, state.agents, 5) :
-        state.agents.slice(0, 5); // Default to first 5 if no query
+        selectRelevantAgents(userQuery, activeAgents, 5) :
+        activeAgents.slice(0, 5); // Default to first 5 if no query
 
     return relevantAgents.map((agent, index) => `
---- Meeting ${index + 1}: ${agent.title} (${agent.date || 'No date'}) ---
+--- Meeting ${index + 1}: ${agent.displayName || agent.title} (${agent.date || 'No date'}) ---
 Summary: ${agent.summary}
 Key Points: ${agent.keyPoints}
 Action Items: ${agent.actionItems}

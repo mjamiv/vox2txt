@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=38">
+    <link rel="stylesheet" href="css/styles.css?v=39">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a853">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230a0e17' width='32' height='32' rx='6'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23d4a853'%3E⭐%3C/text%3E%3C/svg%3E" type="image/svg+xml">
@@ -53,44 +53,71 @@
             </div>
         </section>
 
-        <!-- Upload Agents Section -->
-        <section class="input-section">
-            <div class="section-header">
-                <h2><span>📥</span> Upload Meeting Agents</h2>
-                <p class="section-desc">Upload .md agent files exported from northstar.LM</p>
+        <!-- Knowledge Base Section -->
+        <section class="knowledge-base-section">
+            <!-- Upload Zone -->
+            <div class="upload-area">
+                <input type="file" id="agent-files" accept="*/*" multiple hidden>
+                <label for="agent-files" class="upload-zone-compact" id="agents-drop-zone">
+                    <span class="upload-icon-small">➕</span>
+                    <span>Add Agent Files</span>
+                </label>
             </div>
 
-            <input type="file" id="agent-files" accept="*/*" multiple hidden>
-            <label for="agent-files" class="upload-zone" id="agents-drop-zone">
-                <div class="upload-icon">📋</div>
-                <p>Drag & drop your agent files here</p>
-                <p class="hint">or click to browse</p>
-                <p class="file-types">Supports multiple .md agent files</p>
-            </label>
-
-            <!-- Uploaded Agents List -->
-            <div id="agents-list-section" class="agents-list-section hidden">
-                <div class="agents-list-header">
-                    <h3>Uploaded Agents (<span id="agents-count">0</span>)</h3>
-                    <button id="clear-all-agents" class="btn-text-danger" title="Remove all agents">
+            <!-- Knowledge Base Container -->
+            <div class="knowledge-base-container" id="knowledge-base-container">
+                <div class="kb-header">
+                    <div class="kb-title">
+                        <span class="kb-icon">🧠</span>
+                        <h2>Knowledge Base</h2>
+                    </div>
+                    <div class="kb-stats">
+                        <span class="kb-count"><span id="agents-count">0</span> agents</span>
+                        <span class="kb-active">(<span id="active-agents-count">0</span> active)</span>
+                    </div>
+                    <button id="clear-all-agents" class="btn-text-danger btn-sm" title="Remove all agents">
                         Clear All
                     </button>
                 </div>
-                <div id="agents-list" class="agents-list">
-                    <!-- Agent cards will be inserted here -->
+
+                <!-- Agent Chain Visualization -->
+                <div class="agent-chain" id="agents-list">
+                    <!-- Empty state -->
+                    <div class="agent-chain-empty" id="chain-empty-state">
+                        <div class="empty-icon">📋</div>
+                        <p>No agents loaded</p>
+                        <p class="hint">Upload .md agent files to build your knowledge base</p>
+                    </div>
+                    <!-- Agent nodes will be inserted here by JS -->
                 </div>
-                
-                <!-- Generate Insights Button - inside agents list section -->
-                <div class="generate-insights-wrapper">
-                    <button id="generate-insights-btn" class="btn-primary btn-large" disabled>
-                        <span class="btn-text">📊 Generate Cross-Meeting Insights</span>
-                        <span class="btn-loader hidden">
-                            <span class="spinner"></span>
-                            Analyzing...
-                        </span>
-                    </button>
-                    <p class="insights-hint">Upload at least 2 agents to generate cross-meeting insights</p>
+
+                <!-- Flow indicator to orchestrator -->
+                <div class="kb-flow-indicator" id="kb-flow">
+                    <div class="flow-line"></div>
+                    <div class="flow-label">
+                        <span>▼</span>
+                        <span>Knowledge flows to</span>
+                        <span>▼</span>
+                    </div>
                 </div>
+
+                <!-- Orchestrator Brain -->
+                <div class="orchestrator-brain" id="orchestrator-brain">
+                    <div class="brain-icon">🤖</div>
+                    <div class="brain-label">Orchestrator AI</div>
+                    <div class="brain-status" id="brain-status">Waiting for agents...</div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="kb-actions">
+                <button id="generate-insights-btn" class="btn-primary btn-large" disabled>
+                    <span class="btn-text">📊 Generate Cross-Meeting Insights</span>
+                    <span class="btn-loader hidden">
+                        <span class="spinner"></span>
+                        Analyzing...
+                    </span>
+                </button>
             </div>
         </section>
 
@@ -155,10 +182,16 @@
         </section>
 
         <!-- Chat Section -->
-        <section id="chat-section" class="chat-section hidden">
-            <div class="section-header">
-                <h2><span>💬</span> Chat with All Agents</h2>
-                <p class="section-desc">Ask questions across all your uploaded meeting data</p>
+        <section id="chat-section" class="chat-section">
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <h2><span>💬</span> Chat Interface</h2>
+                    <p class="section-desc">Query your knowledge base through the Orchestrator AI</p>
+                </div>
+                <div class="chat-kb-indicator" id="chat-kb-indicator">
+                    <span class="indicator-dot active"></span>
+                    <span class="indicator-text">Connected to <strong id="chat-agent-count">0</strong> agents</span>
+                </div>
             </div>
 
             <div class="chat-container">
@@ -166,14 +199,14 @@
                     <div class="chat-welcome">
                         <div class="chat-welcome-icon">🤖</div>
                         <div class="chat-welcome-text">
-                            <strong>Multi-Agent Assistant</strong>
-                            <p>I have access to all your uploaded meeting agents. Ask me about decisions, action items, patterns across meetings, or anything else from your meeting data.</p>
+                            <strong>Orchestrator AI</strong>
+                            <p>I have access to your knowledge base above. Ask me about decisions, action items, patterns across meetings, or anything else from your agent data.</p>
                         </div>
                     </div>
                 </div>
                 
                 <div class="chat-input-area">
-                    <input type="text" id="chat-input" placeholder="Ask a question across all meetings..." autocomplete="off" />
+                    <input type="text" id="chat-input" placeholder="Ask a question across all active agents..." autocomplete="off" />
                     <button id="chat-send-btn" class="btn-chat-send" title="Send message">
                         <span class="btn-text">➤</span>
                         <span class="btn-loader hidden">
@@ -246,7 +279,7 @@
 
     <!-- Marked.js for markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/orchestrator.js?v=9" type="module"></script>
+    <script src="js/orchestrator.js?v=10" type="module"></script>
 
     <!-- Service Worker Registration -->
     <script>
