@@ -2944,18 +2944,29 @@ async function sendChatMessage() {
     // Add to chat history
     state.chatHistory.push({ role: 'user', content: message });
     
-    // Show typing indicator
-    const typingId = showTypingIndicator();
+    // Show thinking indicator with train of thought
+    const thinkingId = showThinkingIndicator();
     
     try {
-        // Build context from transcript and analysis
-        const context = buildChatContext();
+        // Step 1: Understanding the question
+        updateThinkingStatus(thinkingId, 'Understanding your question...');
+        await sleep(300); // Brief pause for UX
         
-        // Call GPT with context
+        // Step 2: Building context
+        updateThinkingStatus(thinkingId, 'Searching meeting data...');
+        const context = buildChatContext();
+        await sleep(200);
+        
+        // Step 3: Calling AI
+        updateThinkingStatus(thinkingId, 'Analyzing with AI...');
         const response = await chatWithData(context, state.chatHistory);
         
-        // Remove typing indicator
-        removeTypingIndicator(typingId);
+        // Step 4: Processing response
+        updateThinkingStatus(thinkingId, 'Preparing response...');
+        await sleep(150);
+        
+        // Remove thinking indicator
+        removeTypingIndicator(thinkingId);
         
         // Add assistant response to UI and history
         appendChatMessage('assistant', response);
@@ -2963,13 +2974,18 @@ async function sendChatMessage() {
         
     } catch (error) {
         console.error('Chat error:', error);
-        removeTypingIndicator(typingId);
+        removeTypingIndicator(thinkingId);
         appendChatMessage('assistant', 'Sorry, I encountered an error processing your request. Please try again.');
     } finally {
         elements.chatInput.disabled = false;
         elements.chatSendBtn.disabled = false;
         elements.chatInput.focus();
     }
+}
+
+// Utility sleep function for UX timing
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function buildChatContext() {
@@ -3103,22 +3119,37 @@ function formatChatContent(content) {
     return `<p>${formatted}</p>`;
 }
 
-function showTypingIndicator() {
-    const id = 'typing-' + Date.now();
-    const typingDiv = document.createElement('div');
-    typingDiv.id = id;
-    typingDiv.className = 'chat-message assistant';
-    typingDiv.innerHTML = `
+function showThinkingIndicator() {
+    const id = 'thinking-' + Date.now();
+    const thinkingDiv = document.createElement('div');
+    thinkingDiv.id = id;
+    thinkingDiv.className = 'chat-message assistant';
+    thinkingDiv.innerHTML = `
         <div class="chat-message-avatar">🤖</div>
-        <div class="chat-typing">
-            <div class="chat-typing-dots">
-                <span></span><span></span><span></span>
-            </div>
+        <div class="chat-thinking">
+            <div class="thinking-spinner"></div>
+            <span class="thinking-text">Thinking...</span>
         </div>
     `;
-    elements.chatMessages.appendChild(typingDiv);
+    elements.chatMessages.appendChild(thinkingDiv);
     elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
     return id;
+}
+
+function updateThinkingStatus(id, status) {
+    const thinkingDiv = document.getElementById(id);
+    if (thinkingDiv) {
+        const textSpan = thinkingDiv.querySelector('.thinking-text');
+        if (textSpan) {
+            textSpan.textContent = status;
+        }
+        elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+    }
+}
+
+// Keep legacy function for compatibility
+function showTypingIndicator() {
+    return showThinkingIndicator();
 }
 
 function removeTypingIndicator(id) {
