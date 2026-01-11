@@ -158,16 +158,24 @@ function handleDrop(e) {
     e.stopPropagation();
     elements.agentsDropZone.classList.remove('dragover');
     
-    const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.md'));
-    if (files.length > 0) {
-        processAgentFiles(files);
+    const allFiles = Array.from(e.dataTransfer.files);
+    const mdFiles = allFiles.filter(f => f.name.endsWith('.md') || f.name.endsWith('.markdown'));
+    
+    if (mdFiles.length > 0) {
+        processAgentFiles(mdFiles);
+    } else if (allFiles.length > 0) {
+        showError(`Please upload .md files. You selected: ${allFiles.map(f => f.name).join(', ')}`);
     }
 }
 
 function handleFileSelect(e) {
-    const files = Array.from(e.target.files).filter(f => f.name.endsWith('.md'));
-    if (files.length > 0) {
-        processAgentFiles(files);
+    const allFiles = Array.from(e.target.files);
+    const mdFiles = allFiles.filter(f => f.name.endsWith('.md') || f.name.endsWith('.markdown'));
+    
+    if (mdFiles.length > 0) {
+        processAgentFiles(mdFiles);
+    } else if (allFiles.length > 0) {
+        showError(`Please upload .md files. You selected: ${allFiles.map(f => f.name).join(', ')}`);
     }
     e.target.value = ''; // Reset for re-upload
 }

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=25">
+    <link rel="stylesheet" href="css/styles.css?v=26">
 </head>
 <body>
     <div class="gradient-bg"></div>
@@ -53,7 +53,7 @@
                 <p class="section-desc">Upload .md agent files exported from northstar.LM</p>
             </div>
 
-            <input type="file" id="agent-files" accept=".md,text/markdown" multiple hidden>
+            <input type="file" id="agent-files" accept="*/*" multiple hidden>
             <label for="agent-files" class="upload-zone" id="agents-drop-zone">
                 <div class="upload-icon">📋</div>
                 <p>Drag & drop your agent files here</p>
@@ -222,6 +222,6 @@
 
     <!-- Marked.js for markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/orchestrator.js?v=1" type="module"></script>
+    <script src="js/orchestrator.js?v=2" type="module"></script>
 </body>
 </html>
