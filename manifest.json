@@ -2,7 +2,7 @@
   "name": "northstar.LM - Meeting Intelligence Platform",
   "short_name": "northstar.LM",
   "description": "Transform meeting recordings, PDFs, and text into actionable insights with AI",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0a0e17",
   "theme_color": "#d4a853",
@@ -23,6 +23,6 @@
   ],
   "categories": ["business", "productivity", "utilities"],
   "lang": "en-US",
-  "scope": "/",
+  "scope": "./",
   "screenshots": []
 }

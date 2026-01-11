@@ -5,12 +5,12 @@
 
 const CACHE_NAME = 'northstar-lm-v1';
 const urlsToCache = [
-    '/',
-    '/index.html',
-    '/orchestrator.html',
-    '/css/styles.css',
-    '/js/app.js',
-    '/js/orchestrator.js',
+    './',
+    './index.html',
+    './orchestrator.html',
+    './css/styles.css',
+    './js/app.js',
+    './js/orchestrator.js',
     // Fonts will be cached on first load
 ];
 
