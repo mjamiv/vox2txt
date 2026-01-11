@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Project Overview
 
-**northstar.LM** is a client-side web application that transforms meeting recordings, PDFs, images, or text into actionable insights using OpenAI's AI models. The entire application runs client-side with no backend server. Features include multi-meeting orchestration, agent export/import, image OCR with Vision AI, and professional document generation.
+**northstar.LM** is a client-side web application that transforms meeting recordings, videos, PDFs, images, or text into actionable insights using OpenAI's AI models. The entire application runs client-side with no backend server. Features include multi-meeting orchestration, agent export/import, image OCR with Vision AI, and professional document generation.
 
 ## Architecture
 
@@ -36,7 +36,7 @@ northstar.LM/
 ### OpenAI Models Used
 | Purpose | Model |
 |---------|-------|
-| Audio Transcription | `whisper-1` |
+| Audio/Video Transcription | `whisper-1` |
 | Text Analysis (Summary, Key Points, Actions, Sentiment) | `gpt-5.2` |
 | Image/PDF Vision Analysis (OCR, content extraction) | `gpt-5.2` (vision) |
 | Chat with Data (Q&A) | `gpt-5.2` (with reasoning) |
@@ -80,7 +80,8 @@ const state = {
     selectedPdfFile: null,
     selectedImageFile: null,
     selectedImageBase64: null, // Base64-encoded image for Vision API
-    inputMode: 'audio', // 'audio', 'pdf', 'image', 'text', or 'url'
+    selectedVideoFile: null,
+    inputMode: 'audio', // 'audio', 'pdf', 'image', 'video', 'text', or 'url'
     isProcessing: false,
     results: null,        // Contains transcription, summary, keyPoints, actionItems, sentiment
     metrics: null,        // API usage metrics
