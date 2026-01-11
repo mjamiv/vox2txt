@@ -63,6 +63,10 @@
                     <span class="tab-icon">&#128247;</span>
                     Image
                 </button>
+                <button class="tab-btn" data-tab="video">
+                    <span class="tab-icon">&#127909;</span>
+                    Video
+                </button>
                 <button class="tab-btn" data-tab="text">
                     <span class="tab-icon">&#128221;</span>
                     Text
@@ -116,6 +120,20 @@
                     </div>
                     <div id="image-preview" class="image-preview hidden">
                         <img id="image-preview-img" alt="Image preview" />
+                    </div>
+                </div>
+
+                <div id="video-tab" class="tab-pane">
+                    <input type="file" id="video-file" accept=".mp4,.webm,.mov,.avi,.mkv,.m4v,video/*" hidden>
+                    <label for="video-file" class="upload-zone" id="video-drop-zone">
+                        <div class="upload-icon">&#127909;</div>
+                        <p>Drag & drop your video file here</p>
+                        <p class="hint">or click to browse</p>
+                        <p class="file-types">Supported: MP4, WebM, MOV, AVI, MKV</p>
+                    </label>
+                    <div id="video-file-info" class="file-info hidden">
+                        <span class="video-file-name"></span>
+                        <button type="button" class="remove-video-file">&#10005;</button>
                     </div>
                 </div>
 
@@ -412,14 +430,14 @@
                 </summary>
                 <div class="about-content">
                     <p class="about-intro">
-                        northstar.LM transforms meeting recordings, documents, images, and text into actionable insights using OpenAI's latest AI models.
+                        northstar.LM transforms meeting recordings, videos, documents, images, and text into actionable insights using OpenAI's latest AI models.
                     </p>
                     <div class="models-grid">
                         <div class="model-item">
                             <span class="model-icon">🎤</span>
                             <div class="model-info">
                                 <strong>Whisper</strong>
-                                <span>Audio transcription</span>
+                                <span>Audio & video transcription</span>
                             </div>
                         </div>
                         <div class="model-item">
@@ -470,7 +488,7 @@
     <!-- External Libraries -->
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
-    <script src="js/app.js?v=35" type="module"></script>
+    <script src="js/app.js?v=36" type="module"></script>
 
     <!-- Service Worker Registration -->
     <script>

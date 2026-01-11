@@ -32,7 +32,8 @@ const state = {
     selectedPdfFile: null,
     selectedImageFile: null,
     selectedImageBase64: null, // Base64-encoded image for Vision API
-    inputMode: 'audio', // 'audio', 'pdf', 'image', 'text', or 'url'
+    selectedVideoFile: null,
+    inputMode: 'audio', // 'audio', 'pdf', 'image', 'video', 'text', or 'url'
     isProcessing: false,
     results: null,
     metrics: null,
@@ -126,6 +127,14 @@ async function init() {
         removeImageFileBtn: document.querySelector('.remove-image-file'),
         imagePreview: document.getElementById('image-preview'),
         imagePreviewImg: document.getElementById('image-preview-img'),
+
+        // Video Upload
+        videoTab: document.getElementById('video-tab'),
+        videoDropZone: document.getElementById('video-drop-zone'),
+        videoFileInput: document.getElementById('video-file'),
+        videoFileInfo: document.getElementById('video-file-info'),
+        videoFileName: document.querySelector('.video-file-name'),
+        removeVideoFileBtn: document.querySelector('.remove-video-file'),
 
         // Text Input
         textInput: document.getElementById('text-input'),
@@ -264,6 +273,17 @@ function setupEventListeners() {
     elements.imageFileInput.addEventListener('change', handleImageFileSelect);
     elements.removeImageFileBtn.addEventListener('click', removeSelectedImageFile);
 
+    // Video Drag and Drop
+    elements.videoDropZone.addEventListener('click', (e) => {
+        e.preventDefault();
+        elements.videoFileInput.click();
+    });
+    elements.videoDropZone.addEventListener('dragover', handleVideoDragOver);
+    elements.videoDropZone.addEventListener('dragleave', handleVideoDragLeave);
+    elements.videoDropZone.addEventListener('drop', handleVideoDrop);
+    elements.videoFileInput.addEventListener('change', handleVideoFileSelect);
+    elements.removeVideoFileBtn.addEventListener('click', removeSelectedVideoFile);
+
     // Text Input
     elements.textInput.addEventListener('input', updateAnalyzeButton);
     
@@ -355,6 +375,7 @@ function switchTab(tab) {
     elements.audioTab.classList.toggle('active', tab === 'audio');
     elements.pdfTab.classList.toggle('active', tab === 'pdf');
     elements.imageTab.classList.toggle('active', tab === 'image');
+    elements.videoTab.classList.toggle('active', tab === 'video');
     elements.textTab.classList.toggle('active', tab === 'text');
     elements.urlTab.classList.toggle('active', tab === 'url');
 
@@ -565,6 +586,65 @@ function removeSelectedImageFile() {
 }
 
 // ============================================
+// Video File Handling
+// ============================================
+function handleVideoDragOver(e) {
+    e.preventDefault();
+    elements.videoDropZone.classList.add('dragover');
+}
+
+function handleVideoDragLeave(e) {
+    e.preventDefault();
+    elements.videoDropZone.classList.remove('dragover');
+}
+
+function handleVideoDrop(e) {
+    e.preventDefault();
+    elements.videoDropZone.classList.remove('dragover');
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        processSelectedVideoFile(files[0]);
+    }
+}
+
+function handleVideoFileSelect(e) {
+    if (e.target.files.length > 0) {
+        processSelectedVideoFile(e.target.files[0]);
+    }
+}
+
+function processSelectedVideoFile(file) {
+    const allowedFormats = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v'];
+    const extension = file.name.split('.').pop().toLowerCase();
+
+    if (!allowedFormats.includes(extension)) {
+        showError(`Invalid file format. Supported formats: ${allowedFormats.join(', ')}`);
+        return;
+    }
+
+    // Check file size (OpenAI Whisper limit is 25MB)
+    if (file.size > 25 * 1024 * 1024) {
+        showError('File size exceeds 25MB limit for transcription.');
+        return;
+    }
+
+    state.selectedVideoFile = file;
+    elements.videoFileName.textContent = file.name;
+    elements.videoFileInfo.classList.remove('hidden');
+    elements.videoDropZone.style.display = 'none';
+    updateAnalyzeButton();
+}
+
+function removeSelectedVideoFile() {
+    state.selectedVideoFile = null;
+    elements.videoFileInput.value = '';
+    elements.videoFileInfo.classList.add('hidden');
+    elements.videoDropZone.style.display = 'block';
+    updateAnalyzeButton();
+}
+
+// ============================================
 // PDF Text Extraction
 // ============================================
 async function extractTextFromPdf(file) {
@@ -742,6 +822,8 @@ function updateAnalyzeButton() {
             canAnalyze = true;
         } else if (state.inputMode === 'image' && state.selectedImageFile) {
             canAnalyze = true;
+        } else if (state.inputMode === 'video' && state.selectedVideoFile) {
+            canAnalyze = true;
         } else if (state.inputMode === 'text' && elements.textInput.value.trim()) {
             canAnalyze = true;
         } else if (state.inputMode === 'url' && state.urlContent) {
@@ -804,6 +886,9 @@ async function startAnalysis() {
             if (!transcriptionText || transcriptionText.length < 10) {
                 throw new Error('Could not extract meaningful content from the image.');
             }
+        } else if (state.inputMode === 'video') {
+            updateProgress(5, 'Transcribing video audio with Whisper...');
+            transcriptionText = await transcribeAudio(state.selectedVideoFile);
         } else if (state.inputMode === 'url') {
             transcriptionText = state.urlContent;
 
