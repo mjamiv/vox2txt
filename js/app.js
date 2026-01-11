@@ -91,6 +91,9 @@ async function init() {
         apiKeyInput: document.getElementById('api-key'),
         toggleKeyBtn: document.getElementById('toggle-key'),
         saveKeyBtn: document.getElementById('save-key'),
+        apiKeyContainer: document.getElementById('api-key-container'),
+        apiKeyCollapsed: document.getElementById('api-key-collapsed'),
+        expandKeyBtn: document.getElementById('expand-key-btn'),
         
         // Tabs
         tabBtns: document.querySelectorAll('.tab-btn'),
@@ -183,6 +186,21 @@ function loadSavedApiKey() {
     if (savedKey) {
         state.apiKey = savedKey;
         elements.apiKeyInput.value = savedKey;
+        collapseApiKeySection();
+    }
+}
+
+function collapseApiKeySection() {
+    if (elements.apiKeyContainer && elements.apiKeyCollapsed) {
+        elements.apiKeyContainer.classList.add('hidden');
+        elements.apiKeyCollapsed.classList.remove('hidden');
+    }
+}
+
+function expandApiKeySection() {
+    if (elements.apiKeyContainer && elements.apiKeyCollapsed) {
+        elements.apiKeyContainer.classList.remove('hidden');
+        elements.apiKeyCollapsed.classList.add('hidden');
     }
 }
 
@@ -194,6 +212,9 @@ function setupEventListeners() {
     elements.apiKeyInput.addEventListener('input', handleApiKeyChange);
     elements.toggleKeyBtn.addEventListener('click', toggleApiKeyVisibility);
     elements.saveKeyBtn.addEventListener('click', saveApiKey);
+    if (elements.expandKeyBtn) {
+        elements.expandKeyBtn.addEventListener('click', expandApiKeySection);
+    }
     
     // Tabs
     elements.tabBtns.forEach(btn => {
@@ -277,6 +298,10 @@ function saveApiKey() {
     if (state.apiKey) {
         localStorage.setItem('northstar_api_key', state.apiKey);
         showTemporaryMessage(elements.saveKeyBtn, 'Saved!', 'Save');
+        // Collapse after a short delay to show the "Saved!" message
+        setTimeout(() => {
+            collapseApiKeySection();
+        }, 1000);
     }
 }
 

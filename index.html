@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=27">
+    <link rel="stylesheet" href="css/styles.css?v=28">
 </head>
 <body>
     <div class="gradient-bg"></div>
@@ -18,15 +18,16 @@
             <h1>northstar.LM</h1>
         </div>
         <p class="tagline">Transform your meetings into actionable insights</p>
-        <a href="orchestrator.html" class="orchestrator-link">
-            <span>🎭</span> Agent Orchestrator
-        </a>
     </header>
 
     <main>
-        <!-- API Key Section -->
-        <section class="config-section">
-            <div class="api-key-container">
+        <!-- API Key Section (Collapsible) -->
+        <section class="config-section" id="config-section">
+            <div class="api-key-collapsed hidden" id="api-key-collapsed">
+                <span class="key-status">🔑 API Key configured</span>
+                <button type="button" id="expand-key-btn" class="btn-text">Edit</button>
+            </div>
+            <div class="api-key-container" id="api-key-container">
                 <label for="api-key">
                     <span class="label-icon">&#128273;</span>
                     OpenAI API Key
@@ -130,16 +131,26 @@
                 </span>
             </button>
 
-            <!-- Agent Import -->
-            <div class="agent-import-section">
+            <!-- Agent Tools -->
+            <div class="agent-tools-section">
                 <div class="agent-divider">
                     <span>or</span>
                 </div>
-                <button id="import-agent-btn" class="btn-agent-import">
-                    <span>📥</span> Import Agent
-                </button>
-                <input type="file" id="agent-file" accept=".md,text/markdown" hidden>
-                <p class="agent-hint">Load a previously exported meeting agent</p>
+                <div class="agent-buttons">
+                    <div class="agent-tool">
+                        <button id="import-agent-btn" class="btn-agent-import">
+                            <span>📥</span> Import Agent
+                        </button>
+                        <input type="file" id="agent-file" accept=".md,text/markdown" hidden>
+                        <p class="agent-hint">Load a previously exported meeting agent</p>
+                    </div>
+                    <div class="agent-tool">
+                        <a href="orchestrator.html" class="btn-agent-orchestrator">
+                            <span>🎭</span> Agent Orchestrator
+                        </a>
+                        <p class="agent-hint">Combine multiple agents for cross-meeting insights</p>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -381,6 +392,6 @@
     <!-- External Libraries -->
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
-    <script src="js/app.js?v=25" type="module"></script>
+    <script src="js/app.js?v=26" type="module"></script>
 </body>
 </html>

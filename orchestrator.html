@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=26">
+    <link rel="stylesheet" href="css/styles.css?v=28">
 </head>
 <body>
     <div class="gradient-bg"></div>
@@ -72,16 +72,19 @@
                 <div id="agents-list" class="agents-list">
                     <!-- Agent cards will be inserted here -->
                 </div>
+                
+                <!-- Generate Insights Button - inside agents list section -->
+                <div class="generate-insights-wrapper">
+                    <button id="generate-insights-btn" class="btn-primary btn-large" disabled>
+                        <span class="btn-text">📊 Generate Cross-Meeting Insights</span>
+                        <span class="btn-loader hidden">
+                            <span class="spinner"></span>
+                            Analyzing...
+                        </span>
+                    </button>
+                    <p class="insights-hint">Upload at least 2 agents to generate cross-meeting insights</p>
+                </div>
             </div>
-
-            <!-- Generate Insights Button -->
-            <button id="generate-insights-btn" class="btn-primary" disabled>
-                <span class="btn-text">📊 Generate Cross-Meeting Insights</span>
-                <span class="btn-loader hidden">
-                    <span class="spinner"></span>
-                    Analyzing...
-                </span>
-            </button>
         </section>
 
         <!-- Cross-Meeting Insights Section -->
@@ -222,6 +225,6 @@
 
     <!-- Marked.js for markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/orchestrator.js?v=3" type="module"></script>
+    <script src="js/orchestrator.js?v=4" type="module"></script>
 </body>
 </html>

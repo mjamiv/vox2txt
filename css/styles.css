@@ -148,6 +148,40 @@ section {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
+/* Collapsed API Key State */
+.api-key-collapsed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.1), rgba(74, 222, 128, 0.05));
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    border-radius: var(--radius-lg);
+}
+
+.key-status {
+    color: var(--success);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    color: var(--accent-primary);
+    font-weight: 600;
+    cursor: pointer;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.btn-text:hover {
+    background: rgba(212, 168, 83, 0.1);
+    text-decoration: underline;
+}
+
 .api-key-container label {
     display: flex;
     align-items: center;
@@ -1670,9 +1704,10 @@ details[open] .about-toggle {
 }
 
 /* ===================================
-   Agent Import/Export
+   Agent Import/Export & Tools
    =================================== */
-.agent-import-section {
+.agent-import-section,
+.agent-tools-section {
     margin-top: var(--space-xl);
     padding-top: var(--space-lg);
     text-align: center;
@@ -1683,7 +1718,7 @@ details[open] .about-toggle {
     align-items: center;
     justify-content: center;
     gap: var(--space-md);
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-lg);
 }
 
 .agent-divider::before,
@@ -1693,6 +1728,20 @@ details[open] .about-toggle {
     max-width: 120px;
     height: 1px;
     background: linear-gradient(to right, transparent, rgba(212, 168, 83, 0.4), transparent);
+}
+
+.agent-buttons {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-xl);
+    flex-wrap: wrap;
+}
+
+.agent-tool {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 200px;
 }
 
 .agent-divider span {
@@ -1738,11 +1787,49 @@ details[open] .about-toggle {
     font-size: 1.2rem;
 }
 
+/* Agent Orchestrator Button */
+.btn-agent-orchestrator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-xl);
+    background: linear-gradient(135deg, rgba(212, 168, 83, 0.1), rgba(212, 168, 83, 0.05));
+    border: 1px dashed rgba(212, 168, 83, 0.5);
+    border-radius: var(--radius-lg);
+    color: var(--accent-primary);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: 0 2px 8px rgba(212, 168, 83, 0.1);
+}
+
+.btn-agent-orchestrator:hover {
+    background: linear-gradient(135deg, rgba(212, 168, 83, 0.2), rgba(212, 168, 83, 0.1));
+    border-color: var(--accent-primary);
+    border-style: solid;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(212, 168, 83, 0.2);
+}
+
+.btn-agent-orchestrator:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(212, 168, 83, 0.1);
+}
+
+.btn-agent-orchestrator span {
+    font-size: 1.2rem;
+}
+
 .agent-hint {
     margin-top: var(--space-sm);
     font-size: 0.85rem;
     color: var(--text-muted);
     font-style: italic;
+    max-width: 220px;
 }
 
 /* Export Agent Button - styled similar to other secondary buttons but distinct */
@@ -1802,12 +1889,24 @@ details[open] .about-toggle {
 
 /* Mobile adjustments for agent section */
 @media (max-width: 768px) {
-    .agent-import-section {
+    .agent-import-section,
+    .agent-tools-section {
         margin-top: var(--space-lg);
         padding-top: var(--space-md);
     }
     
-    .btn-agent-import {
+    .agent-buttons {
+        flex-direction: column;
+        gap: var(--space-lg);
+    }
+    
+    .agent-tool {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .btn-agent-import,
+    .btn-agent-orchestrator {
         width: 100%;
         padding: var(--space-md) var(--space-lg);
     }
@@ -1855,9 +1954,6 @@ details[open] .about-toggle {
     transition: all var(--transition-fast);
 }
 
-.orchestrator-link {
-    margin-top: var(--space-lg);
-}
 
 .orchestrator-link:hover,
 .back-link:hover {
@@ -1904,6 +2000,26 @@ details[open] .about-toggle {
     background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
     border: 1px solid rgba(212, 168, 83, 0.15);
     border-radius: var(--radius-lg);
+}
+
+/* Generate Insights Button Wrapper */
+.generate-insights-wrapper {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-lg);
+    border-top: 1px solid rgba(212, 168, 83, 0.15);
+    text-align: center;
+}
+
+.btn-large {
+    padding: var(--space-md) var(--space-2xl);
+    font-size: 1.1rem;
+}
+
+.insights-hint {
+    margin-top: var(--space-sm);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
 }
 
 .agents-list-header {
