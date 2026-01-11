@@ -192,7 +192,15 @@ async function init() {
         // Agent Import/Export
         exportAgentBtn: document.getElementById('export-agent-btn'),
         importAgentBtn: document.getElementById('import-agent-btn'),
-        agentFileInput: document.getElementById('agent-file')
+        agentFileInput: document.getElementById('agent-file'),
+        
+        // Agent Name Modal
+        agentNameModal: document.getElementById('agent-name-modal'),
+        agentNameInput: document.getElementById('agent-name-input'),
+        agentNameHint: document.getElementById('agent-name-hint'),
+        modalCloseBtn: document.getElementById('modal-close-btn'),
+        modalCancelBtn: document.getElementById('modal-cancel-btn'),
+        modalConfirmBtn: document.getElementById('modal-confirm-btn')
     };
     
     loadSavedApiKey();
@@ -323,9 +331,20 @@ function setupEventListeners() {
     elements.clearUrlBtn.addEventListener('click', clearUrlContent);
     
     // Agent Import/Export
-    elements.exportAgentBtn.addEventListener('click', exportAgent);
+    elements.exportAgentBtn.addEventListener('click', showAgentNameModal);
     elements.importAgentBtn.addEventListener('click', () => elements.agentFileInput.click());
     elements.agentFileInput.addEventListener('change', handleAgentFileSelect);
+    
+    // Agent Name Modal
+    elements.modalCloseBtn.addEventListener('click', hideAgentNameModal);
+    elements.modalCancelBtn.addEventListener('click', hideAgentNameModal);
+    elements.modalConfirmBtn.addEventListener('click', confirmExportAgent);
+    elements.agentNameModal.addEventListener('click', (e) => {
+        if (e.target === elements.agentNameModal) hideAgentNameModal();
+    });
+    elements.agentNameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') confirmExportAgent();
+    });
     
     // Results Navigation
     setupResultsNav();
@@ -3242,7 +3261,83 @@ function resetChatHistory() {
 // ============================================
 // Agent Export/Import
 // ============================================
-function exportAgent() {
+
+function generateSuggestedAgentName() {
+    if (!state.results) return 'Meeting Agent';
+    
+    // Try to extract a meaningful name from the summary
+    const summary = state.results.summary || '';
+    
+    // Get first sentence and clean it up
+    let title = summary.split('.')[0].trim();
+    
+    // Remove common prefixes
+    title = title.replace(/^(This meeting|The meeting|Meeting|This call|The call|In this meeting|During this meeting)/i, '').trim();
+    
+    // Capitalize first letter
+    if (title.length > 0) {
+        title = title.charAt(0).toUpperCase() + title.slice(1);
+    }
+    
+    // Limit length and clean up
+    if (title.length > 60) {
+        title = title.substring(0, 57) + '...';
+    }
+    
+    // Fallback if title is too short or empty
+    if (title.length < 5) {
+        const now = new Date();
+        title = `Meeting ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
+    
+    return title;
+}
+
+function showAgentNameModal() {
+    if (!state.results) {
+        showError('No analysis results to export. Please analyze content first.');
+        return;
+    }
+    
+    // Generate and pre-populate suggested name
+    const suggestedName = generateSuggestedAgentName();
+    elements.agentNameInput.value = suggestedName;
+    
+    // Show modal
+    elements.agentNameModal.classList.remove('hidden');
+    
+    // Focus and select the input
+    setTimeout(() => {
+        elements.agentNameInput.focus();
+        elements.agentNameInput.select();
+    }, 100);
+}
+
+function hideAgentNameModal() {
+    elements.agentNameModal.classList.add('hidden');
+    elements.agentNameInput.value = '';
+}
+
+function confirmExportAgent() {
+    const agentName = elements.agentNameInput.value.trim();
+    
+    if (!agentName) {
+        elements.agentNameInput.focus();
+        elements.agentNameInput.style.borderColor = 'var(--error)';
+        setTimeout(() => {
+            elements.agentNameInput.style.borderColor = '';
+        }, 2000);
+        return;
+    }
+    
+    // Hide modal
+    hideAgentNameModal();
+    
+    // Proceed with export
+    exportAgentWithName(agentName);
+}
+
+function exportAgentWithName(agentName) {
     if (!state.results) {
         showError('No analysis results to export. Please analyze content first.');
         return;
@@ -3254,18 +3349,16 @@ function exportAgent() {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
     });
     
-    // Generate a title from the summary (first sentence or first 50 chars)
-    const summaryTitle = state.results.summary.split('.')[0].substring(0, 50).trim() || 'Meeting Analysis';
-    
     // Build the markdown content with YAML frontmatter
     const markdown = `---
 agent_type: northstar-meeting-agent
 version: 1.0
 created: ${dateStr}
 source_type: ${state.inputMode}
+agent_name: "${agentName}"
 ---
 
-# Meeting Agent: ${summaryTitle}
+# Meeting Agent: ${agentName}
 
 ## Metadata
 - **Created**: ${readableDate}
@@ -3305,12 +3398,19 @@ ${state.results.transcription}
 \`\`\`
 `;
 
+    // Create filename from agent name (sanitized)
+    const safeFileName = agentName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .substring(0, 50);
+    
     // Create and download the file
     const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `meeting-agent-${now.toISOString().slice(0, 10)}.md`;
+    a.download = `${safeFileName}-${now.toISOString().slice(0, 10)}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
