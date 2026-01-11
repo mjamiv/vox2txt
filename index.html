@@ -126,6 +126,18 @@
                     Processing...
                 </span>
             </button>
+
+            <!-- Agent Import -->
+            <div class="agent-import-section">
+                <div class="agent-divider">
+                    <span>or</span>
+                </div>
+                <button id="import-agent-btn" class="btn-agent-import">
+                    <span>📥</span> Import Agent
+                </button>
+                <input type="file" id="agent-file" accept=".md,text/markdown" hidden>
+                <p class="agent-hint">Load a previously exported meeting agent</p>
+            </div>
         </section>
 
         <!-- Progress Section -->
@@ -195,6 +207,9 @@
             <div class="results-actions">
                 <button id="download-btn" class="btn-primary">
                     <span>&#128229;</span> Download DOCX
+                </button>
+                <button id="export-agent-btn" class="btn-secondary">
+                    <span>🤖</span> Export Agent
                 </button>
                 <button id="new-analysis-btn" class="btn-secondary">
                     <span>&#10227;</span> New Analysis
@@ -363,6 +378,6 @@
     <!-- External Libraries -->
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
-    <script src="js/app.js?v=20" type="module"></script>
+    <script src="js/app.js?v=21" type="module"></script>
 </body>
 </html>

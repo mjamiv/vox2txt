@@ -1667,3 +1667,96 @@ details[open] .about-toggle {
         height: 38px;
     }
 }
+
+/* ===================================
+   Agent Import/Export
+   =================================== */
+.agent-import-section {
+    margin-top: var(--space-lg);
+    text-align: center;
+}
+
+.agent-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.agent-divider::before,
+.agent-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(212, 168, 83, 0.3), transparent);
+}
+
+.agent-divider span {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-agent-import {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-lg);
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px dashed rgba(96, 165, 250, 0.4);
+    border-radius: var(--radius-md);
+    color: var(--info);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-agent-import:hover {
+    background: rgba(96, 165, 250, 0.2);
+    border-color: var(--info);
+    transform: translateY(-1px);
+}
+
+.btn-agent-import:active {
+    transform: translateY(0);
+}
+
+.agent-hint {
+    margin-top: var(--space-sm);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Export Agent Button */
+#export-agent-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+#export-agent-btn span {
+    font-size: 1.1rem;
+}
+
+/* Mobile adjustments for agent section */
+@media (max-width: 768px) {
+    .agent-import-section {
+        margin-top: var(--space-md);
+    }
+    
+    .btn-agent-import {
+        width: 100%;
+        padding: var(--space-md);
+    }
+    
+    .results-actions {
+        flex-wrap: wrap;
+    }
+    
+    #export-agent-btn {
+        order: 2;
+    }
+}

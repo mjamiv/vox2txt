@@ -162,7 +162,12 @@ async function init() {
         fetchUrlBtn: document.getElementById('fetch-url-btn'),
         urlPreview: document.getElementById('url-preview'),
         urlPreviewContent: document.getElementById('url-preview-content'),
-        clearUrlBtn: document.querySelector('.clear-url-btn')
+        clearUrlBtn: document.querySelector('.clear-url-btn'),
+        
+        // Agent Import/Export
+        exportAgentBtn: document.getElementById('export-agent-btn'),
+        importAgentBtn: document.getElementById('import-agent-btn'),
+        agentFileInput: document.getElementById('agent-file')
     };
     
     loadSavedApiKey();
@@ -278,6 +283,11 @@ function setupEventListeners() {
     });
     elements.urlInput.addEventListener('input', updateAnalyzeButton);
     elements.clearUrlBtn.addEventListener('click', clearUrlContent);
+    
+    // Agent Import/Export
+    elements.exportAgentBtn.addEventListener('click', exportAgent);
+    elements.importAgentBtn.addEventListener('click', () => elements.agentFileInput.click());
+    elements.agentFileInput.addEventListener('change', handleAgentFileSelect);
 }
 
 // ============================================
@@ -2071,6 +2081,315 @@ function resetChatHistory() {
             </div>
         `;
     }
+}
+
+// ============================================
+// Agent Export/Import
+// ============================================
+function exportAgent() {
+    if (!state.results) {
+        showError('No analysis results to export. Please analyze content first.');
+        return;
+    }
+    
+    const now = new Date();
+    const dateStr = now.toISOString();
+    const readableDate = now.toLocaleDateString('en-US', { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+    });
+    
+    // Generate a title from the summary (first sentence or first 50 chars)
+    const summaryTitle = state.results.summary.split('.')[0].substring(0, 50).trim() || 'Meeting Analysis';
+    
+    // Build the markdown content with YAML frontmatter
+    const markdown = `---
+agent_type: northstar-meeting-agent
+version: 1.0
+created: ${dateStr}
+source_type: ${state.inputMode}
+---
+
+# Meeting Agent: ${summaryTitle}
+
+## Metadata
+- **Created**: ${readableDate}
+- **Source**: ${getSourceTypeLabel(state.inputMode)}
+- **Powered by**: northstar.LM
+
+---
+
+## Executive Summary
+
+${state.results.summary}
+
+---
+
+## Key Points
+
+${formatAsMarkdownList(state.results.keyPoints)}
+
+---
+
+## Action Items
+
+${formatAsCheckboxList(state.results.actionItems)}
+
+---
+
+## Sentiment Analysis
+
+**Overall Sentiment**: ${state.results.sentiment}
+
+---
+
+## Full Transcript
+
+\`\`\`
+${state.results.transcription}
+\`\`\`
+`;
+
+    // Create and download the file
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `meeting-agent-${now.toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function getSourceTypeLabel(inputMode) {
+    const labels = {
+        'audio': 'Audio Transcription',
+        'pdf': 'PDF Document',
+        'text': 'Text Input',
+        'url': 'Web Page',
+        'agent': 'Imported Agent'
+    };
+    return labels[inputMode] || 'Unknown';
+}
+
+function formatAsMarkdownList(text) {
+    return text.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(line => {
+            // Remove existing bullets/dashes and add markdown bullet
+            const cleanLine = line.replace(/^[-•*▸]\s*/, '');
+            return `- ${cleanLine}`;
+        })
+        .join('\n');
+}
+
+function formatAsCheckboxList(text) {
+    return text.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(line => {
+            // Remove existing bullets/dashes and add markdown checkbox
+            const cleanLine = line.replace(/^[-•*▸☐]\s*/, '');
+            return `- [ ] ${cleanLine}`;
+        })
+        .join('\n');
+}
+
+async function handleAgentFileSelect(e) {
+    if (e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    
+    // Validate file type
+    if (!file.name.endsWith('.md')) {
+        showError('Please select a valid .md agent file.');
+        e.target.value = '';
+        return;
+    }
+    
+    try {
+        const content = await file.text();
+        const agentData = parseAgentFile(content);
+        
+        if (!agentData) {
+            throw new Error('Could not parse agent file. Please ensure it is a valid northstar.LM agent.');
+        }
+        
+        // Restore the session from the agent data
+        importAgentSession(agentData);
+        
+    } catch (error) {
+        console.error('Agent import error:', error);
+        showError(error.message || 'Failed to import agent file.');
+    } finally {
+        e.target.value = ''; // Reset file input
+    }
+}
+
+function parseAgentFile(content) {
+    // Check for YAML frontmatter
+    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    
+    if (!frontmatterMatch) {
+        // Try to parse as a legacy or simple format
+        return parseLegacyAgentFile(content);
+    }
+    
+    // Parse frontmatter
+    const frontmatter = {};
+    frontmatterMatch[1].split('\n').forEach(line => {
+        const [key, ...valueParts] = line.split(':');
+        if (key && valueParts.length) {
+            frontmatter[key.trim()] = valueParts.join(':').trim();
+        }
+    });
+    
+    // Validate it's a northstar agent
+    if (frontmatter.agent_type !== 'northstar-meeting-agent') {
+        return null;
+    }
+    
+    // Extract sections from markdown
+    const bodyContent = content.substring(frontmatterMatch[0].length);
+    
+    const summary = extractSection(bodyContent, 'Executive Summary');
+    const keyPoints = extractSection(bodyContent, 'Key Points');
+    const actionItems = extractSection(bodyContent, 'Action Items');
+    const sentiment = extractSentimentFromSection(bodyContent);
+    const transcription = extractTranscript(bodyContent);
+    
+    if (!summary && !transcription) {
+        return null;
+    }
+    
+    return {
+        frontmatter,
+        summary: summary || '',
+        keyPoints: keyPoints || '',
+        actionItems: actionItems || '',
+        sentiment: sentiment || 'Neutral',
+        transcription: transcription || ''
+    };
+}
+
+function parseLegacyAgentFile(content) {
+    // Attempt to parse content that might not have proper frontmatter
+    // Look for key sections
+    const summary = extractSection(content, 'Executive Summary') || 
+                    extractSection(content, 'Summary');
+    const keyPoints = extractSection(content, 'Key Points');
+    const actionItems = extractSection(content, 'Action Items');
+    const sentiment = extractSentimentFromSection(content);
+    const transcription = extractTranscript(content) || 
+                          extractSection(content, 'Transcript');
+    
+    if (!summary && !transcription) {
+        return null;
+    }
+    
+    return {
+        frontmatter: { source_type: 'agent' },
+        summary: summary || '',
+        keyPoints: keyPoints || '',
+        actionItems: actionItems || '',
+        sentiment: sentiment || 'Neutral',
+        transcription: transcription || ''
+    };
+}
+
+function extractSection(content, sectionName) {
+    // Match section header (## Section Name) and capture until next ## or ---
+    const regex = new RegExp(`## ${sectionName}[\\s\\S]*?\\n([\\s\\S]*?)(?=\\n---\\n|\\n## |$)`, 'i');
+    const match = content.match(regex);
+    
+    if (match && match[1]) {
+        return match[1].trim();
+    }
+    return null;
+}
+
+function extractSentimentFromSection(content) {
+    const section = extractSection(content, 'Sentiment Analysis');
+    if (section) {
+        // Look for "Overall Sentiment: X" pattern
+        const match = section.match(/\*\*Overall Sentiment\*\*:\s*(.+)/i) ||
+                      section.match(/Overall Sentiment:\s*(.+)/i);
+        if (match) {
+            return match[1].trim();
+        }
+        // Just return the section content if no pattern found
+        return section.split('\n')[0].trim();
+    }
+    return null;
+}
+
+function extractTranscript(content) {
+    // Look for transcript in code block
+    const codeBlockMatch = content.match(/## Full Transcript[\s\S]*?```[\s\S]*?\n([\s\S]*?)```/);
+    if (codeBlockMatch && codeBlockMatch[1]) {
+        return codeBlockMatch[1].trim();
+    }
+    
+    // Fallback: look for section without code block
+    const section = extractSection(content, 'Full Transcript');
+    return section;
+}
+
+function importAgentSession(agentData) {
+    // Reset any existing state
+    resetChatHistory();
+    
+    // Clean up any generated audio/image URLs
+    if (generatedAudioUrl) {
+        URL.revokeObjectURL(generatedAudioUrl);
+        generatedAudioUrl = null;
+    }
+    generatedImageUrl = null;
+    generatedImageBase64 = null;
+    
+    // Set the results from the imported agent
+    state.results = {
+        transcription: agentData.transcription,
+        summary: agentData.summary,
+        keyPoints: agentData.keyPoints,
+        actionItems: agentData.actionItems,
+        sentiment: agentData.sentiment
+    };
+    
+    // Set input mode to indicate this is from an agent
+    state.inputMode = agentData.frontmatter?.source_type || 'agent';
+    
+    // Reset metrics (no API calls were made for import)
+    currentMetrics = {
+        whisperMinutes: 0,
+        gptInputTokens: 0,
+        gptOutputTokens: 0,
+        chatInputTokens: 0,
+        chatOutputTokens: 0,
+        ttsCharacters: 0,
+        imageInputTokens: 0,
+        imageOutputTokens: 0,
+        apiCalls: []
+    };
+    state.metrics = {
+        totalTokens: 0,
+        totalCost: 0,
+        apiCalls: [],
+        note: 'Imported from agent file - no API calls made'
+    };
+    
+    // Hide progress if visible
+    hideProgress();
+    
+    // Display the results
+    displayResults();
+    
+    // Show a success message
+    showTemporaryMessage(elements.importAgentBtn, 'Loaded!', '📥 Import Agent');
+    
+    // Scroll to results
+    elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ============================================
