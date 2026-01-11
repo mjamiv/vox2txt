@@ -2983,11 +2983,6 @@ async function sendChatMessage() {
     }
 }
 
-// Utility sleep function for UX timing
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 function buildChatContext() {
     const results = state.results;
     return `You have access to the following meeting data. Use this information to answer the user's questions accurately and helpfully.
