@@ -543,22 +543,44 @@ async function sendChatMessage() {
     const message = elements.chatInput.value.trim();
     if (!message || state.isProcessing || state.agents.length === 0) return;
     
-    // Clear input
+    // Clear input and disable while processing
     elements.chatInput.value = '';
+    elements.chatInput.disabled = true;
+    elements.chatSendBtn.disabled = true;
     
     // Add user message to UI
     appendChatMessage('user', message);
     
-    // Show typing indicator
-    showTypingIndicator();
+    // Show thinking indicator with train of thought
+    const thinkingId = showThinkingIndicator();
     
     try {
+        // Step 1: Understanding
+        updateThinkingStatus(thinkingId, 'Understanding your question...');
+        await sleep(300);
+        
+        // Step 2: Selecting relevant agents
+        updateThinkingStatus(thinkingId, `Searching ${state.agents.length} meetings...`);
+        const context = buildChatContext(message);
+        await sleep(200);
+        
+        // Step 3: Analyzing
+        updateThinkingStatus(thinkingId, 'Analyzing with AI...');
         const response = await chatWithAgents(message);
-        removeTypingIndicator();
+        
+        // Step 4: Preparing response
+        updateThinkingStatus(thinkingId, 'Preparing response...');
+        await sleep(150);
+        
+        removeThinkingIndicator(thinkingId);
         appendChatMessage('assistant', response);
     } catch (error) {
-        removeTypingIndicator();
+        removeThinkingIndicator(thinkingId);
         appendChatMessage('assistant', `Sorry, I encountered an error: ${error.message}`);
+    } finally {
+        elements.chatInput.disabled = false;
+        elements.chatSendBtn.disabled = false;
+        elements.chatInput.focus();
     }
 }
 
@@ -678,18 +700,37 @@ function appendChatMessage(role, content) {
     elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 }
 
-function showTypingIndicator() {
-    const indicator = document.createElement('div');
-    indicator.className = 'chat-message assistant-message typing-indicator';
-    indicator.id = 'typing-indicator';
-    indicator.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
-    elements.chatMessages.appendChild(indicator);
+function showThinkingIndicator() {
+    const id = 'thinking-' + Date.now();
+    const thinkingDiv = document.createElement('div');
+    thinkingDiv.id = id;
+    thinkingDiv.className = 'chat-message assistant-message';
+    thinkingDiv.innerHTML = `
+        <div class="chat-message-avatar">🤖</div>
+        <div class="chat-thinking">
+            <div class="thinking-spinner"></div>
+            <span class="thinking-text">Thinking...</span>
+        </div>
+    `;
+    elements.chatMessages.appendChild(thinkingDiv);
     elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+    return id;
 }
 
-function removeTypingIndicator() {
-    const indicator = document.getElementById('typing-indicator');
-    if (indicator) indicator.remove();
+function updateThinkingStatus(id, status) {
+    const thinkingDiv = document.getElementById(id);
+    if (thinkingDiv) {
+        const textSpan = thinkingDiv.querySelector('.thinking-text');
+        if (textSpan) {
+            textSpan.textContent = status;
+        }
+        elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+    }
+}
+
+function removeThinkingIndicator(id) {
+    const thinkingDiv = document.getElementById(id);
+    if (thinkingDiv) thinkingDiv.remove();
 }
 
 function resetChatHistory() {
