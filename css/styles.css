@@ -781,6 +781,40 @@ section {
     padding: var(--space-md) var(--space-lg);
 }
 
+/* Collapsible card header */
+.card-header-collapsible {
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+}
+
+.card-header-collapsible::-webkit-details-marker {
+    display: none;
+}
+
+.card-header-collapsible:hover {
+    background: rgba(212, 168, 83, 0.12);
+}
+
+.collapse-toggle {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    transition: transform var(--transition-fast);
+}
+
+details[open] .collapse-toggle {
+    transform: rotate(180deg);
+}
+
+details.result-card {
+    overflow: hidden;
+}
+
+details.result-card:not([open]) .card-content {
+    display: none;
+}
+
 .metrics-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
