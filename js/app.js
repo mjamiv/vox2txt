@@ -46,10 +46,6 @@ const PRICING = {
         input: 2.50,   // $ per 1M input tokens
         output: 10.00  // $ per 1M output tokens
     },
-    'gpt-5-mini': {
-        input: 0.40,   // $ per 1M input tokens (estimated)
-        output: 1.60   // $ per 1M output tokens (estimated)
-    },
     'whisper-1': {
         perMinute: 0.006  // $ per minute of audio
     },
@@ -201,6 +197,10 @@ function setupEventListeners() {
     
     // Audio Drag and Drop
     elements.dropZone.addEventListener('click', () => elements.audioFileInput.click());
+    elements.dropZone.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        elements.audioFileInput.click();
+    }, { passive: false });
     elements.dropZone.addEventListener('dragover', handleDragOver);
     elements.dropZone.addEventListener('dragleave', handleDragLeave);
     elements.dropZone.addEventListener('drop', handleDrop);
@@ -209,6 +209,10 @@ function setupEventListeners() {
     
     // PDF Drag and Drop
     elements.pdfDropZone.addEventListener('click', () => elements.pdfFileInput.click());
+    elements.pdfDropZone.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        elements.pdfFileInput.click();
+    }, { passive: false });
     elements.pdfDropZone.addEventListener('dragover', handlePdfDragOver);
     elements.pdfDropZone.addEventListener('dragleave', handlePdfDragLeave);
     elements.pdfDropZone.addEventListener('drop', handlePdfDrop);
@@ -449,7 +453,14 @@ async function extractTextFromPdf(file) {
         updateProgress(progress, `Extracting text from PDF (page ${i}/${totalPages})...`);
     }
     
-    return fullText.trim();
+    fullText = fullText.trim();
+    
+    // Check if PDF might contain images (sparse text for multi-page doc)
+    if (fullText.length < 100 && totalPages > 1) {
+        fullText = "[Note: This PDF may contain images which were ignored. Only text content was extracted.]\n\n" + fullText;
+    }
+    
+    return fullText;
 }
 
 // ============================================
@@ -489,6 +500,8 @@ async function startAnalysis() {
         whisperMinutes: 0,
         gptInputTokens: 0,
         gptOutputTokens: 0,
+        chatInputTokens: 0,
+        chatOutputTokens: 0,
         ttsCharacters: 0,
         imageInputTokens: 0,
         imageOutputTokens: 0,
@@ -684,23 +697,17 @@ function calculateMetrics() {
     const whisperCost = currentMetrics.whisperMinutes * PRICING['whisper-1'].perMinute;
     const gptInputCost = (currentMetrics.gptInputTokens / 1000000) * PRICING['gpt-5.2'].input;
     const gptOutputCost = (currentMetrics.gptOutputTokens / 1000000) * PRICING['gpt-5.2'].output;
-    const chatInputCost = (currentMetrics.chatInputTokens / 1000000) * PRICING['gpt-5-mini'].input;
-    const chatOutputCost = (currentMetrics.chatOutputTokens / 1000000) * PRICING['gpt-5-mini'].output;
     const ttsCost = (currentMetrics.ttsCharacters / 1000) * PRICING['gpt-4o-mini-tts'].perKChars;
     const imageInputCost = (currentMetrics.imageInputTokens / 1000000) * PRICING['gpt-image-1.5'].input;
     const imageOutputCost = (currentMetrics.imageOutputTokens / 1000000) * PRICING['gpt-image-1.5'].output;
     const imageCost = imageInputCost + imageOutputCost;
-    const chatCost = chatInputCost + chatOutputCost;
-    const totalCost = whisperCost + gptInputCost + gptOutputCost + chatCost + ttsCost + imageCost;
+    const totalCost = whisperCost + gptInputCost + gptOutputCost + ttsCost + imageCost;
     
     return {
         whisperMinutes: currentMetrics.whisperMinutes,
         gptInputTokens: currentMetrics.gptInputTokens,
         gptOutputTokens: currentMetrics.gptOutputTokens,
-        chatInputTokens: currentMetrics.chatInputTokens,
-        chatOutputTokens: currentMetrics.chatOutputTokens,
-        totalTokens: currentMetrics.gptInputTokens + currentMetrics.gptOutputTokens + 
-                     currentMetrics.chatInputTokens + currentMetrics.chatOutputTokens,
+        totalTokens: currentMetrics.gptInputTokens + currentMetrics.gptOutputTokens,
         ttsCharacters: currentMetrics.ttsCharacters,
         imageInputTokens: currentMetrics.imageInputTokens,
         imageOutputTokens: currentMetrics.imageOutputTokens,
@@ -708,9 +715,6 @@ function calculateMetrics() {
         whisperCost,
         gptInputCost,
         gptOutputCost,
-        chatInputCost,
-        chatOutputCost,
-        chatCost,
         ttsCost,
         imageInputCost,
         imageOutputCost,
@@ -838,15 +842,6 @@ function displayMetrics() {
             <div class="metric-breakdown-item">
                 <span>Whisper Audio</span>
                 <span>${metrics.whisperMinutes.toFixed(2)} min (${formatCost(metrics.whisperCost)})</span>
-            </div>` : ''}
-            ${(metrics.chatInputTokens + metrics.chatOutputTokens) > 0 ? `
-            <div class="metric-breakdown-item">
-                <span>GPT-5-mini Input</span>
-                <span>${formatTokens(metrics.chatInputTokens)} tokens (${formatCost(metrics.chatInputCost)})</span>
-            </div>
-            <div class="metric-breakdown-item">
-                <span>GPT-5-mini Output</span>
-                <span>${formatTokens(metrics.chatOutputTokens)} tokens (${formatCost(metrics.chatOutputCost)})</span>
             </div>` : ''}
             ${metrics.ttsCharacters > 0 ? `
             <div class="metric-breakdown-item">
@@ -1775,24 +1770,28 @@ function extractTextFromHtml(html) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     
-    // Remove script and style elements
-    const scriptsAndStyles = doc.querySelectorAll('script, style, noscript, iframe, nav, footer, header');
-    scriptsAndStyles.forEach(el => el.remove());
+    // Remove unwanted elements (more comprehensive list for better extraction)
+    const unwantedSelectors = 'script, style, noscript, iframe, nav, footer, header, aside, [role="navigation"], [role="banner"], [role="contentinfo"], .nav, .navigation, .menu, .sidebar, .advertisement, .ad';
+    doc.querySelectorAll(unwantedSelectors).forEach(el => el.remove());
     
     // Get text content from body
     const body = doc.body;
     if (!body) return '';
     
-    // Get text and clean it up
-    let text = body.innerText || body.textContent || '';
+    // Use textContent (more reliable across browsers including mobile)
+    let text = body.textContent || '';
     
-    // Clean up whitespace
+    // Clean up whitespace more aggressively for consistent results
     text = text
-        .replace(/\s+/g, ' ')           // Collapse whitespace
-        .replace(/\n\s*\n/g, '\n\n')    // Normalize paragraph breaks
-        .trim();
+        .replace(/[\t\r]+/g, ' ')       // Replace tabs and carriage returns with spaces
+        .replace(/\n{3,}/g, '\n\n')     // Limit consecutive newlines to 2
+        .replace(/ {2,}/g, ' ')         // Collapse multiple spaces
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .join('\n');
     
-    return text;
+    return text.trim();
 }
 
 function clearUrlContent() {
@@ -1897,7 +1896,7 @@ async function chatWithData(context, history) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: 'gpt-5-mini',
+            model: 'gpt-5.2',
             messages: messages,
             max_completion_tokens: 1000,
             temperature: 0.7
@@ -1911,13 +1910,13 @@ async function chatWithData(context, history) {
     
     const data = await response.json();
     
-    // Track metrics
+    // Track metrics (uses same GPT-5.2 as analysis)
     const usage = data.usage || {};
-    currentMetrics.chatInputTokens += usage.prompt_tokens || 0;
-    currentMetrics.chatOutputTokens += usage.completion_tokens || 0;
+    currentMetrics.gptInputTokens += usage.prompt_tokens || 0;
+    currentMetrics.gptOutputTokens += usage.completion_tokens || 0;
     currentMetrics.apiCalls.push({
         name: 'Chat Query',
-        model: 'gpt-5-mini',
+        model: 'gpt-5.2',
         inputTokens: usage.prompt_tokens || 0,
         outputTokens: usage.completion_tokens || 0
     });
