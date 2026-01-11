@@ -1830,7 +1830,7 @@ details[open] .about-toggle {
    Agent Orchestrator Styles
    =================================== */
 
-/* Header with navigation */
+/* Header navigation links */
 .header-content {
     display: flex;
     align-items: center;
@@ -1853,6 +1853,10 @@ details[open] .about-toggle {
     font-weight: 600;
     font-size: 0.9rem;
     transition: all var(--transition-fast);
+}
+
+.orchestrator-link {
+    margin-top: var(--space-lg);
 }
 
 .orchestrator-link:hover,
