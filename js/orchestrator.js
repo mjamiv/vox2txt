@@ -128,6 +128,21 @@ function setupEventListeners() {
             sendChatMessage();
         }
     });
+    
+    // Auto-resize textarea
+    elements.chatInput.addEventListener('input', autoResizeTextarea);
+    
+    // Suggestion chips
+    document.querySelectorAll('.suggestion-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const query = chip.dataset.query;
+            if (query) {
+                elements.chatInput.value = query;
+                autoResizeTextarea();
+                sendChatMessage();
+            }
+        });
+    });
 
     // Metrics
     if (elements.metricsToggle) {
@@ -478,17 +493,26 @@ function updateBrainStatus() {
     if (!brainStatusEl) return;
     
     const activeCount = state.agents.filter(a => a.enabled).length;
+    const statusDot = brainStatusEl.querySelector('.status-dot') || document.createElement('span');
     
     if (activeCount === 0) {
-        brainStatusEl.textContent = 'Waiting for agents...';
+        brainStatusEl.innerHTML = '<span class="status-dot"></span> Waiting for agents...';
         brainStatusEl.classList.remove('ready');
     } else if (activeCount === 1) {
-        brainStatusEl.textContent = 'Ready with 1 agent';
+        brainStatusEl.innerHTML = '<span class="status-dot"></span> Ready • 1 agent active';
         brainStatusEl.classList.add('ready');
     } else {
-        brainStatusEl.textContent = `Ready with ${activeCount} agents`;
+        brainStatusEl.innerHTML = `<span class="status-dot"></span> Ready • ${activeCount} agents active`;
         brainStatusEl.classList.add('ready');
     }
+}
+
+function autoResizeTextarea() {
+    const textarea = elements.chatInput;
+    if (!textarea) return;
+    
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
 }
 
 function updateButtonStates() {
@@ -815,14 +839,28 @@ ${agent.transcript ? `Transcript excerpt: ${agent.transcript.substring(0, 1500)}
 }
 
 function appendChatMessage(role, content) {
+    // Remove welcome card on first message
+    const welcomeCard = elements.chatMessages.querySelector('.chat-welcome-card');
+    if (welcomeCard) {
+        welcomeCard.remove();
+    }
+    
     const messageDiv = document.createElement('div');
-    messageDiv.className = `chat-message ${role}-message`;
+    messageDiv.className = `chat-message ${role}`;
+    
+    const avatar = role === 'assistant' ? '🤖' : '👤';
+    let messageContent = content;
     
     if (role === 'assistant' && typeof marked !== 'undefined') {
-        messageDiv.innerHTML = marked.parse(content);
+        messageContent = marked.parse(content);
     } else {
-        messageDiv.textContent = content;
+        messageContent = escapeHtml(content);
     }
+    
+    messageDiv.innerHTML = `
+        <div class="chat-message-avatar">${avatar}</div>
+        <div class="chat-message-content">${messageContent}</div>
+    `;
     
     elements.chatMessages.appendChild(messageDiv);
     elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
@@ -832,11 +870,15 @@ function showThinkingIndicator() {
     const id = 'thinking-' + Date.now();
     const thinkingDiv = document.createElement('div');
     thinkingDiv.id = id;
-    thinkingDiv.className = 'chat-message assistant-message';
+    thinkingDiv.className = 'chat-thinking';
     thinkingDiv.innerHTML = `
         <div class="chat-message-avatar">🤖</div>
-        <div class="chat-thinking">
-            <div class="thinking-spinner"></div>
+        <div class="chat-thinking-bubble">
+            <div class="thinking-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
             <span class="thinking-text">Thinking...</span>
         </div>
     `;
