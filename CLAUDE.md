@@ -32,7 +32,8 @@ northstar.LM/
 | Purpose | Model |
 |---------|-------|
 | Audio Transcription | `whisper-1` |
-| Text Analysis & Chat | `gpt-5.2` |
+| Text Analysis (Summary, Key Points, Actions, Sentiment) | `gpt-5.2` |
+| Chat with Data (Q&A) | `gpt-5-mini` |
 | Text-to-Speech | `gpt-4o-mini-tts` |
 | Image Generation | `gpt-image-1.5` |
 

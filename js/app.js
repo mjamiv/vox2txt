@@ -46,6 +46,10 @@ const PRICING = {
         input: 2.50,   // $ per 1M input tokens
         output: 10.00  // $ per 1M output tokens
     },
+    'gpt-5-mini': {
+        input: 0.40,   // $ per 1M input tokens (estimated)
+        output: 1.60   // $ per 1M output tokens (estimated)
+    },
     'whisper-1': {
         perMinute: 0.006  // $ per minute of audio
     },
@@ -63,6 +67,8 @@ let currentMetrics = {
     whisperMinutes: 0,
     gptInputTokens: 0,
     gptOutputTokens: 0,
+    chatInputTokens: 0,
+    chatOutputTokens: 0,
     ttsCharacters: 0,
     imageInputTokens: 0,
     imageOutputTokens: 0,
@@ -678,17 +684,23 @@ function calculateMetrics() {
     const whisperCost = currentMetrics.whisperMinutes * PRICING['whisper-1'].perMinute;
     const gptInputCost = (currentMetrics.gptInputTokens / 1000000) * PRICING['gpt-5.2'].input;
     const gptOutputCost = (currentMetrics.gptOutputTokens / 1000000) * PRICING['gpt-5.2'].output;
+    const chatInputCost = (currentMetrics.chatInputTokens / 1000000) * PRICING['gpt-5-mini'].input;
+    const chatOutputCost = (currentMetrics.chatOutputTokens / 1000000) * PRICING['gpt-5-mini'].output;
     const ttsCost = (currentMetrics.ttsCharacters / 1000) * PRICING['gpt-4o-mini-tts'].perKChars;
     const imageInputCost = (currentMetrics.imageInputTokens / 1000000) * PRICING['gpt-image-1.5'].input;
     const imageOutputCost = (currentMetrics.imageOutputTokens / 1000000) * PRICING['gpt-image-1.5'].output;
     const imageCost = imageInputCost + imageOutputCost;
-    const totalCost = whisperCost + gptInputCost + gptOutputCost + ttsCost + imageCost;
+    const chatCost = chatInputCost + chatOutputCost;
+    const totalCost = whisperCost + gptInputCost + gptOutputCost + chatCost + ttsCost + imageCost;
     
     return {
         whisperMinutes: currentMetrics.whisperMinutes,
         gptInputTokens: currentMetrics.gptInputTokens,
         gptOutputTokens: currentMetrics.gptOutputTokens,
-        totalTokens: currentMetrics.gptInputTokens + currentMetrics.gptOutputTokens,
+        chatInputTokens: currentMetrics.chatInputTokens,
+        chatOutputTokens: currentMetrics.chatOutputTokens,
+        totalTokens: currentMetrics.gptInputTokens + currentMetrics.gptOutputTokens + 
+                     currentMetrics.chatInputTokens + currentMetrics.chatOutputTokens,
         ttsCharacters: currentMetrics.ttsCharacters,
         imageInputTokens: currentMetrics.imageInputTokens,
         imageOutputTokens: currentMetrics.imageOutputTokens,
@@ -696,6 +708,9 @@ function calculateMetrics() {
         whisperCost,
         gptInputCost,
         gptOutputCost,
+        chatInputCost,
+        chatOutputCost,
+        chatCost,
         ttsCost,
         imageInputCost,
         imageOutputCost,
@@ -823,6 +838,15 @@ function displayMetrics() {
             <div class="metric-breakdown-item">
                 <span>Whisper Audio</span>
                 <span>${metrics.whisperMinutes.toFixed(2)} min (${formatCost(metrics.whisperCost)})</span>
+            </div>` : ''}
+            ${(metrics.chatInputTokens + metrics.chatOutputTokens) > 0 ? `
+            <div class="metric-breakdown-item">
+                <span>GPT-5-mini Input</span>
+                <span>${formatTokens(metrics.chatInputTokens)} tokens (${formatCost(metrics.chatInputCost)})</span>
+            </div>
+            <div class="metric-breakdown-item">
+                <span>GPT-5-mini Output</span>
+                <span>${formatTokens(metrics.chatOutputTokens)} tokens (${formatCost(metrics.chatOutputCost)})</span>
             </div>` : ''}
             ${metrics.ttsCharacters > 0 ? `
             <div class="metric-breakdown-item">
@@ -1370,6 +1394,8 @@ function resetForNewAnalysis() {
         whisperMinutes: 0,
         gptInputTokens: 0,
         gptOutputTokens: 0,
+        chatInputTokens: 0,
+        chatOutputTokens: 0,
         ttsCharacters: 0,
         imageInputTokens: 0,
         imageOutputTokens: 0,
@@ -1871,7 +1897,7 @@ async function chatWithData(context, history) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: 'gpt-5.2',
+            model: 'gpt-5-mini',
             messages: messages,
             max_completion_tokens: 1000,
             temperature: 0.7
@@ -1887,11 +1913,11 @@ async function chatWithData(context, history) {
     
     // Track metrics
     const usage = data.usage || {};
-    currentMetrics.gptInputTokens += usage.prompt_tokens || 0;
-    currentMetrics.gptOutputTokens += usage.completion_tokens || 0;
+    currentMetrics.chatInputTokens += usage.prompt_tokens || 0;
+    currentMetrics.chatOutputTokens += usage.completion_tokens || 0;
     currentMetrics.apiCalls.push({
         name: 'Chat Query',
-        model: 'gpt-5.2',
+        model: 'gpt-5-mini',
         inputTokens: usage.prompt_tokens || 0,
         outputTokens: usage.completion_tokens || 0
     });

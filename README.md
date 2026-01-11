@@ -52,7 +52,8 @@ northstar.LM is a static web application that uses OpenAI's powerful AI models t
 - **Frontend**: Vanilla HTML, CSS, JavaScript (ES Modules)
 - **AI Models**:
   - OpenAI Whisper (audio transcription)
-  - GPT-5.2 (text analysis)
+  - GPT-5.2 (text analysis - summary, key points, actions, sentiment)
+  - GPT-5-mini (chat/Q&A with meeting data)
   - GPT-4o-mini-TTS (text-to-speech)
   - GPT-Image-1.5 (image generation)
 - **Libraries**:
@@ -84,6 +85,8 @@ The app provides real-time cost estimates based on OpenAI's pricing:
 |-------|---------|
 | GPT-5.2 Input | $2.50 / 1M tokens |
 | GPT-5.2 Output | $10.00 / 1M tokens |
+| GPT-5-mini Input | $0.40 / 1M tokens |
+| GPT-5-mini Output | $1.60 / 1M tokens |
 | Whisper | $0.006 / minute |
 | GPT-4o-mini-TTS | $0.015 / 1K characters |
 | GPT-Image-1.5 Input | $10.00 / 1M tokens |
