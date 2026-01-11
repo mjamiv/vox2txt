@@ -271,8 +271,14 @@ section {
 }
 
 .btn-primary:disabled {
-    opacity: 0.5;
+    background: linear-gradient(135deg, #6b6b6b, #5a5a5a);
+    color: #999999;
     cursor: not-allowed;
+    box-shadow: none;
+}
+
+.btn-primary:disabled .btn-text {
+    color: #999999;
 }
 
 .btn-primary .btn-text {
