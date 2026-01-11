@@ -4,27 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Project Overview
 
-**northstar.LM** is a static web application that transforms meeting recordings, PDFs, or text into actionable insights using OpenAI's AI models. The entire application runs client-side with no backend server.
+**northstar.LM** is a client-side web application that transforms meeting recordings, PDFs, or text into actionable insights using OpenAI's AI models. The entire application runs client-side with no backend server. Features include multi-meeting orchestration, agent export/import, and professional document generation.
 
 ## Architecture
 
 ```
 northstar.LM/
 ├── index.html          # Main application page (single-page app)
+├── orchestrator.html   # Multi-agent orchestrator page
+├── manifest.json       # PWA manifest
+├── sw.js               # Service worker for offline support
 ├── css/
 │   └── styles.css      # All styling (dark theme with gold accents)
 ├── js/
-│   └── app.js          # All application logic (ES Module)
-├── .github/
-│   └── workflows/
-│       └── deploy.yml  # GitHub Pages deployment
-└── static/             # Static assets
+│   ├── app.js          # Main application logic (ES Module)
+│   └── orchestrator.js # Orchestrator page logic
+├── static/             # Static assets
+├── templates/          # Server templates (for Flask backend option)
+└── .github/
+    └── workflows/
+        └── deploy.yml  # GitHub Pages deployment
 ```
 
 ## Key Technical Decisions
 
 ### Client-Side Only
-- No server-side code - everything runs in the browser
+- No server-side code required - everything runs in the browser
 - User provides their own OpenAI API key (stored in localStorage)
 - API calls go directly from browser to OpenAI
 
@@ -33,12 +38,12 @@ northstar.LM/
 |---------|-------|
 | Audio Transcription | `whisper-1` |
 | Text Analysis (Summary, Key Points, Actions, Sentiment) | `gpt-5.2` |
-| Chat with Data (Q&A) | `gpt-5-mini` |
+| Chat with Data (Q&A) | `gpt-5.2` (with reasoning) |
 | Text-to-Speech | `gpt-4o-mini-tts` |
 | Image Generation | `gpt-image-1.5` |
 
 ### Libraries (CDN-loaded)
-- **docx.js** (`8.5.0`) - Client-side DOCX generation
+- **docx.js** (`8.5.0`) - Client-side DOCX generation with professional formatting
 - **PDF.js** (`4.0.379`) - Client-side PDF text extraction
 
 ## Common Development Tasks
@@ -51,8 +56,9 @@ python -m http.server 3000
 ```
 
 ### Cache Busting
-When modifying `app.js`, update the version parameter in `index.html`:
+When modifying CSS or JS, update the version parameters in HTML files:
 ```html
+<link rel="stylesheet" href="css/styles.css?v=XX">
 <script src="js/app.js?v=XX" type="module"></script>
 ```
 
@@ -73,12 +79,32 @@ const state = {
     selectedPdfFile: null,
     inputMode: 'audio', // 'audio', 'pdf', 'text', or 'url'
     isProcessing: false,
-    results: null,
-    metrics: null,
-    chatHistory: [],
-    urlContent: null
+    results: null,        // Contains transcription, summary, keyPoints, actionItems, sentiment
+    metrics: null,        // API usage metrics
+    chatHistory: [],      // Chat Q&A history
+    urlContent: null,
+    infographicBlob: null // Generated infographic image
 };
 ```
+
+## Key Functions
+
+### KPI Dashboard
+- `updateKPIDashboard()` - Populates the KPI cards at top of results
+- Extracts: sentiment, word count, key points count, action items count, read time, topics
+
+### Agent Export/Import
+- `downloadAgentFile()` - Exports session as markdown with YAML frontmatter
+- `importAgentFile()` - Restores session from exported agent file
+- Agent files are portable markdown (~90 KB) containing all analysis data
+
+### DOCX Generation
+- `downloadDocx()` - Creates professionally formatted Word document
+- Includes: cover page, TOC, headers/footers, styled tables, embedded images
+
+### Orchestrator
+- `orchestrator.js` - Manages multiple loaded agents
+- Cross-meeting chat queries all loaded agent data simultaneously
 
 ## API Patterns
 
@@ -106,7 +132,45 @@ currentMetrics.gptOutputTokens += usage.completion_tokens || 0;
 - Color scheme: Dark navy (`#0a0e17`) with gold accents (`#d4a853`)
 - Font families: 'Bebas Neue' for display, 'Source Sans 3' for body
 - Animations use CSS transitions and keyframes
+- KPI Dashboard uses 6-column responsive grid
+- Collapsible sections use native `<details>` elements
+
+## UI Components
+
+### KPI Dashboard
+```html
+<div class="kpi-dashboard">
+    <div class="kpi-item">
+        <span class="kpi-icon">📊</span>
+        <div class="kpi-content">
+            <span class="kpi-label">Label</span>
+            <span class="kpi-value" id="kpi-xxx">--</span>
+        </div>
+    </div>
+</div>
+```
+
+### Collapsible Sections
+```html
+<details class="result-card">
+    <summary class="card-header card-header-collapsible">
+        <h3>Title</h3>
+        <span class="collapse-toggle">▼</span>
+    </summary>
+    <div class="card-content">...</div>
+</details>
+```
 
 ## Deployment
 
-Automatic deployment via GitHub Actions on push to `main` branch. The app is served at: https://mjamiv.github.io/vox2txt/
+Automatic deployment via GitHub Actions on push to `main` branch. 
+
+**URLs:**
+- Main App: https://mjamiv.github.io/vox2txt/
+- Orchestrator: https://mjamiv.github.io/vox2txt/orchestrator.html
+
+### Files Deployed
+The GitHub Actions workflow copies these to `_site`:
+- `index.html`, `orchestrator.html`
+- `css/`, `js/`, `static/`
+- `manifest.json`, `sw.js` (PWA files)
