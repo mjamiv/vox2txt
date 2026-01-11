@@ -822,6 +822,25 @@ function displayMetrics() {
     const resultMetrics = document.getElementById('result-metrics');
     if (!resultMetrics) return;
     
+    // Handle imported agents with a simpler display
+    if (metrics.isImported) {
+        resultMetrics.innerHTML = `
+            <div class="metrics-imported">
+                <div class="imported-badge">
+                    <span>📥</span> Imported Agent
+                </div>
+                <p class="imported-note">
+                    This session was loaded from an agent file.<br>
+                    No API usage data available from the original analysis.
+                </p>
+                <p class="imported-hint">
+                    Chat, audio, and infographic features will track new API calls.
+                </p>
+            </div>
+        `;
+        return;
+    }
+    
     let breakdownHtml = '';
     metrics.apiCalls.forEach(call => {
         if (call.model === 'whisper-1') {
@@ -2372,11 +2391,26 @@ function importAgentSession(agentData) {
         imageOutputTokens: 0,
         apiCalls: []
     };
+    // Provide all expected metric fields for displayMetrics
     state.metrics = {
+        whisperMinutes: 0,
+        gptInputTokens: 0,
+        gptOutputTokens: 0,
         totalTokens: 0,
+        ttsCharacters: 0,
+        imageInputTokens: 0,
+        imageOutputTokens: 0,
+        imageTotalTokens: 0,
+        whisperCost: 0,
+        gptInputCost: 0,
+        gptOutputCost: 0,
+        ttsCost: 0,
+        imageInputCost: 0,
+        imageOutputCost: 0,
+        imageCost: 0,
         totalCost: 0,
         apiCalls: [],
-        note: 'Imported from agent file - no API calls made'
+        isImported: true  // Flag to indicate this is an imported agent
     };
     
     // Hide progress if visible
