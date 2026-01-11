@@ -355,6 +355,12 @@
                 <p class="feature-desc">Generate a 2-minute executive audio summary</p>
                 
                 <div class="feature-controls">
+                    <div class="prompt-input-group">
+                        <input type="text" id="audio-prompt" placeholder="Customize style (e.g., 'upbeat and motivational', 'formal board presentation')" />
+                    </div>
+                </div>
+                
+                <div class="feature-controls" style="margin-top: var(--space-md);">
                     <div class="voice-selector">
                         <label for="voice-select">Voice:</label>
                         <select id="voice-select">
@@ -488,7 +494,7 @@
     <!-- External Libraries -->
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
-    <script src="js/app.js?v=38" type="module"></script>
+    <script src="js/app.js?v=39" type="module"></script>
 
     <!-- Service Worker Registration -->
     <script>

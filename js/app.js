@@ -162,6 +162,7 @@ async function init() {
         dismissErrorBtn: document.getElementById('dismiss-error'),
         
         // Audio Briefing
+        audioPrompt: document.getElementById('audio-prompt'),
         voiceSelect: document.getElementById('voice-select'),
         generateAudioBtn: document.getElementById('generate-audio-btn'),
         audioPlayerContainer: document.getElementById('audio-player-container'),
@@ -2549,6 +2550,11 @@ async function generateAudioBriefing() {
     
     try {
         // Step 1: Generate executive briefing script using GPT
+        const customStyle = elements.audioPrompt?.value?.trim();
+        const styleInstruction = customStyle 
+            ? `\n\nIMPORTANT: Use this style/tone: "${customStyle}"`
+            : '';
+        
         const scriptPrompt = `You are an expert at creating concise executive briefings. 
 Based on the following meeting analysis, create a 2-minute audio script (approximately 300 words) that:
 - Opens with a brief greeting and meeting context
@@ -2557,7 +2563,7 @@ Based on the following meeting analysis, create a 2-minute audio script (approxi
 - Closes with the overall meeting sentiment and next steps
 
 Keep the tone professional but conversational, suitable for audio playback.
-Do not include any stage directions or speaker notes - just the spoken text.
+Do not include any stage directions or speaker notes - just the spoken text.${styleInstruction}
 
 Meeting Summary:
 ${state.results.summary}
