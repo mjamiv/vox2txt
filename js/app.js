@@ -230,7 +230,11 @@ function setupEventListeners() {
     elements.removeFileBtn.addEventListener('click', removeSelectedFile);
     
     // PDF Drag and Drop
-    // Note: Click to browse is handled natively by <label for="pdf-file">
+    elements.pdfDropZone.addEventListener('click', (e) => {
+        // Trigger file input on click (explicit handler for cross-browser support)
+        e.preventDefault();
+        elements.pdfFileInput.click();
+    });
     elements.pdfDropZone.addEventListener('dragover', handlePdfDragOver);
     elements.pdfDropZone.addEventListener('dragleave', handlePdfDragLeave);
     elements.pdfDropZone.addEventListener('drop', handlePdfDrop);
