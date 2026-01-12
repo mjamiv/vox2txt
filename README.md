@@ -4,6 +4,159 @@
 
 **Live Demo:** https://mjamiv.github.io/vox2txt/
 
+## Application Workflow
+
+```mermaid
+flowchart TB
+    subgraph Input["📥 INPUT SOURCES"]
+        A1[🎤 Audio<br/>MP3, WAV, M4A]
+        A2[🎥 Video<br/>MP4, WebM]
+        A3[📄 PDF<br/>Documents]
+        A4[📷 Image<br/>JPG, PNG]
+        A5[📝 Text<br/>Paste/Type]
+        A6[🌐 URL<br/>Web Content]
+    end
+
+    subgraph Process["⚙️ PROCESSING"]
+        B1[Whisper API<br/>Transcription]
+        B2[PDF.js<br/>Text Extraction]
+        B3[GPT-5.2 Vision<br/>OCR]
+        B4[URL Fetch<br/>Content Extract]
+    end
+
+    subgraph Analysis["🧠 AI ANALYSIS"]
+        C1[GPT-5.2<br/>Text Analysis]
+        C2{Analysis<br/>Complete?}
+    end
+
+    subgraph Results["📊 RESULTS"]
+        D1[📈 KPI Dashboard]
+        D2[📝 Summary]
+        D3[🎯 Key Points]
+        D4[✅ Action Items]
+        D5[💭 Sentiment]
+    end
+
+    subgraph Features["✨ ENHANCED FEATURES"]
+        E1[🎧 Audio Briefing<br/>TTS Generation]
+        E2[🖼️ Infographic<br/>Image Generation]
+        E3[💬 Chat with Data<br/>Q&A Interface]
+        E4[📄 DOCX Export<br/>Professional Report]
+    end
+
+    subgraph Agent["🤖 AGENT SYSTEM"]
+        F1[🤖 Export Agent<br/>Name & Save .md]
+        F2[📥 Import Agent<br/>Restore Session]
+        F3[🎭 Orchestrator<br/>Multi-Agent Analysis]
+    end
+
+    A1 --> B1
+    A2 --> B1
+    A3 --> B2
+    A3 -.->|Image PDF| B3
+    A4 --> B3
+    A5 --> C1
+    A6 --> B4
+
+    B1 --> C1
+    B2 --> C1
+    B3 --> C1
+    B4 --> C1
+
+    C1 --> C2
+    C2 -->|Yes| D1
+    C2 -->|Yes| D2
+    C2 -->|Yes| D3
+    C2 -->|Yes| D4
+    C2 -->|Yes| D5
+
+    D1 --> E1
+    D1 --> E2
+    D1 --> E3
+    D1 --> E4
+
+    D1 --> F1
+    F1 --> F3
+    F2 --> D1
+
+    style Input fill:#1a1f2e,stroke:#d4a853,color:#fff
+    style Process fill:#1a2a1a,stroke:#4ade80,color:#fff
+    style Analysis fill:#2a1a2a,stroke:#a855f7,color:#fff
+    style Results fill:#1a2a3a,stroke:#60a5fa,color:#fff
+    style Features fill:#2a2a1a,stroke:#fbbf24,color:#fff
+    style Agent fill:#2a1a1a,stroke:#f87171,color:#fff
+```
+
+## Agent Orchestrator Workflow
+
+```mermaid
+flowchart TB
+    subgraph Upload["📥 AGENT UPLOAD"]
+        U1[Upload .md Files]
+        U2[Parse YAML Frontmatter]
+        U3[Extract Meeting Data]
+    end
+
+    subgraph KB["🧠 KNOWLEDGE BASE"]
+        direction TB
+        K1[Agent 1<br/>Q4 Planning]
+        K2[Agent 2<br/>Budget Review]
+        K3[Agent 3<br/>Team Sync]
+        K4[Agent N<br/>...]
+        
+        KC[Agent Controls]
+        KC1[✓ Enable/Disable]
+        KC2[✏️ Rename]
+        KC3[🗑️ Remove]
+    end
+
+    subgraph Orchestrator["🤖 ORCHESTRATOR AI"]
+        O1[Combine Active Agents]
+        O2[Build Context]
+        O3[GPT-5.2 Analysis]
+    end
+
+    subgraph Chat["💬 CHAT INTERFACE"]
+        C1[User Query]
+        C2[Thinking Indicator]
+        C3[AI Response]
+        C4[Suggestion Chips]
+    end
+
+    subgraph Insights["📊 CROSS-MEETING INSIGHTS"]
+        I1[🔗 Common Themes]
+        I2[📈 Trends & Patterns]
+        I3[⚠️ Risks & Blockers]
+        I4[💡 Recommendations]
+        I5[✅ Consolidated Actions]
+    end
+
+    U1 --> U2 --> U3
+    U3 --> K1
+    U3 --> K2
+    U3 --> K3
+    U3 --> K4
+
+    K1 & K2 & K3 & K4 --> KC
+    KC --> KC1 & KC2 & KC3
+
+    K1 & K2 & K3 & K4 -->|Active Only| O1
+    O1 --> O2 --> O3
+
+    O3 --> Chat
+    C1 --> C2 --> C3
+    C4 --> C1
+
+    O3 --> Insights
+    I1 & I2 & I3 & I4 & I5
+
+    style Upload fill:#1a2a1a,stroke:#4ade80,color:#fff
+    style KB fill:#1a1f2e,stroke:#60a5fa,color:#fff
+    style Orchestrator fill:#2a1a2a,stroke:#d4a853,color:#fff
+    style Chat fill:#1a2a3a,stroke:#a855f7,color:#fff
+    style Insights fill:#2a2a1a,stroke:#fbbf24,color:#fff
+```
+
 ## Overview
 
 northstar.LM is a client-side web application that uses OpenAI's AI models to analyze meeting recordings, videos, PDFs, images, or text transcripts. Get instant KPI dashboards, summaries, key points, action items, sentiment analysis, audio briefings, and visual infographics—all processed in your browser with your own API key.
