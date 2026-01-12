@@ -362,6 +362,9 @@ function setupEventListeners() {
     
     // Results Navigation
     setupResultsNav();
+    
+    // Wearable Modal (Coming Soon)
+    initWearableModal();
 }
 
 // ============================================
@@ -487,6 +490,12 @@ function showTemporaryMessage(btn, message, original) {
 // Tab Switching
 // ============================================
 function switchTab(tab) {
+    // Handle wearable tab specially - show modal instead of switching
+    if (tab === 'wearable') {
+        showWearableModal();
+        return;
+    }
+    
     state.inputMode = tab;
 
     elements.tabBtns.forEach(btn => {
@@ -499,6 +508,11 @@ function switchTab(tab) {
     elements.videoTab.classList.toggle('active', tab === 'video');
     elements.textTab.classList.toggle('active', tab === 'text');
     elements.urlTab.classList.toggle('active', tab === 'url');
+    
+    const wearableTab = document.getElementById('wearable-tab');
+    if (wearableTab) {
+        wearableTab.classList.toggle('active', tab === 'wearable');
+    }
 
     updateAnalyzeButton();
 }
@@ -3395,6 +3409,42 @@ function showHelpModal() {
 
 function hideHelpModal() {
     elements.helpModal.classList.add('hidden');
+}
+
+// ============================================
+// Wearable Modal (Coming Soon)
+// ============================================
+function showWearableModal() {
+    const modal = document.getElementById('wearable-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+function hideWearableModal() {
+    const modal = document.getElementById('wearable-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// Initialize wearable modal event listeners
+function initWearableModal() {
+    const modal = document.getElementById('wearable-modal');
+    const closeBtn = document.getElementById('wearable-modal-close');
+    const gotItBtn = document.getElementById('wearable-modal-close-btn');
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', hideWearableModal);
+    }
+    if (gotItBtn) {
+        gotItBtn.addEventListener('click', hideWearableModal);
+    }
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) hideWearableModal();
+        });
+    }
 }
 
 function confirmExportAgent() {

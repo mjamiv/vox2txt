@@ -85,6 +85,11 @@
                     <span class="tab-icon">&#127760;</span>
                     URL
                 </button>
+                <button class="tab-btn" data-tab="wearable" id="wearable-tab-btn">
+                    <span class="tab-icon">⌚</span>
+                    Wearable
+                    <span class="coming-soon-badge">Coming Soon</span>
+                </button>
             </div>
 
             <div class="tab-content">
@@ -171,6 +176,15 @@
                             <button type="button" class="clear-url-btn">&#10005; Clear</button>
                         </div>
                         <div class="url-preview-content" id="url-preview-content"></div>
+                    </div>
+                </div>
+
+                <div id="wearable-tab" class="tab-pane">
+                    <div class="wearable-coming-soon">
+                        <div class="wearable-icon">⌚</div>
+                        <h3>AI Wearable Integration</h3>
+                        <p class="wearable-status">Coming Soon</p>
+                        <p class="wearable-desc">Connect your AI wearable device to automatically import meeting recordings, conversations, and insights.</p>
                     </div>
                 </div>
             </div>
@@ -595,6 +609,39 @@
                 <button class="btn-primary" id="modal-confirm-btn">
                     <span>🤖</span> Export Agent
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wearable Coming Soon Modal -->
+    <div id="wearable-modal" class="modal-overlay hidden">
+        <div class="modal-container wearable-modal-container">
+            <div class="modal-header">
+                <h3>⌚ AI Wearable Integration</h3>
+                <button class="modal-close" id="wearable-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="wearable-modal-content">
+                    <div class="wearable-modal-icon">🚀</div>
+                    <h4>Coming Soon!</h4>
+                    <p class="wearable-modal-desc">
+                        Our team is actively developing a seamless integration with AI wearable platforms. 
+                        This feature will allow you to:
+                    </p>
+                    <ul class="wearable-features-list">
+                        <li>📱 <strong>Auto-sync recordings</strong> from your AI wearable device</li>
+                        <li>🎙️ <strong>Import audio & video</strong> captured throughout your day</li>
+                        <li>📝 <strong>Transcribe conversations</strong> automatically in real-time</li>
+                        <li>🔗 <strong>Connect multiple devices</strong> for comprehensive coverage</li>
+                        <li>☁️ <strong>Cloud sync</strong> for seamless access across platforms</li>
+                    </ul>
+                    <p class="wearable-modal-note">
+                        Stay tuned for updates! We're working hard to bring you the future of meeting intelligence.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" id="wearable-modal-close-btn">Got it!</button>
             </div>
         </div>
     </div>

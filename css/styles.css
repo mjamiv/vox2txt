@@ -437,6 +437,31 @@ section {
     background: rgba(212, 168, 83, 0.1);
 }
 
+.tab-btn {
+    position: relative;
+}
+
+.coming-soon-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    animation: badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
 .tab-icon {
     font-size: 1.3rem;
 }
@@ -1713,6 +1738,113 @@ footer a:hover {
     .modal-footer button {
         width: 100%;
     }
+}
+
+/* ===================================
+   Wearable Tab & Modal Styles
+   =================================== */
+
+.wearable-coming-soon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2xl);
+    text-align: center;
+    min-height: 200px;
+}
+
+.wearable-icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-md);
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.wearable-coming-soon h3 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin-bottom: var(--space-sm);
+}
+
+.wearable-status {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: var(--space-xs) var(--space-md);
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: var(--space-md);
+}
+
+.wearable-desc {
+    color: var(--text-secondary);
+    max-width: 400px;
+    line-height: 1.6;
+}
+
+/* Wearable Modal */
+.wearable-modal-container {
+    max-width: 520px;
+}
+
+.wearable-modal-content {
+    text-align: center;
+    padding: var(--space-md) 0;
+}
+
+.wearable-modal-icon {
+    font-size: 3rem;
+    margin-bottom: var(--space-md);
+}
+
+.wearable-modal-content h4 {
+    font-size: 1.5rem;
+    color: var(--accent-primary);
+    margin-bottom: var(--space-md);
+}
+
+.wearable-modal-desc {
+    color: var(--text-secondary);
+    margin-bottom: var(--space-lg);
+    line-height: 1.6;
+}
+
+.wearable-features-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-lg) 0;
+    text-align: left;
+}
+
+.wearable-features-list li {
+    padding: var(--space-sm) var(--space-md);
+    margin-bottom: var(--space-xs);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.wearable-features-list li strong {
+    color: var(--text-primary);
+}
+
+.wearable-modal-note {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-style: italic;
+    padding-top: var(--space-md);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Animations */
