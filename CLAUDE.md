@@ -20,6 +20,9 @@ northstar.LM/
 ├── js/
 │   ├── app.js          # Main application logic (ES Module)
 │   └── orchestrator.js # Orchestrator page logic
+├── images/
+│   ├── k-northstar-logo.png   # Main app logo (northstar.LM)
+│   └── orchestrator-logo.png  # Robot mascot logo for Orchestrator
 ├── archive/            # Legacy files (not in active use)
 │   ├── flask-backend/  # Old Flask server code
 │   │   ├── app.py
@@ -114,9 +117,14 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph OrchestratorPage["🎭 ORCHESTRATOR PAGE"]
+    subgraph OrchestratorPage["🤖 ORCHESTRATOR PAGE"]
         direction TB
         
+        subgraph Header["Header & Branding"]
+            H1[🤖 Robot Mascot Logo]
+            H2[Agent Orchestrator Title]
+        end
+
         subgraph AgentUpload["Agent Upload"]
             AU1[Drag & Drop .md Files]
             AU2[Parse YAML Frontmatter]
@@ -161,6 +169,7 @@ flowchart TB
         end
     end
 
+    H1 --> H2
     AU1 --> AU2 --> AU3
     AU3 --> KB1 & KB2 & KB3
     KB1 & KB2 & KB3 --> AS1 & AS2 & AS3
@@ -174,6 +183,7 @@ flowchart TB
     OB3 --> IG1 & IG2 & IG3 & IG4 & IG5
 
     style OrchestratorPage fill:#0a0e17,stroke:#d4a853,color:#fff
+    style Header fill:#2a2a1a,stroke:#fbbf24,color:#fff
     style KnowledgeBase fill:#1a1f2e,stroke:#60a5fa,color:#fff
     style OrchestratorBrain fill:#2a1a2a,stroke:#a855f7,color:#fff
 ```
@@ -302,6 +312,7 @@ const state = {
 - Visual Knowledge Base with agent chain visualization
 - Each agent is a node with: editable name, enable/disable toggle, remove button
 - Only active (enabled) agents are used for chat and insights generation
+- Custom robot mascot branding in header (`images/orchestrator-logo.png`)
 
 ### Agent Export Modal
 - `showAgentNameModal()` - Opens naming dialog before export
@@ -338,6 +349,9 @@ currentMetrics.gptOutputTokens += usage.completion_tokens || 0;
 - KPI Dashboard uses 6-column responsive grid
 - Collapsible sections use native `<details>` elements
 - Chat messages use styled markdown with gold arrow markers for lists, gold headings, styled code blocks and blockquotes
+- Custom branding: 
+  - Main app logo (`images/k-northstar-logo.png`)
+  - Robot mascot logo for Orchestrator page (`images/orchestrator-logo.png`)
 
 ## UI Components
 
@@ -393,7 +407,7 @@ Automatic deployment via GitHub Actions on push to `main` branch.
 ### Files Deployed
 The GitHub Actions workflow copies these to `_site`:
 - `index.html`, `orchestrator.html`, `northstar-overview.html`
-- `css/`, `js/`
+- `css/`, `js/`, `images/`
 - `manifest.json`, `sw.js` (PWA files)
 
 Note: The `archive/` folder is NOT deployed—it contains legacy Flask backend code for reference only.

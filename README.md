@@ -210,6 +210,8 @@ At-a-glance metrics displayed at the top of every analysis:
 - **Multi-Agent Coordination** - Load multiple meeting agents simultaneously
 - **Cross-Meeting Analysis** - Ask questions that span multiple meetings
 - **Pattern Recognition** - Identify trends and connections across sessions
+- **Knowledge Base Visualization** - Visual chain display of loaded agents with enable/disable controls
+- **Custom Branding** - Distinctive robot mascot logo representing the orchestrator's dual nature
 - Access via the Orchestrator page: https://mjamiv.github.io/vox2txt/orchestrator.html
 
 ### Professional DOCX Export
@@ -235,6 +237,7 @@ Collapsible panel with real-time tracking of:
 
 - **Frontend**: Vanilla HTML, CSS, JavaScript (ES Modules)
 - **PWA Support**: Installable progressive web app with offline capabilities
+- **Branding**: Custom logos for main app and Orchestrator page
 - **AI Models**:
   - OpenAI Whisper (audio transcription)
   - GPT-5.2 (text analysis - summary, key points, actions, sentiment)
