@@ -39,153 +39,229 @@ northstar.LM/
 
 ```mermaid
 flowchart TB
-    subgraph Browser["🌐 CLIENT BROWSER"]
+    subgraph Browser["🌐 CLIENT BROWSER - northstar.LM"]
         direction TB
         
-        subgraph Init["Initialization"]
+        subgraph Init["🚀 Initialization"]
             I1[Load index.html]
-            I2[Parse ES Modules]
-            I3[Register Service Worker]
-            I4[Load API Key from localStorage]
+            I2[Register Service Worker<br/>PWA Support]
+            I3[Load API Key from<br/>localStorage]
         end
 
-        subgraph Input["Input Handling"]
-            IN1[File Upload<br/>audio/video/pdf/image]
-            IN2[Text Paste]
-            IN3[URL Fetch]
-            IN4[Agent Import]
+        subgraph InputTabs["📥 Input Methods"]
+            direction LR
+            IN1[🎤 Audio<br/>MP3/WAV/M4A]
+            IN2[📄 PDF<br/>Text & Scanned]
+            IN3[📷 Image<br/>JPG/PNG/WebP]
+            IN4[🎥 Video<br/>MP4/WebM]
+            IN5[📝 Text<br/>Paste/Type]
+            IN6[🌐 URL<br/>Web Scrape]
+            IN7[⌚ Wearable<br/>Coming Soon]
+            IN8[📥 Agent Import<br/>.md Files]
         end
 
-        subgraph Processing["Content Processing"]
-            P1[Whisper API<br/>Audio → Text]
-            P2[PDF.js<br/>PDF → Text]
+        subgraph Processing["⚙️ Content Processing"]
+            P1[Whisper API<br/>Audio/Video → Text]
+            P2[PDF.js + Vision<br/>PDF → Text]
             P3[Vision API<br/>Image → Text]
             P4[URL Parser<br/>HTML → Text]
         end
 
-        subgraph State["State Management"]
-            S1["state.selectedFile"]
-            S2["state.results"]
-            S3["state.chatHistory"]
-            S4["state.metrics"]
+        subgraph Analysis["🧠 AI Analysis Pipeline"]
+            A1[GPT-5.2<br/>Generate Summary]
+            A2[GPT-5.2<br/>Extract Key Points]
+            A3[GPT-5.2<br/>Identify Actions]
+            A4[GPT-5.2<br/>Sentiment Analysis]
         end
 
-        subgraph UI["UI Updates"]
-            U1[KPI Dashboard]
-            U2[Results Cards]
-            U3[Chat Messages]
-            U4[Metrics Panel]
+        subgraph State["💾 State Management"]
+            S1["state.results<br/>{summary, keyPoints, actions, sentiment}"]
+            S2["state.chatHistory[]"]
+            S3["currentMetrics<br/>{tokens, costs, apiCalls}"]
+        end
+
+        subgraph Output["📊 Output & Features"]
+            direction LR
+            O1[📈 KPI Dashboard<br/>6 metrics]
+            O2[📋 Results Cards<br/>Collapsible]
+            O3[💬 Chat with Data<br/>GPT-5.2]
+            O4[🔊 Audio Briefing<br/>TTS]
+            O5[🎨 Infographic<br/>DALL-E]
+            O6[📄 DOCX Export<br/>Professional]
+            O7[🤖 Agent Export<br/>.md File]
+        end
+
+        subgraph Reset["🔄 New Analysis"]
+            R1[resetForNewAnalysis]
+            R2[Clear all state]
+            R3[Reset UI elements]
+            R4[Clear file inputs]
         end
     end
 
     subgraph OpenAI["☁️ OPENAI API"]
-        O1[whisper-1]
-        O2[gpt-5.2]
-        O3[gpt-5.2-vision]
-        O4[gpt-4o-mini-tts]
-        O5[gpt-image-1.5]
+        API1[whisper-1<br/>Transcription]
+        API2[gpt-5.2<br/>Analysis & Chat]
+        API3[gpt-5.2 Vision<br/>Image/PDF OCR]
+        API4[gpt-4o-mini-tts<br/>Text-to-Speech]
+        API5[gpt-image-1.5<br/>Image Generation]
     end
 
-    I1 --> I2 --> I3 --> I4
+    subgraph Orchestrator["🎭 Agent Orchestrator"]
+        ORC[orchestrator.html<br/>Multi-agent insights]
+    end
+
+    I1 --> I2 --> I3
     
-    IN1 --> P1
-    IN1 --> P2
-    IN1 --> P3
-    IN2 --> S1
-    IN3 --> P4
-    IN4 --> S2
+    IN1 & IN4 --> P1
+    IN2 --> P2
+    IN3 --> P3
+    IN6 --> P4
+    IN5 --> Analysis
+    IN8 --> S1
 
-    P1 <--> O1
-    P3 <--> O3
+    P1 <--> API1
+    P2 <-.-> API3
+    P3 <--> API3
 
-    P1 & P2 & P3 & P4 --> S1
-    S1 --> O2
-    O2 --> S2
+    P1 & P2 & P3 & P4 --> Analysis
     
-    S2 --> U1 & U2
-    S3 --> U3
-    S4 --> U4
+    Analysis --> A1 & A2 & A3 & A4
+    A1 & A2 & A3 & A4 <--> API2
+    A1 & A2 & A3 & A4 --> S1
 
-    O4 -.-> |Audio Briefing| S2
-    O5 -.-> |Infographic| S2
+    S1 --> O1 & O2
+    S2 --> O3
+    S3 --> O6
+    
+    O3 <--> API2
+    O4 <--> API4
+    O5 <--> API5
+    
+    O7 --> ORC
+    R1 --> R2 --> R3 --> R4 --> InputTabs
 
     style Browser fill:#0a0e17,stroke:#d4a853,color:#fff
     style OpenAI fill:#1a2a1a,stroke:#4ade80,color:#fff
+    style Orchestrator fill:#1a1a2a,stroke:#a855f7,color:#fff
+    style Reset fill:#2a1a1a,stroke:#ef4444,color:#fff
 ```
 
 ## Agent Orchestrator Architecture
 
 ```mermaid
 flowchart TB
-    subgraph OrchestratorPage["🤖 ORCHESTRATOR PAGE"]
+    subgraph MainApp["📱 MAIN APP (index.html)"]
+        MA1[Complete Analysis]
+        MA2[Export Agent Button]
+        MA3[Name Modal]
+        MA4[Download .md File]
+        
+        MA1 --> MA2 --> MA3 --> MA4
+    end
+
+    subgraph OrchestratorPage["🎭 AGENT ORCHESTRATOR (orchestrator.html)"]
         direction TB
         
-        subgraph Header["Header & Branding"]
-            H1[🤖 Robot Mascot Logo]
-            H2[Agent Orchestrator Title]
+        subgraph Header["🤖 Header"]
+            H1[Robot Mascot Logo]
+            H2[Agent Orchestrator]
+            H3[API Key Input]
         end
 
-        subgraph AgentUpload["Agent Upload"]
-            AU1[Drag & Drop .md Files]
-            AU2[Parse YAML Frontmatter]
-            AU3[Extract Sections<br/>summary, keyPoints, actions]
+        subgraph Upload["📤 Agent Upload Zone"]
+            UP1[Drag & Drop<br/>.md Files]
+            UP2[Multi-file Support]
+            UP3[parseAgentFile]
         end
 
-        subgraph KnowledgeBase["Knowledge Base Container"]
+        subgraph Parsing["⚙️ File Parsing"]
+            PA1[Parse YAML Frontmatter<br/>version, created, source_type, agent_name]
+            PA2[Extract Sections]
+            PA3["summary<br/>keyPoints<br/>actionItems<br/>sentiment<br/>transcript"]
+        end
+
+        subgraph KnowledgeBase["🧠 Knowledge Base Visual Chain"]
             direction LR
-            KB1["Agent Node 1<br/>────────────<br/>📋 filename.md<br/>✓ On │ ✕ Remove"]
-            KB2["Agent Node 2<br/>────────────<br/>📋 filename.md<br/>○ Off │ ✕ Remove"]
-            KB3["Agent Node N<br/>────────────<br/>📋 filename.md<br/>✓ On │ ✕ Remove"]
+            KB1["🟢 Agent 1<br/>────────<br/>Q4 Planning<br/>Jan 10, 2026<br/>✓ Enabled"]
+            KB2["🟢 Agent 2<br/>────────<br/>Team Sync<br/>Jan 11, 2026<br/>✓ Enabled"]
+            KB3["⚪ Agent 3<br/>────────<br/>Review<br/>Jan 12, 2026<br/>○ Disabled"]
             
-            KB1 ---|connection| KB2
-            KB2 ---|connection| KB3
+            KB1 -.-|dotted link| KB2
+            KB2 -.-|dotted link| KB3
         end
 
-        subgraph AgentState["Agent State"]
-            AS1["agent.enabled = true/false"]
-            AS2["agent.displayName = editable"]
-            AS3["agent.id = unique"]
+        subgraph StateManagement["💾 State"]
+            ST1["state.agents[]"]
+            ST2["state.insights"]
+            ST3["state.chatHistory[]"]
+            ST4["state.apiKey"]
         end
 
-        subgraph OrchestratorBrain["Orchestrator AI Brain"]
-            OB1[Filter Active Agents]
-            OB2[buildCombinedContext]
-            OB3[GPT-5.2 Query]
+        subgraph ChatUI["💬 Orchestrator Chat"]
+            CH1[Welcome Message<br/>+ Quick Actions]
+            CH2[📋 Key action items]
+            CH3[🔗 Common themes]
+            CH4[✅ Main decisions]
+            CH5[User Query Input]
+            CH6[Thinking Indicator<br/>with status updates]
+            CH7[AI Response<br/>Markdown formatted]
         end
 
-        subgraph ChatInterface["Chat Interface"]
-            CI1[Welcome Card + Suggestions]
-            CI2[User Message Bubble]
-            CI3[Thinking Indicator]
-            CI4[AI Response Bubble]
+        subgraph InsightsButton["📊 Generate Cross-Meeting Insights"]
+            IB1{2+ agents enabled<br/>+ API key?}
+            IB2[Button Disabled]
+            IB3[generateCrossInsights]
         end
 
-        subgraph InsightsGen["Insights Generation"]
-            IG1[Common Themes]
-            IG2[Trends & Patterns]
-            IG3[Risks & Blockers]
-            IG4[Recommendations]
-            IG5[Consolidated Actions]
+        subgraph InsightsGen["📊 Cross-Meeting Insights Panel"]
+            IG1[🔗 Common Themes]
+            IG2[📈 Trends & Patterns]
+            IG3[⚠️ Risks & Blockers]
+            IG4[💡 Recommendations]
+            IG5[✅ Consolidated Actions]
+        end
+
+        subgraph APICall["☁️ GPT-5.2 API"]
+            API1[buildCombinedContext<br/>All enabled agents]
+            API2[System Prompt<br/>Business Analyst]
+            API3[JSON Response<br/>Parse & Display]
         end
     end
 
+    MA4 -->|.md file| UP1
+    
     H1 --> H2
-    AU1 --> AU2 --> AU3
-    AU3 --> KB1 & KB2 & KB3
-    KB1 & KB2 & KB3 --> AS1 & AS2 & AS3
+    H3 --> ST4
     
-    AS1 -->|enabled only| OB1
-    OB1 --> OB2 --> OB3
+    UP1 --> UP2 --> UP3
+    UP3 --> PA1 --> PA2 --> PA3
+    PA3 --> ST1
+    ST1 --> KB1 & KB2 & KB3
     
-    OB3 --> CI4
-    CI1 --> CI2 --> CI3 --> CI4
+    KB1 & KB2 --> ST1
     
-    OB3 --> IG1 & IG2 & IG3 & IG4 & IG5
+    CH1 --> CH2 & CH3 & CH4
+    CH2 & CH3 & CH4 --> CH5
+    CH5 --> CH6 --> CH7
+    CH5 --> API1
+    
+    IB1 -->|No| IB2
+    IB1 -->|Yes| IB3
+    IB3 --> API1
+    API1 --> API2 --> API3
+    API3 --> ST2
+    ST2 --> IG1 & IG2 & IG3 & IG4 & IG5
+    
+    API3 --> CH7
+    ST3 --> CH7
 
+    style MainApp fill:#1a2a1a,stroke:#4ade80,color:#fff
     style OrchestratorPage fill:#0a0e17,stroke:#d4a853,color:#fff
-    style Header fill:#2a2a1a,stroke:#fbbf24,color:#fff
     style KnowledgeBase fill:#1a1f2e,stroke:#60a5fa,color:#fff
-    style OrchestratorBrain fill:#2a1a2a,stroke:#a855f7,color:#fff
+    style InsightsGen fill:#1a2a2a,stroke:#22d3ee,color:#fff
+    style APICall fill:#2a1a2a,stroke:#a855f7,color:#fff
+    style ChatUI fill:#2a2a1a,stroke:#fbbf24,color:#fff
 ```
 
 ## Data Flow: Agent Export/Import
