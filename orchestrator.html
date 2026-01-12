@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=41">
+    <link rel="stylesheet" href="css/styles.css?v=42">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a853">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230a0e17' width='32' height='32' rx='6'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23d4a853'%3E⭐%3C/text%3E%3C/svg%3E" type="image/svg+xml">
@@ -26,6 +26,7 @@
             </a>
         </div>
         <p class="tagline">Combine multiple meeting agents for cross-meeting insights</p>
+        <button id="help-btn" class="help-btn" title="How to use the Orchestrator">?</button>
     </header>
 
     <main>
@@ -285,6 +286,66 @@
         </section>
     </main>
 
+    <!-- How To Modal -->
+    <div id="help-modal" class="modal-overlay hidden">
+        <div class="modal-container help-modal-container">
+            <div class="modal-header">
+                <h3>📖 How to Use the Orchestrator</h3>
+                <button class="modal-close" id="help-close-btn">&times;</button>
+            </div>
+            <div class="modal-body help-modal-body">
+                <div class="help-steps">
+                    <div class="help-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>Export Agents from Main App</h4>
+                            <p>Analyze meetings in the <a href="index.html">main app</a>, then click <strong>"Export Agent"</strong> to save each meeting as a .md file.</p>
+                        </div>
+                    </div>
+                    <div class="help-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>Upload Your Agents</h4>
+                            <p>Click <strong>"Add Agent Files"</strong> or drag & drop your .md agent files into the upload area.</p>
+                        </div>
+                    </div>
+                    <div class="help-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>Manage Your Knowledge Base</h4>
+                            <p>Toggle agents on/off, rename them, or remove them. Only active agents are used for queries.</p>
+                        </div>
+                    </div>
+                    <div class="help-step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>Chat Across Meetings</h4>
+                            <p>Ask questions in the chat to find patterns, decisions, and action items across all your meetings.</p>
+                        </div>
+                    </div>
+                    <div class="help-step">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <h4>Generate Cross-Meeting Insights</h4>
+                            <p>Click the button to get AI-generated insights: common themes, trends, risks, and recommendations.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="help-tips">
+                    <h4>💡 Pro Tips</h4>
+                    <ul>
+                        <li><strong>Toggle Agents:</strong> Temporarily disable agents to focus your queries on specific meetings.</li>
+                        <li><strong>Rename Agents:</strong> Give agents memorable names like "Q4 Planning" for easier identification.</li>
+                        <li><strong>Suggestion Chips:</strong> Click the quick query buttons for common cross-meeting questions.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" id="help-got-it-btn">Got it!</button>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <p>&copy; 2026 northstar.LM | Agent Orchestrator</p>
         <p class="credits">
@@ -295,7 +356,7 @@
 
     <!-- Marked.js for markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/orchestrator.js?v=13" type="module"></script>
+    <script src="js/orchestrator.js?v=14" type="module"></script>
 
     <!-- Service Worker Registration -->
     <script>

@@ -87,7 +87,13 @@ function initElements() {
         // Error
         errorSection: document.getElementById('error-section'),
         errorMessage: document.getElementById('error-message'),
-        dismissErrorBtn: document.getElementById('dismiss-error')
+        dismissErrorBtn: document.getElementById('dismiss-error'),
+        
+        // Help Modal
+        helpBtn: document.getElementById('help-btn'),
+        helpModal: document.getElementById('help-modal'),
+        helpCloseBtn: document.getElementById('help-close-btn'),
+        helpGotItBtn: document.getElementById('help-got-it-btn')
     };
 }
 
@@ -156,6 +162,22 @@ function setupEventListeners() {
 
     // Error
     elements.dismissErrorBtn.addEventListener('click', hideError);
+    
+    // Help Modal
+    if (elements.helpBtn) {
+        elements.helpBtn.addEventListener('click', showHelpModal);
+    }
+    if (elements.helpCloseBtn) {
+        elements.helpCloseBtn.addEventListener('click', hideHelpModal);
+    }
+    if (elements.helpGotItBtn) {
+        elements.helpGotItBtn.addEventListener('click', hideHelpModal);
+    }
+    if (elements.helpModal) {
+        elements.helpModal.addEventListener('click', (e) => {
+            if (e.target === elements.helpModal) hideHelpModal();
+        });
+    }
 }
 
 // ============================================
@@ -1212,6 +1234,22 @@ function showError(message) {
 
 function hideError() {
     elements.errorSection.classList.add('hidden');
+}
+
+// ============================================
+// Help Modal
+// ============================================
+
+function showHelpModal() {
+    if (elements.helpModal) {
+        elements.helpModal.classList.remove('hidden');
+    }
+}
+
+function hideHelpModal() {
+    if (elements.helpModal) {
+        elements.helpModal.classList.add('hidden');
+    }
 }
 
 // ============================================
