@@ -1386,6 +1386,12 @@ function updateProgress(percent, message) {
 function displayResults() {
     if (!state.results) return;
     
+    // Collapse the setup section to focus on results
+    const setupSection = document.getElementById('setup-section');
+    if (setupSection) {
+        setupSection.removeAttribute('open');
+    }
+    
     elements.resultsSection.classList.remove('hidden');
     
     // ========== KPI DASHBOARD ==========
@@ -2618,6 +2624,12 @@ function resetForNewAnalysis() {
     elements.infographicPrompt.value = '';
     
     updateAnalyzeButton();
+    
+    // Reopen the setup section
+    const setupSection = document.getElementById('setup-section');
+    if (setupSection) {
+        setupSection.setAttribute('open', '');
+    }
     
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });

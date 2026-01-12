@@ -25,32 +25,41 @@
     </header>
 
     <main>
-        <!-- API Key Section (Collapsible) -->
-        <section class="config-section" id="config-section">
-            <div class="api-key-collapsed hidden" id="api-key-collapsed">
-                <span class="key-status">🔑 API Key configured</span>
-                <button type="button" id="expand-key-btn" class="btn-text">Edit</button>
-            </div>
-            <div class="api-key-container" id="api-key-container">
-                <label for="api-key">
-                    <span class="label-icon">&#128273;</span>
-                    OpenAI API Key
-                </label>
-                <div class="input-group">
-                    <input type="password" id="api-key" placeholder="sk-..." autocomplete="off">
-                    <button type="button" id="toggle-key" class="icon-btn" title="Show/Hide API Key">
-                        &#128065;
-                    </button>
-                    <button type="button" id="save-key" class="btn-secondary" title="Save to browser">
-                        Save
-                    </button>
-                </div>
-                <p class="hint">Your key is stored locally and sent directly to OpenAI. <a href="https://platform.openai.com/api-keys" target="_blank">Get an API key</a></p>
-            </div>
-        </section>
+        <!-- Setup & Input Section (Collapsible after analysis) -->
+        <details class="setup-section" id="setup-section" open>
+            <summary class="setup-header">
+                <span class="setup-icon">⚙️</span>
+                <span class="setup-title">Setup & Input</span>
+                <span class="setup-toggle">▼</span>
+            </summary>
+            
+            <div class="setup-content">
+                <!-- API Key Section -->
+                <section class="config-section" id="config-section">
+                    <div class="api-key-collapsed hidden" id="api-key-collapsed">
+                        <span class="key-status">🔑 API Key configured</span>
+                        <button type="button" id="expand-key-btn" class="btn-text">Edit</button>
+                    </div>
+                    <div class="api-key-container" id="api-key-container">
+                        <label for="api-key">
+                            <span class="label-icon">&#128273;</span>
+                            OpenAI API Key
+                        </label>
+                        <div class="input-group">
+                            <input type="password" id="api-key" placeholder="sk-..." autocomplete="off">
+                            <button type="button" id="toggle-key" class="icon-btn" title="Show/Hide API Key">
+                                &#128065;
+                            </button>
+                            <button type="button" id="save-key" class="btn-secondary" title="Save to browser">
+                                Save
+                            </button>
+                        </div>
+                        <p class="hint">Your key is stored locally and sent directly to OpenAI. <a href="https://platform.openai.com/api-keys" target="_blank">Get an API key</a></p>
+                    </div>
+                </section>
 
-        <!-- Input Section -->
-        <section class="input-section">
+                <!-- Input Section -->
+                <section class="input-section">
             <div class="input-tabs">
                 <button class="tab-btn active" data-tab="audio">
                     <span class="tab-icon">&#127908;</span>
@@ -195,7 +204,9 @@
                     </div>
                 </div>
             </div>
-        </section>
+                </section>
+            </div>
+        </details>
 
         <!-- Progress Section -->
         <section id="progress-section" class="progress-section hidden">
@@ -600,7 +611,7 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/app.js?v=45" type="module"></script>
+    <script src="js/app.js?v=46" type="module"></script>
 
     <!-- Service Worker Registration -->
     <script>
