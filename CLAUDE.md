@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 northstar.LM/
 ├── index.html          # Main application page (single-page app)
 ├── orchestrator.html   # Multi-agent orchestrator page
+├── northstar-overview.html # Product overview/marketing page
 ├── manifest.json       # PWA manifest
 ├── sw.js               # Service worker for offline support
 ├── css/
@@ -19,8 +20,13 @@ northstar.LM/
 ├── js/
 │   ├── app.js          # Main application logic (ES Module)
 │   └── orchestrator.js # Orchestrator page logic
-├── static/             # Static assets
-├── templates/          # Server templates (for Flask backend option)
+├── archive/            # Legacy files (not in active use)
+│   ├── flask-backend/  # Old Flask server code
+│   │   ├── app.py
+│   │   ├── gunicorn_config.py
+│   │   ├── gunicorn_run_readme.rtf
+│   │   └── templates/
+│   └── static/         # Old static assets (ciao.jpg)
 └── .github/
     └── workflows/
         └── deploy.yml  # GitHub Pages deployment
@@ -223,6 +229,7 @@ sequenceDiagram
 ### Libraries (CDN-loaded)
 - **docx.js** (`8.5.0`) - Client-side DOCX generation with professional formatting
 - **PDF.js** (`4.0.379`) - Client-side PDF text extraction and page-to-image rendering
+- **marked.js** - Markdown parsing for chat message formatting (lists, headings, code blocks)
 
 ## Common Development Tasks
 
@@ -330,6 +337,7 @@ currentMetrics.gptOutputTokens += usage.completion_tokens || 0;
 - Animations use CSS transitions and keyframes
 - KPI Dashboard uses 6-column responsive grid
 - Collapsible sections use native `<details>` elements
+- Chat messages use styled markdown with gold arrow markers for lists, gold headings, styled code blocks and blockquotes
 
 ## UI Components
 
@@ -357,6 +365,23 @@ currentMetrics.gptOutputTokens += usage.completion_tokens || 0;
 </details>
 ```
 
+### Collapsible Setup Section
+The "Setup & Input" section (API key + input) uses a `<details>` element that:
+- Auto-collapses after analysis completes (in `displayResults()`)
+- Auto-expands when starting new analysis (in `resetForNewAnalysis()`)
+- Can be manually toggled by clicking the header
+
+```html
+<details class="setup-section" id="setup-section" open>
+    <summary class="setup-header">
+        <span class="setup-icon">⚙️</span>
+        <span class="setup-title">Setup & Input</span>
+        <span class="setup-toggle">▼</span>
+    </summary>
+    <div class="setup-content">...</div>
+</details>
+```
+
 ## Deployment
 
 Automatic deployment via GitHub Actions on push to `main` branch. 
@@ -367,6 +392,8 @@ Automatic deployment via GitHub Actions on push to `main` branch.
 
 ### Files Deployed
 The GitHub Actions workflow copies these to `_site`:
-- `index.html`, `orchestrator.html`
-- `css/`, `js/`, `static/`
+- `index.html`, `orchestrator.html`, `northstar-overview.html`
+- `css/`, `js/`
 - `manifest.json`, `sw.js` (PWA files)
+
+Note: The `archive/` folder is NOT deployed—it contains legacy Flask backend code for reference only.

@@ -199,6 +199,7 @@ At-a-glance metrics displayed at the top of every analysis:
 - Ask follow-up questions about decisions, action items, participants
 - Maintains conversation history for context-aware responses
 - Token usage tracked in real-time metrics
+- Rich markdown formatting in responses (styled lists, headings, code blocks, blockquotes)
 
 ### Agent Export/Import
 - **Export Agent** - Save your analyzed meeting as a portable markdown file (~90 KB)
@@ -244,6 +245,7 @@ Collapsible panel with real-time tracking of:
 - **Libraries**:
   - [docx.js](https://docx.js.org/) - Client-side DOCX generation
   - [PDF.js](https://mozilla.github.io/pdf.js/) - Client-side PDF text extraction and page rendering
+  - [marked.js](https://marked.js.org/) - Markdown parsing for chat message formatting
 - **Deployment**: GitHub Pages (static hosting)
 
 ## Getting Started
@@ -252,10 +254,11 @@ Collapsible panel with real-time tracking of:
 2. Enter your OpenAI API key (stored locally in your browser)
 3. Upload an audio file, video, PDF, image, or paste text
 4. Click "Analyze Meeting"
-5. Review KPI dashboard and detailed analysis
-6. Optionally generate audio briefing and/or infographic
-7. Chat with your data for deeper insights
-8. Export as DOCX report or Agent file for future use
+5. The Setup & Input section auto-collapses to focus on results
+6. Review KPI dashboard and detailed analysis
+7. Optionally generate audio briefing and/or infographic
+8. Chat with your data for deeper insights
+9. Export as DOCX report or Agent file for future use
 
 ## Multi-Meeting Workflow
 
