@@ -3197,21 +3197,19 @@ function appendChatMessage(role, content) {
 }
 
 function formatChatContent(content) {
-    // Escape HTML first
+    // Use marked.js for proper markdown rendering if available
+    if (typeof marked !== 'undefined') {
+        return marked.parse(content);
+    }
+    
+    // Fallback: basic formatting if marked.js not loaded
     let formatted = content
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-    
-    // Convert markdown-style formatting to HTML
-    formatted = formatted
-        // Bold
+        .replace(/>/g, '&gt;')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        // Italic
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        // Bullets
         .replace(/^\s*[-•]\s+/gm, '▸ ')
-        // Line breaks
         .replace(/\n/g, '<br>');
     
     return `<p>${formatted}</p>`;
