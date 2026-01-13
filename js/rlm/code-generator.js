@@ -5,7 +5,96 @@
  * the meeting context through the REPL environment.
  * 
  * Also handles parsing of LLM output to extract FINAL() and FINAL_VAR() calls.
+ * 
+ * Phase 2.1 additions:
+ * - Query classification (factual, aggregative, comparative, search, recursive)
+ * - Retry logic with error context
+ * - Enhanced few-shot examples
  */
+
+/**
+ * Query types for classification
+ */
+export const QueryType = {
+    FACTUAL: 'factual',
+    AGGREGATIVE: 'aggregative',
+    COMPARATIVE: 'comparative',
+    SEARCH: 'search',
+    RECURSIVE: 'recursive'
+};
+
+/**
+ * Patterns for query classification
+ */
+const QUERY_PATTERNS = {
+    [QueryType.COMPARATIVE]: [
+        /compare|contrast|differ|versus|vs\.?|between/i,
+        /how does .+ differ from/i,
+        /what('s| is) the difference/i,
+        /similarities and differences/i
+    ],
+    [QueryType.AGGREGATIVE]: [
+        /all|every|across|summarize|summary|overall/i,
+        /total|combined|aggregate|consolidate/i,
+        /what (are|were) the .+ from (all|every)/i,
+        /gather|collect|compile/i
+    ],
+    [QueryType.SEARCH]: [
+        /search|find|look for|locate|where/i,
+        /who (said|mentioned|discussed)/i,
+        /when (was|did|were)/i,
+        /any mention of/i,
+        /grep|filter|extract/i
+    ],
+    [QueryType.RECURSIVE]: [
+        /analyze|interpret|explain|why|how come/i,
+        /pattern|trend|theme|insight/i,
+        /what does .+ mean/i,
+        /implications|conclusions|takeaways/i
+    ]
+};
+
+/**
+ * Classify a query into one of the query types
+ * @param {string} query - User's question
+ * @returns {Object} Classification result with type and confidence
+ */
+export function classifyQuery(query) {
+    const scores = {};
+    const normalizedQuery = query.toLowerCase();
+    
+    // Score each query type
+    for (const [type, patterns] of Object.entries(QUERY_PATTERNS)) {
+        scores[type] = 0;
+        for (const pattern of patterns) {
+            if (pattern.test(normalizedQuery)) {
+                scores[type]++;
+            }
+        }
+    }
+    
+    // Find the type with highest score
+    let maxScore = 0;
+    let bestType = QueryType.FACTUAL; // Default
+    
+    for (const [type, score] of Object.entries(scores)) {
+        if (score > maxScore) {
+            maxScore = score;
+            bestType = type;
+        }
+    }
+    
+    // Calculate confidence (0-1)
+    const totalPatterns = Object.values(QUERY_PATTERNS).flat().length;
+    const confidence = maxScore > 0 ? Math.min(maxScore / 3, 1) : 0.5;
+    
+    return {
+        type: bestType,
+        confidence,
+        scores,
+        suggestSubLm: bestType === QueryType.RECURSIVE && confidence > 0.6
+    };
+}
 
 /**
  * System prompt for code generation
@@ -141,28 +230,25 @@ else:
 FINAL(answer)`,
 
     aggregative: `# Aggregate information across all meetings
-items = []
-for agent in context['agents']:
-    if agent.get('enabled', True):
-        items.append({
-            'meeting': agent['displayName'],
-            'summary': agent.get('summary', 'N/A')
-        })
-
-result = "Summary of all meetings:\\n"
-for item in items:
-    result += f"\\n## {item['meeting']}\\n{item['summary']}\\n"
-FINAL(result)`,
+items = get_all_action_items()
+if not items:
+    FINAL("No action items found in any meetings.")
+else:
+    result = f"## Action Items from {len(items)} meetings:\\n"
+    for item in items:
+        result += f"\\n### {item['agent']}\\n{item['items']}\\n"
+    FINAL(result)`,
 
     comparative: `# Compare information across meetings
 agents = [a for a in context['agents'] if a.get('enabled', True)]
 if len(agents) < 2:
     FINAL("Need at least 2 meetings to compare")
 else:
-    comparison = "Comparison:\\n"
+    comparison = "# Meeting Comparison\\n"
     for agent in agents[:3]:  # Limit to 3 for brevity
-        comparison += f"\\n### {agent['displayName']}\\n"
-        comparison += f"Key Points: {agent.get('keyPoints', 'N/A')[:200]}...\\n"
+        comparison += f"\\n## {agent['displayName']}\\n"
+        comparison += f"**Summary:** {agent.get('summary', 'N/A')[:300]}...\\n"
+        comparison += f"**Key Points:** {agent.get('keyPoints', 'N/A')[:200]}...\\n"
     FINAL(comparison)`,
 
     search: `# Search for specific content
@@ -175,18 +261,36 @@ if results:
         answer += f"\\n- **{r['agent_name']}**: {r['matches'][0]['excerpt']}"
     FINAL(answer)
 else:
-    FINAL(f"No mentions of '{keyword}' found in the meetings")`
+    FINAL(f"No mentions of '{keyword}' found in the meetings")`,
+
+    recursive: `# Analyze patterns using recursive LLM calls
+summaries = get_all_summaries()
+if not summaries:
+    FINAL("No meeting summaries available for analysis.")
+else:
+    # Combine summaries for analysis
+    combined = "\\n---\\n".join([f"**{s['agent']}** ({s['date']}): {s['summary']}" for s in summaries])
+    
+    # Use sub_lm for deeper analysis - this makes a recursive LLM call
+    analysis = sub_lm("Identify the key themes, patterns, and recurring topics across these meeting summaries. What insights emerge?", combined)
+    
+    result = f"# Pattern Analysis Across {len(summaries)} Meetings\\n\\n{analysis}"
+    FINAL(result)`
 };
 
 /**
  * Generate a code generation prompt for a user query
  * @param {string} query - User's question
  * @param {Object} context - Context metadata (agent count, etc.)
- * @returns {Object} System and user prompts
+ * @returns {Object} System and user prompts with classification
  */
 export function generateCodePrompt(query, context = {}) {
     const agentCount = context.activeAgents || 0;
     const agentNames = context.agentNames || [];
+    
+    // Classify the query to select appropriate example
+    const classification = classifyQuery(query);
+    const exampleCode = CODE_EXAMPLES[classification.type] || CODE_EXAMPLES.factual;
     
     // Build context summary for the prompt
     let contextSummary = `You have access to ${agentCount} meeting agents`;
@@ -197,18 +301,45 @@ export function generateCodePrompt(query, context = {}) {
         }
     }
     
+    // Build hints based on classification
+    let strategyHint = '';
+    switch (classification.type) {
+        case QueryType.COMPARATIVE:
+            strategyHint = 'This is a comparative query - compare data across multiple meetings.';
+            break;
+        case QueryType.AGGREGATIVE:
+            strategyHint = 'This is an aggregative query - gather and combine information from all meetings.';
+            break;
+        case QueryType.SEARCH:
+            strategyHint = 'This is a search query - use search_agents() to find relevant content.';
+            break;
+        case QueryType.RECURSIVE:
+            strategyHint = 'This query requires analysis - consider using sub_lm() for deeper interpretation.';
+            break;
+        default:
+            strategyHint = 'Answer the question directly using the available data.';
+    }
+    
     const userPrompt = `${contextSummary}.
+
+${strategyHint}
 
 User's question: ${query}
 
-Generate Python code to answer this question using the available context and functions.
+Here's an example of similar code:
+\`\`\`python
+${exampleCode}
+\`\`\`
+
+Now generate Python code to answer the user's question. Use the available context and functions.
 Remember to call FINAL(answer) or FINAL_VAR(var_name) at the end.
 
 \`\`\`python`;
 
     return {
         systemPrompt: CODE_GENERATION_SYSTEM_PROMPT,
-        userPrompt
+        userPrompt,
+        classification
     };
 }
 
@@ -369,8 +500,18 @@ export class CodeGenerator {
         this.options = {
             maxCodeLength: options.maxCodeLength || 2000,
             validateCode: options.validateCode !== false,
+            maxRetries: options.maxRetries || 2,
             ...options
         };
+    }
+    
+    /**
+     * Classify a query into a type
+     * @param {string} query - User query
+     * @returns {Object} Classification result
+     */
+    classifyQuery(query) {
+        return classifyQuery(query);
     }
     
     /**
@@ -426,8 +567,66 @@ export class CodeGenerator {
     }
     
     /**
+     * Generate code with retry logic on validation failure
+     * @param {string} query - User query
+     * @param {Object} context - Context metadata
+     * @param {Function} llmCall - LLM call function (systemPrompt, userPrompt, context) => response
+     * @returns {Promise<Object>} Generated and validated code
+     */
+    async generateWithRetry(query, context, llmCall) {
+        let lastError = null;
+        let attempts = 0;
+        
+        while (attempts <= this.options.maxRetries) {
+            attempts++;
+            
+            try {
+                // Generate prompt (with error context if retrying)
+                let prompts = this.generatePrompt(query, context);
+                
+                if (lastError && attempts > 1) {
+                    // Add error context for retry
+                    prompts.userPrompt = `${prompts.userPrompt}
+
+IMPORTANT: Previous attempt failed with error: "${lastError}"
+Please fix this issue in your code generation.`;
+                }
+                
+                // Call LLM
+                const llmResponse = await llmCall(prompts.systemPrompt, prompts.userPrompt, context);
+                
+                // Parse and validate
+                const result = this.parseAndValidate(llmResponse);
+                
+                if (result.success) {
+                    return {
+                        ...result,
+                        attempts,
+                        classification: prompts.classification
+                    };
+                }
+                
+                // Store error for retry
+                lastError = result.error;
+                console.warn(`[CodeGenerator] Attempt ${attempts} failed: ${lastError}`);
+                
+            } catch (error) {
+                lastError = error.message;
+                console.warn(`[CodeGenerator] Attempt ${attempts} exception: ${lastError}`);
+            }
+        }
+        
+        // All retries exhausted
+        return {
+            success: false,
+            error: `Failed after ${attempts} attempts. Last error: ${lastError}`,
+            attempts
+        };
+    }
+    
+    /**
      * Get example code for a query type
-     * @param {string} type - Query type (factual, aggregative, comparative, search)
+     * @param {string} type - Query type (factual, aggregative, comparative, search, recursive)
      * @returns {string} Example code
      */
     getExample(type) {
@@ -439,3 +638,6 @@ export class CodeGenerator {
 export function createCodeGenerator(options = {}) {
     return new CodeGenerator(options);
 }
+
+// Re-export QueryType for external use
+export { QueryType as CodeQueryType };

@@ -14,18 +14,20 @@
  * - Response aggregation and synthesis
  * - REPL environment for code execution (Phase 1)
  * - LLM-generated Python code for context manipulation
- *
- * Future full RLM will add:
- * - Recursive sub-LM calls (depth > 1)
- * - Async parallel execution
+ * 
+ * Phase 2.2: True Recursion
+ * - Synchronous sub_lm() calls from Python via SharedArrayBuffer
+ * - LLM callback integration for recursive calls
+ * - Depth tracking and limits (max 3 levels)
+ * - Async fallback for browsers without SharedArrayBuffer
  */
 
 import { ContextStore, getContextStore, resetContextStore } from './context-store.js';
 import { QueryDecomposer, createDecomposer, QueryComplexity, QueryIntent } from './query-decomposer.js';
 import { SubExecutor, createExecutor } from './sub-executor.js';
 import { ResponseAggregator, createAggregator } from './aggregator.js';
-import { REPLEnvironment, getREPLEnvironment, resetREPLEnvironment, isREPLSupported } from './repl-environment.js';
-import { CodeGenerator, createCodeGenerator, generateCodePrompt, parseCodeOutput, parseFinalAnswer, validateCode } from './code-generator.js';
+import { REPLEnvironment, getREPLEnvironment, resetREPLEnvironment, isREPLSupported, isSharedArrayBufferSupported } from './repl-environment.js';
+import { CodeGenerator, createCodeGenerator, generateCodePrompt, parseCodeOutput, parseFinalAnswer, validateCode, classifyQuery, QueryType } from './code-generator.js';
 
 /**
  * RLM Configuration
@@ -37,7 +39,7 @@ export const RLM_CONFIG = {
 
     // Execution settings
     maxConcurrent: 3,
-    maxDepth: 2,          // For recursive implementation
+    maxDepth: 3,              // Max recursion depth for sub_lm calls
     tokensPerSubQuery: 800,
     timeout: 30000,
 
@@ -51,10 +53,12 @@ export const RLM_CONFIG = {
     replTimeout: 30000,        // REPL execution timeout
     autoInitREPL: false,       // Auto-initialize REPL on first use
     preferREPL: false,         // Prefer REPL over decomposition when both applicable
+    subLmTimeout: 60000,       // Timeout for individual sub_lm calls
 
     // Feature flags
     enableRLM: true,           // Master switch for RLM processing
-    fallbackToLegacy: true     // Fall back to legacy if RLM fails
+    fallbackToLegacy: true,    // Fall back to legacy if RLM fails
+    enableSyncSubLm: true      // Enable synchronous sub_lm (requires SharedArrayBuffer)
 };
 
 /**
@@ -85,8 +89,13 @@ export class RLMPipeline {
         this.repl = null;
         this.replInitializing = false;
         this.codeGenerator = createCodeGenerator({
-            validateCode: true
+            validateCode: true,
+            maxRetries: 2
         });
+        
+        // LLM callback for sub_lm calls (set during processWithREPL)
+        this._currentLlmCall = null;
+        this._currentContext = null;
 
         this.stats = {
             queriesProcessed: 0,
@@ -94,7 +103,9 @@ export class RLMPipeline {
             avgExecutionTime: 0,
             strategies: {},
             replExecutions: 0,
-            replErrors: 0
+            replErrors: 0,
+            subLmCalls: 0,
+            subLmErrors: 0
         };
     }
 
@@ -133,15 +144,34 @@ export class RLMPipeline {
         try {
             console.log('[RLM] Initializing REPL environment...');
             this.repl = getREPLEnvironment({
-                defaultTimeout: this.config.replTimeout
+                defaultTimeout: this.config.replTimeout,
+                subLmTimeout: this.config.subLmTimeout,
+                maxRecursionDepth: this.config.maxDepth
             });
+            
+            // Phase 2.2: Set up LLM callback for sub_lm calls
+            this.repl.setLLMCallback(async (query, contextSlice) => {
+                return this._handleSubLmCallback(query, contextSlice);
+            });
+            
+            // Set up sub_lm call tracking
+            this.repl.onSubLmCall = (data) => {
+                console.log(`[RLM] sub_lm call at depth ${data.depth}: ${data.query.substring(0, 50)}...`);
+            };
+            
             await this.repl.initialize();
 
             // Sync context to REPL
             const contextData = this.contextStore.toPythonDict();
             await this.repl.setContext(contextData.agents);
+            
+            // Log capabilities
+            const caps = this.repl.getCapabilities();
+            console.log('[RLM] REPL environment ready', {
+                syncEnabled: caps.syncEnabled,
+                maxDepth: caps.maxRecursionDepth
+            });
 
-            console.log('[RLM] REPL environment ready');
             this.replInitializing = false;
             return true;
 
@@ -150,6 +180,36 @@ export class RLMPipeline {
             this.replInitializing = false;
             this.repl = null;
             return false;
+        }
+    }
+    
+    /**
+     * Handle sub_lm callback from REPL
+     * @private
+     */
+    async _handleSubLmCallback(query, contextSlice) {
+        if (!this._currentLlmCall) {
+            throw new Error('No LLM callback available for sub_lm');
+        }
+        
+        this.stats.subLmCalls++;
+        
+        try {
+            const systemPrompt = `You are analyzing meeting data to answer a specific question.
+Be concise and focus only on information relevant to the question.
+If the information is not available in the provided context, say so briefly.`;
+
+            const userPrompt = contextSlice
+                ? `Context:\n${contextSlice}\n\nQuestion: ${query}`
+                : `Question: ${query}`;
+
+            const response = await this._currentLlmCall(systemPrompt, userPrompt, this._currentContext);
+            return response;
+            
+        } catch (error) {
+            this.stats.subLmErrors++;
+            console.error('[RLM] sub_lm callback error:', error.message);
+            throw error;
         }
     }
 
@@ -313,6 +373,9 @@ Use the following meeting data to answer questions accurately and comprehensivel
     /**
      * Process a query using REPL-based code execution
      * The LLM generates Python code that runs against the meeting context
+     * 
+     * Phase 2.2: Now supports synchronous sub_lm() calls from within Python code
+     * 
      * @param {string} query - User's natural language query
      * @param {Function} llmCall - Function to call LLM
      * @param {Object} context - Additional context
@@ -320,6 +383,10 @@ Use the following meeting data to answer questions accurately and comprehensivel
      */
     async processWithREPL(query, llmCall, context = {}) {
         const startTime = Date.now();
+
+        // Phase 2.2: Store the LLM callback for sub_lm calls
+        this._currentLlmCall = llmCall;
+        this._currentContext = context;
 
         try {
             // Ensure REPL is initialized
@@ -331,6 +398,10 @@ Use the following meeting data to answer questions accurately and comprehensivel
             }
 
             console.log('[RLM:REPL] Processing query with code execution...');
+            
+            // Classify the query for better code generation
+            const classification = classifyQuery(query);
+            console.log(`[RLM:REPL] Query classified as: ${classification.type} (confidence: ${classification.confidence.toFixed(2)})`);
 
             // Step 1: Generate code prompt
             const stats = this.contextStore.getStats();
@@ -340,23 +411,24 @@ Use the following meeting data to answer questions accurately and comprehensivel
                 agentNames
             });
 
-            // Step 2: Call LLM to generate code
+            // Step 2: Call LLM to generate code (with retry support)
             console.log('[RLM:REPL] Generating Python code...');
-            const llmResponse = await llmCall(systemPrompt, userPrompt, context);
+            const codeResult = await this.codeGenerator.generateWithRetry(
+                query,
+                { activeAgents: stats.activeAgents, agentNames },
+                llmCall
+            );
 
-            // Step 3: Parse and validate the generated code
-            const parseResult = this.codeGenerator.parseAndValidate(llmResponse);
-
-            if (!parseResult.success) {
-                console.warn('[RLM:REPL] Code generation failed:', parseResult.error);
+            if (!codeResult.success) {
+                console.warn('[RLM:REPL] Code generation failed after retries:', codeResult.error);
                 // Fallback to standard processing
                 return this.process(query, llmCall, context);
             }
 
-            console.log('[RLM:REPL] Executing code:', parseResult.code.substring(0, 100) + '...');
+            console.log(`[RLM:REPL] Code generated (${codeResult.attempts} attempt(s)):`, codeResult.code.substring(0, 100) + '...');
 
-            // Step 4: Execute the code in REPL
-            const execResult = await this.repl.execute(parseResult.code, this.config.replTimeout);
+            // Step 3: Execute the code in REPL
+            const execResult = await this.repl.execute(codeResult.code, this.config.replTimeout);
 
             if (!execResult.success) {
                 console.warn('[RLM:REPL] Code execution failed:', execResult.error);
@@ -365,14 +437,15 @@ Use the following meeting data to answer questions accurately and comprehensivel
                 return this.process(query, llmCall, context);
             }
 
-            // Step 5: Parse the final answer
+            // Step 4: Parse the final answer
             const finalAnswer = parseFinalAnswer(execResult);
 
             this.stats.replExecutions++;
 
-            // Handle sub-LM calls if any
+            // Phase 2.2: Handle async fallback sub-LM calls if sync was not available
+            // (these are queued calls that weren't processed synchronously)
             if (finalAnswer.subLmCalls && finalAnswer.subLmCalls.length > 0) {
-                console.log(`[RLM:REPL] Processing ${finalAnswer.subLmCalls.length} sub-LM calls...`);
+                console.log(`[RLM:REPL] Processing ${finalAnswer.subLmCalls.length} async fallback sub-LM calls...`);
                 // Process sub-LM calls and aggregate results
                 const subResults = await this._processSubLmCalls(finalAnswer.subLmCalls, llmCall, context);
                 
@@ -384,8 +457,14 @@ Use the following meeting data to answer questions accurately and comprehensivel
                 }
                 finalAnswer.answer = combinedAnswer;
             }
+            
+            // Get sub_lm stats from REPL
+            const subLmStats = this.repl.getSubLmStats();
 
-            console.log(`[RLM:REPL] Complete in ${Date.now() - startTime}ms`);
+            console.log(`[RLM:REPL] Complete in ${Date.now() - startTime}ms`, {
+                syncEnabled: execResult.syncEnabled,
+                subLmCalls: subLmStats.totalCalls
+            });
 
             return {
                 success: true,
@@ -393,6 +472,10 @@ Use the following meeting data to answer questions accurately and comprehensivel
                 metadata: {
                     rlmEnabled: true,
                     replUsed: true,
+                    syncEnabled: execResult.syncEnabled,
+                    classification: classification.type,
+                    codeAttempts: codeResult.attempts,
+                    subLmCalls: subLmStats.totalCalls,
                     pipelineTime: Date.now() - startTime,
                     stdout: finalAnswer.stdout,
                     stderr: finalAnswer.stderr
@@ -418,6 +501,10 @@ Use the following meeting data to answer questions accurately and comprehensivel
                     pipelineTime: Date.now() - startTime
                 }
             };
+        } finally {
+            // Clear the current LLM callback
+            this._currentLlmCall = null;
+            this._currentContext = null;
         }
     }
 
@@ -500,9 +587,17 @@ Be concise and focus only on information relevant to the question.`;
      * Get pipeline statistics
      */
     getStats() {
+        const replStats = this.repl ? {
+            isReady: this.repl.isReady(),
+            syncEnabled: this.repl.isSyncEnabled(),
+            subLm: this.repl.getSubLmStats(),
+            capabilities: this.repl.getCapabilities()
+        } : null;
+        
         return {
             ...this.stats,
             contextStore: this.contextStore.getStats(),
+            repl: replStats,
             config: this.config
         };
     }
@@ -619,6 +714,7 @@ export {
     getREPLEnvironment,
     resetREPLEnvironment,
     isREPLSupported,
+    isSharedArrayBufferSupported,
 
     // Code Generation
     CodeGenerator,
@@ -626,5 +722,7 @@ export {
     generateCodePrompt,
     parseCodeOutput,
     parseFinalAnswer,
-    validateCode
+    validateCode,
+    classifyQuery,
+    QueryType
 };

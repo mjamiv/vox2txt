@@ -4,6 +4,11 @@
  * Web Worker that runs Pyodide in an isolated sandbox for secure Python execution.
  * This worker handles all Python code execution, keeping it separate from the main thread.
  * 
+ * Phase 2.2: True Recursion Support
+ * - SharedArrayBuffer for synchronous sub_lm() calls
+ * - Atomics.wait for blocking until LLM response
+ * - Depth tracking for recursion limits
+ * 
  * Security measures:
  * - Runs in isolated Web Worker (no DOM access)
  * - Execution timeout protection
@@ -20,15 +25,129 @@ let initializationPromise = null;
 const CONFIG = {
     maxOutputLength: 10240,  // 10KB max output
     defaultTimeout: 30000,   // 30 seconds default timeout
-    pyodideVersion: '0.25.0'
+    pyodideVersion: '0.25.0',
+    maxRecursionDepth: 3,    // Max depth for sub_lm calls
+    sharedBufferSize: 65536  // 64KB for response data
 };
+
+// SharedArrayBuffer for synchronous messaging (Phase 2.2)
+let sharedBuffer = null;
+let syncArray = null;      // Int32Array for signaling
+let dataLengthArray = null; // Int32Array for response length
+let responseBuffer = null; // Uint8Array for response data
+let syncEnabled = false;
+
+// Current recursion depth
+let currentDepth = 0;
+let subLmCallId = 0;
+
+/**
+ * Initialize SharedArrayBuffer for sync messaging
+ * Called from main thread with the shared buffer
+ */
+function initSyncBuffer(buffer) {
+    if (!buffer || !(buffer instanceof SharedArrayBuffer)) {
+        console.warn('[REPL Worker] Invalid SharedArrayBuffer provided');
+        syncEnabled = false;
+        return { success: false, error: 'Invalid SharedArrayBuffer' };
+    }
+    
+    sharedBuffer = buffer;
+    // Layout: [0-3] = signal (Int32), [4-7] = data length (Int32), [8+] = response data
+    syncArray = new Int32Array(sharedBuffer, 0, 1);
+    dataLengthArray = new Int32Array(sharedBuffer, 4, 1);
+    responseBuffer = new Uint8Array(sharedBuffer, 8);
+    syncEnabled = true;
+    
+    console.log('[REPL Worker] Sync buffer initialized, size:', buffer.byteLength);
+    return { success: true };
+}
+
+/**
+ * Synchronous sub_lm call using Atomics.wait
+ * Blocks until main thread provides response
+ */
+function subLmSync(query, contextSlice) {
+    if (!syncEnabled) {
+        // Fallback to async mode - return placeholder
+        const id = subLmCallId++;
+        return `[SUB_LM_PENDING:${id}] (sync not available)`;
+    }
+    
+    // Check recursion depth
+    if (currentDepth >= CONFIG.maxRecursionDepth) {
+        throw new Error(`Max recursion depth (${CONFIG.maxRecursionDepth}) exceeded`);
+    }
+    
+    currentDepth++;
+    
+    try {
+        const id = subLmCallId++;
+        
+        // Reset signal
+        Atomics.store(syncArray, 0, 0);
+        
+        // Send request to main thread
+        self.postMessage({
+            type: 'SUB_LM',
+            id,
+            query,
+            context: contextSlice,
+            depth: currentDepth
+        });
+        
+        // Block until main thread signals completion
+        // Timeout after 60 seconds
+        const waitResult = Atomics.wait(syncArray, 0, 0, 60000);
+        
+        if (waitResult === 'timed-out') {
+            throw new Error('sub_lm call timed out after 60 seconds');
+        }
+        
+        // Read response length
+        const responseLength = Atomics.load(dataLengthArray, 0);
+        
+        if (responseLength <= 0) {
+            throw new Error('Empty response from sub_lm');
+        }
+        
+        // Read response data
+        const responseBytes = responseBuffer.slice(0, responseLength);
+        const decoder = new TextDecoder();
+        const response = decoder.decode(responseBytes);
+        
+        return response;
+        
+    } finally {
+        currentDepth--;
+    }
+}
+
+/**
+ * Write string to response buffer (used by main thread)
+ */
+function writeResponseToBuffer(str) {
+    if (!responseBuffer) return 0;
+    
+    const encoder = new TextEncoder();
+    const encoded = encoder.encode(str);
+    const maxLength = responseBuffer.length;
+    const writeLength = Math.min(encoded.length, maxLength);
+    
+    responseBuffer.set(encoded.subarray(0, writeLength));
+    return writeLength;
+}
 
 // Built-in Python helper functions injected into the namespace
 const PYTHON_HELPERS = `
 import re
 import json
 
-# RLM API Functions
+# RLM API Functions - Phase 2.2: True Recursion Support
+
+# Recursion tracking
+MAX_DEPTH = 3
+_current_depth = 0
 
 def partition(text, chunk_size=1000):
     """Split text into chunks of approximately chunk_size characters."""
@@ -151,22 +270,61 @@ def get_all_summaries():
             })
     return summaries
 
-# Placeholder for recursive LLM calls (implemented in main thread)
+# Recursive LLM calls - Phase 2.2: True Synchronous Implementation
 _pending_sub_lm_calls = []
+_sub_lm_sync_func = None  # Will be set by JavaScript
+
+def _register_sub_lm_sync(func):
+    """Register the synchronous sub_lm function from JavaScript."""
+    global _sub_lm_sync_func
+    _sub_lm_sync_func = func
 
 def sub_lm(query, context_slice=None):
     """
-    Queue a sub-LLM call for later execution.
-    In full RLM, this spawns a recursive LLM call.
-    Currently returns a placeholder that will be resolved by the main thread.
+    Make a recursive LLM call synchronously.
+    
+    Args:
+        query: Natural language question to ask
+        context_slice: Optional context to include (will be JSON serialized)
+    
+    Returns:
+        LLM response as string
+    
+    Raises:
+        RecursionError: If max depth exceeded
+        TimeoutError: If LLM call times out
     """
+    global _current_depth, _sub_lm_sync_func
+    
+    # Check recursion depth
+    if _current_depth >= MAX_DEPTH:
+        raise RecursionError(f"Maximum recursion depth ({MAX_DEPTH}) exceeded")
+    
+    # Prepare context
+    ctx = None
+    if context_slice is not None:
+        if isinstance(context_slice, str):
+            ctx = context_slice
+        else:
+            ctx = json.dumps(context_slice)
+    
+    # Try synchronous call if available
+    if _sub_lm_sync_func is not None:
+        _current_depth += 1
+        try:
+            result = _sub_lm_sync_func(query, ctx)
+            return result
+        finally:
+            _current_depth -= 1
+    
+    # Fallback to async mode (queue for later)
     call_id = len(_pending_sub_lm_calls)
     _pending_sub_lm_calls.append({
         'id': call_id,
         'query': query,
-        'context': context_slice
+        'context': ctx
     })
-    return f"[SUB_LM_PENDING:{call_id}]"
+    return f"[SUB_LM_PENDING:{call_id}] - sync mode not available, will be processed after execution"
 
 def get_pending_sub_lm_calls():
     """Get all pending sub-LLM calls for execution by main thread."""
@@ -176,6 +334,15 @@ def clear_sub_lm_calls():
     """Clear pending sub-LLM calls."""
     global _pending_sub_lm_calls
     _pending_sub_lm_calls = []
+
+def get_recursion_depth():
+    """Get current recursion depth."""
+    return _current_depth
+
+def reset_recursion_depth():
+    """Reset recursion depth counter."""
+    global _current_depth
+    _current_depth = 0
 
 # Final answer functions
 _final_answer = None
@@ -237,6 +404,11 @@ async function initializePyodide() {
             // Inject helper functions
             await pyodide.runPythonAsync(PYTHON_HELPERS);
             
+            // Register the synchronous sub_lm function if sync is enabled
+            if (syncEnabled) {
+                registerSubLmSync();
+            }
+            
             isInitialized = true;
             console.log('[REPL Worker] Pyodide initialized successfully');
             
@@ -247,6 +419,34 @@ async function initializePyodide() {
     })();
     
     return initializationPromise;
+}
+
+/**
+ * Register the synchronous sub_lm JavaScript function with Python
+ */
+function registerSubLmSync() {
+    if (!pyodide || !syncEnabled) {
+        return;
+    }
+    
+    try {
+        // Create a JavaScript function that Python can call
+        const subLmSyncWrapper = (query, contextSlice) => {
+            return subLmSync(query, contextSlice);
+        };
+        
+        // Register with Python
+        pyodide.globals.set('_js_sub_lm_sync', subLmSyncWrapper);
+        pyodide.runPython(`
+_register_sub_lm_sync(_js_sub_lm_sync)
+print("[Python] Synchronous sub_lm registered")
+`);
+        
+        console.log('[REPL Worker] Synchronous sub_lm registered with Python');
+        
+    } catch (error) {
+        console.error('[REPL Worker] Failed to register sub_lm sync:', error);
+    }
 }
 
 /**
@@ -431,7 +631,16 @@ self.onmessage = async function(event) {
         switch (type) {
             case 'init':
                 await initializePyodide();
-                response = { success: true };
+                response = { success: true, syncEnabled };
+                break;
+            
+            case 'initSync':
+                // Initialize SharedArrayBuffer for synchronous sub_lm calls
+                response = initSyncBuffer(params.buffer);
+                // If Pyodide is already initialized, register the sync function
+                if (isInitialized && syncEnabled) {
+                    registerSubLmSync();
+                }
                 break;
                 
             case 'setContext':
@@ -439,7 +648,16 @@ self.onmessage = async function(event) {
                 break;
                 
             case 'execute':
+                // Reset recursion depth before execution
+                currentDepth = 0;
+                subLmCallId = 0;
+                if (pyodide) {
+                    await pyodide.runPythonAsync('reset_recursion_depth()');
+                }
                 response = await executeCode(params.code, params.timeout);
+                // Include sync mode info in response
+                response.syncEnabled = syncEnabled;
+                response.maxDepth = CONFIG.maxRecursionDepth;
                 break;
                 
             case 'getVariable':
@@ -448,7 +666,23 @@ self.onmessage = async function(event) {
                 
             case 'reset':
                 response = await resetNamespace();
+                currentDepth = 0;
+                subLmCallId = 0;
                 break;
+            
+            case 'SUB_LM_RESPONSE':
+                // Response to a sub_lm call - write to shared buffer and signal
+                if (syncEnabled && responseBuffer) {
+                    const encoder = new TextEncoder();
+                    const encoded = encoder.encode(params.response || '');
+                    const writeLength = Math.min(encoded.length, responseBuffer.length);
+                    responseBuffer.set(encoded.subarray(0, writeLength));
+                    Atomics.store(dataLengthArray, 0, writeLength);
+                    Atomics.store(syncArray, 0, 1);
+                    Atomics.notify(syncArray, 0);
+                }
+                // No response needed for this message type
+                return;
                 
             default:
                 response = { success: false, error: `Unknown message type: ${type}` };

@@ -175,11 +175,11 @@ flowchart TB
     style Insights fill:#2a2a1a,stroke:#fbbf24,color:#fff
 ```
 
-## RLM-Lite: Intelligent Query Processing
+## RLM: Recursive Language Model
 
-The Agent Orchestrator is powered by **RLM-Lite** (Recursive Language Model), based on the paper ["Recursive Language Models"](https://arxiv.org/abs/2512.24601) by Zhang, Kraska & Khattab.
+The Agent Orchestrator is powered by **RLM** (Recursive Language Model), based on the paper ["Recursive Language Models"](https://arxiv.org/abs/2512.24601) by Zhang, Kraska & Khattab.
 
-### How RLM-Lite Works
+### How RLM Works
 
 ```mermaid
 flowchart LR
@@ -219,6 +219,71 @@ flowchart LR
     style Aggregate fill:#2a1a1a,stroke:#ef4444,color:#fff
 ```
 
+### True Recursive REPL (Phase 2)
+
+The RLM now includes **true recursive reasoning** via synchronous `sub_lm()` calls from within Python code:
+
+```mermaid
+flowchart TB
+    subgraph Browser["🌐 BROWSER"]
+        subgraph MainThread["Main Thread"]
+            M1[processWithREPL]
+            M2[Generate Python Code]
+            M3[LLM Callback Handler]
+            M4[Parse Final Answer]
+        end
+        
+        subgraph WebWorker["Web Worker - Pyodide"]
+            W1[Execute Python]
+            W2["sub_lm() called"]
+            W3[Atomics.wait - BLOCK]
+            W4[Resume with result]
+            W5[Continue execution]
+        end
+        
+        subgraph SharedMem["SharedArrayBuffer"]
+            S1[Signal Array]
+            S2[Response Buffer]
+        end
+    end
+    
+    subgraph OpenAI["☁️ OpenAI API"]
+        API[GPT-5.2]
+    end
+    
+    M1 --> M2 --> W1
+    W1 --> W2 --> W3
+    W3 -.->|blocked| S1
+    W2 -->|SUB_LM request| M3
+    M3 --> API
+    API --> M3
+    M3 -->|write response| S2
+    M3 -->|notify| S1
+    S1 -.->|unblock| W3
+    W3 --> W4 --> W5 --> M4
+    
+    style MainThread fill:#1a2a1a,stroke:#4ade80,color:#fff
+    style WebWorker fill:#1a1a2a,stroke:#a855f7,color:#fff
+    style SharedMem fill:#2a2a1a,stroke:#fbbf24,color:#fff
+    style OpenAI fill:#2a1a2a,stroke:#d4a853,color:#fff
+```
+
+**Key Capabilities:**
+- **Synchronous LLM Calls**: Python code can call `sub_lm()` and immediately use the result
+- **Multi-Level Reasoning**: Chain up to 3 levels of recursive LLM calls
+- **Conditional Logic**: Branch based on LLM responses within the same execution
+- **GitHub Pages Compatible**: COI Service Worker enables SharedArrayBuffer on static hosts
+
+### Query Classification
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| **Factual** | Simple questions | "What was decided about the budget?" |
+| **Comparative** | Compare, contrast, vs | "Compare Q3 and Q4 planning outcomes" |
+| **Aggregative** | All, every, across | "Get all action items from every meeting" |
+| **Search** | Find, search, where | "Find mentions of the new product launch" |
+| **Recursive** | Analyze, patterns, why | "Analyze themes and explain their implications" |
+
 ### Query Strategies
 
 | Strategy | Trigger | How It Works |
@@ -227,6 +292,7 @@ flowchart LR
 | **Parallel** | Comparative queries | One sub-query per agent, run concurrently |
 | **Map-Reduce** | "all", "every", "across" | Query each agent → synthesize results |
 | **Iterative** | Exploratory queries | Initial query → follow-up if uncertain |
+| **REPL** | Complex analysis | Generate Python code with `sub_lm()` calls |
 
 ### Benefits
 
@@ -234,6 +300,7 @@ flowchart LR
 - **Better Accuracy**: Focused sub-queries yield more precise answers
 - **Scalability**: Handle 50+ meetings without hitting context limits
 - **Source Attribution**: Know which meeting each insight came from
+- **True Recursion**: Chain multiple LLM calls for deep analysis
 
 ## Overview
 
@@ -286,11 +353,14 @@ At-a-glance metrics displayed at the top of every analysis:
 
 ### Meeting Orchestrator
 - **Multi-Agent Coordination** - Load multiple meeting agents simultaneously
-- **RLM-Lite Powered** - Intelligent query processing with decomposition, parallel execution, and aggregation
+- **RLM Powered** - Full Recursive Language Model with true recursive reasoning
 - **Cross-Meeting Analysis** - Ask questions that span multiple meetings with automatic source attribution
 - **Pattern Recognition** - Identify trends and connections across sessions
+- **True Recursion** - Python REPL with synchronous `sub_lm()` calls for deep analysis
+- **Query Classification** - Automatic detection of factual, comparative, aggregative, search, and recursive queries
 - **Knowledge Base Visualization** - Visual chain display of loaded agents with enable/disable controls
-- **Smart Query Routing** - Automatically chooses optimal strategy (direct, parallel, map-reduce, iterative)
+- **Smart Query Routing** - Automatically chooses optimal strategy (direct, parallel, map-reduce, iterative, REPL)
+- **GitHub Pages Compatible** - COI Service Worker enables full features on static hosts
 - **Custom Branding** - Distinctive robot mascot logo representing the orchestrator's dual nature
 - Access via the Orchestrator page: https://mjamiv.github.io/vox2txt/orchestrator.html
 

@@ -4,8 +4,14 @@
  * Main interface for the REPL environment. Manages the Web Worker,
  * handles communication, and provides a clean API for the RLM pipeline.
  * 
+ * Phase 2.2: True Recursion Support
+ * - SharedArrayBuffer for synchronous sub_lm() calls
+ * - LLM callback for handling recursive calls
+ * - Depth tracking and limits
+ * 
  * Usage:
  *   const repl = new REPLEnvironment();
+ *   repl.setLLMCallback(async (query, context) => { ... });
  *   await repl.initialize();
  *   await repl.setContext(agents);
  *   const result = await repl.execute('print(list_agents())');
@@ -19,8 +25,24 @@ export const REPL_CONFIG = {
     defaultTimeout: 30000,      // 30 seconds
     initTimeout: 60000,         // 60 seconds for Pyodide initialization
     maxRetries: 2,
-    retryDelay: 1000
+    retryDelay: 1000,
+    sharedBufferSize: 65536,    // 64KB for sub_lm responses
+    maxRecursionDepth: 3,       // Max depth for sub_lm calls
+    subLmTimeout: 60000         // Timeout for individual sub_lm calls
 };
+
+/**
+ * Check if SharedArrayBuffer is supported
+ * Requires HTTPS and proper COOP/COEP headers
+ */
+export function isSharedArrayBufferSupported() {
+    try {
+        return typeof SharedArrayBuffer !== 'undefined' &&
+               typeof Atomics !== 'undefined';
+    } catch {
+        return false;
+    }
+}
 
 /**
  * REPL Environment class
@@ -35,10 +57,35 @@ export class REPLEnvironment {
         this.messageId = 0;
         this.context = null;
         
+        // Phase 2.2: Sync support for sub_lm
+        this.sharedBuffer = null;
+        this.syncArray = null;
+        this.dataLengthArray = null;
+        this.responseBuffer = null;
+        this.syncEnabled = false;
+        
+        // LLM callback for sub_lm calls
+        this.llmCallback = null;
+        this.subLmStats = {
+            totalCalls: 0,
+            successfulCalls: 0,
+            failedCalls: 0,
+            totalTime: 0
+        };
+        
         // Event callbacks
         this.onReady = null;
         this.onError = null;
         this.onOutput = null;
+        this.onSubLmCall = null;  // Called when sub_lm is invoked
+    }
+    
+    /**
+     * Set the LLM callback for handling sub_lm calls
+     * @param {Function} callback - async (query, context) => response
+     */
+    setLLMCallback(callback) {
+        this.llmCallback = callback;
     }
 
     /**
@@ -95,13 +142,30 @@ export class REPLEnvironment {
                 };
             });
             
+            // Phase 2.2: Set up SharedArrayBuffer for sync sub_lm calls
+            this._initSyncBuffer();
+            
             // Initialize Pyodide in the worker
-            await this._sendMessage('init', {}, this.config.initTimeout);
+            const initResult = await this._sendMessage('init', {}, this.config.initTimeout);
+            
+            // Send sync buffer to worker if available
+            if (this.syncEnabled) {
+                try {
+                    await this._sendMessage('initSync', { buffer: this.sharedBuffer }, 5000);
+                    console.log('[REPL] Sync buffer initialized for sub_lm support');
+                } catch (err) {
+                    console.warn('[REPL] Failed to initialize sync buffer:', err.message);
+                    this.syncEnabled = false;
+                }
+            }
             
             this.isInitialized = true;
             this.isInitializing = false;
             
-            console.log('[REPL] Environment initialized successfully');
+            console.log('[REPL] Environment initialized successfully', {
+                syncEnabled: this.syncEnabled,
+                maxDepth: this.config.maxRecursionDepth
+            });
             
             if (this.onReady) {
                 this.onReady();
@@ -111,6 +175,33 @@ export class REPLEnvironment {
             this.isInitializing = false;
             console.error('[REPL] Initialization failed:', error);
             throw error;
+        }
+    }
+    
+    /**
+     * Initialize SharedArrayBuffer for sync messaging
+     * @private
+     */
+    _initSyncBuffer() {
+        if (!isSharedArrayBufferSupported()) {
+            console.warn('[REPL] SharedArrayBuffer not supported - sub_lm will use async fallback');
+            this.syncEnabled = false;
+            return;
+        }
+        
+        try {
+            // Layout: [0-3] = signal (Int32), [4-7] = data length (Int32), [8+] = response data
+            this.sharedBuffer = new SharedArrayBuffer(this.config.sharedBufferSize);
+            this.syncArray = new Int32Array(this.sharedBuffer, 0, 1);
+            this.dataLengthArray = new Int32Array(this.sharedBuffer, 4, 1);
+            this.responseBuffer = new Uint8Array(this.sharedBuffer, 8);
+            this.syncEnabled = true;
+            
+            console.log('[REPL] SharedArrayBuffer initialized:', this.config.sharedBufferSize, 'bytes');
+            
+        } catch (error) {
+            console.warn('[REPL] Failed to create SharedArrayBuffer:', error.message);
+            this.syncEnabled = false;
         }
     }
 
@@ -227,6 +318,13 @@ export class REPLEnvironment {
         this.pendingMessages.clear();
         this.context = null;
         
+        // Clean up sync buffers
+        this.sharedBuffer = null;
+        this.syncArray = null;
+        this.dataLengthArray = null;
+        this.responseBuffer = null;
+        this.syncEnabled = false;
+        
         console.log('[REPL] Environment terminated');
     }
 
@@ -236,12 +334,32 @@ export class REPLEnvironment {
     isReady() {
         return this.isInitialized;
     }
+    
+    /**
+     * Check if synchronous sub_lm is enabled
+     */
+    isSyncEnabled() {
+        return this.syncEnabled;
+    }
 
     /**
      * Get current context
      */
     getContext() {
         return this.context;
+    }
+    
+    /**
+     * Get environment capabilities
+     */
+    getCapabilities() {
+        return {
+            isReady: this.isInitialized,
+            syncEnabled: this.syncEnabled,
+            sharedArrayBufferSupported: isSharedArrayBufferSupported(),
+            maxRecursionDepth: this.config.maxRecursionDepth,
+            hasLLMCallback: !!this.llmCallback
+        };
     }
 
     /**
@@ -286,6 +404,12 @@ export class REPLEnvironment {
             return;
         }
         
+        // Phase 2.2: Handle SUB_LM requests from worker
+        if (type === 'SUB_LM') {
+            this._handleSubLmRequest(data);
+            return;
+        }
+        
         const pending = this.pendingMessages.get(id);
         if (pending) {
             if (type === 'error') {
@@ -294,6 +418,82 @@ export class REPLEnvironment {
                 pending.resolve(data);
             }
         }
+    }
+    
+    /**
+     * Handle sub_lm request from worker
+     * Makes LLM call and writes response to shared buffer
+     * @private
+     */
+    async _handleSubLmRequest(data) {
+        const { id, query, context: contextSlice, depth } = data;
+        const startTime = Date.now();
+        
+        this.subLmStats.totalCalls++;
+        
+        console.log(`[REPL] sub_lm request #${id} at depth ${depth}:`, query.substring(0, 50) + '...');
+        
+        // Notify callback if set
+        if (this.onSubLmCall) {
+            this.onSubLmCall({ id, query, context: contextSlice, depth });
+        }
+        
+        let response = '';
+        
+        try {
+            if (!this.llmCallback) {
+                throw new Error('No LLM callback configured for sub_lm calls');
+            }
+            
+            // Make the LLM call
+            response = await Promise.race([
+                this.llmCallback(query, contextSlice),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('sub_lm timeout')), this.config.subLmTimeout)
+                )
+            ]);
+            
+            this.subLmStats.successfulCalls++;
+            this.subLmStats.totalTime += Date.now() - startTime;
+            
+            console.log(`[REPL] sub_lm #${id} completed in ${Date.now() - startTime}ms`);
+            
+        } catch (error) {
+            console.error(`[REPL] sub_lm #${id} failed:`, error.message);
+            this.subLmStats.failedCalls++;
+            response = `[Error: ${error.message}]`;
+        }
+        
+        // Write response to shared buffer and signal worker
+        if (this.syncEnabled && this.responseBuffer) {
+            const encoder = new TextEncoder();
+            const encoded = encoder.encode(response);
+            const writeLength = Math.min(encoded.length, this.responseBuffer.length);
+            
+            this.responseBuffer.set(encoded.subarray(0, writeLength));
+            Atomics.store(this.dataLengthArray, 0, writeLength);
+            Atomics.store(this.syncArray, 0, 1);
+            Atomics.notify(this.syncArray, 0);
+        } else {
+            // Fallback: send response as message (async mode)
+            this.worker.postMessage({
+                type: 'SUB_LM_RESPONSE',
+                id,
+                response
+            });
+        }
+    }
+    
+    /**
+     * Get sub_lm statistics
+     */
+    getSubLmStats() {
+        return {
+            ...this.subLmStats,
+            avgTime: this.subLmStats.successfulCalls > 0 
+                ? Math.round(this.subLmStats.totalTime / this.subLmStats.successfulCalls)
+                : 0
+        };
     }
 
     /**
