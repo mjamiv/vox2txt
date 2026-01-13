@@ -1027,9 +1027,14 @@ async function chatWithREPL(userMessage, thinkingId = null) {
 
     // Set up progress callback if we have a thinking ID
     // Phase 3.2: Now passes details for depth-based indentation
+    // Phase 3.4: Also update status bar to sync with step log
     if (thinkingId) {
         rlmPipeline.setProgressCallback((step, type, details) => {
             addThinkingStep(thinkingId, step, type, details);
+            // Update status bar for in-progress steps (not completion types)
+            if (type !== 'success' && type !== 'warning' && type !== 'cache') {
+                updateThinkingStatus(thinkingId, step);
+            }
         });
     }
 
@@ -1078,9 +1083,14 @@ async function chatWithRLM(userMessage, thinkingId = null) {
 
     // Set up progress callback if we have a thinking ID
     // Phase 3.2: Now passes details for depth-based indentation
+    // Phase 3.4: Also update status bar to sync with step log
     if (thinkingId) {
         rlmPipeline.setProgressCallback((step, type, details) => {
             addThinkingStep(thinkingId, step, type, details);
+            // Update status bar for in-progress steps (not completion types)
+            if (type !== 'success' && type !== 'warning' && type !== 'cache') {
+                updateThinkingStatus(thinkingId, step);
+            }
         });
     }
 
