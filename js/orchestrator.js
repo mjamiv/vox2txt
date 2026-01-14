@@ -40,11 +40,16 @@ const PRICING = {
     'gpt-5-nano': { input: 0.05, output: 0.40 }     // Fastest, cheapest
 };
 
-// Metrics tracking for current session
+// Metrics tracking for current session - ENHANCED per-prompt logging
 let currentMetrics = {
+    // Running totals
     gptInputTokens: 0,
     gptOutputTokens: 0,
-    apiCalls: []
+    totalCost: 0,
+    totalResponseTime: 0,
+    
+    // Per-prompt detailed logs (each API call tracked separately)
+    promptLogs: []
 };
 
 // Metrics card state
@@ -52,6 +57,12 @@ let metricsState = {
     isPinned: false,
     autoCollapseTimeout: null
 };
+
+// Generate unique ID for each prompt log
+let promptLogIdCounter = 0;
+function generatePromptLogId() {
+    return `prompt-${++promptLogIdCounter}-${Date.now()}`;
+}
 
 // ============================================
 // DOM Elements
@@ -1652,10 +1663,14 @@ function buildAPIRequestBody(messages, maxTokens = 4000) {
 async function callGPT(systemPrompt, userContent, callName = 'API Call') {
     return await callAPIWithRetry(async () => {
         const model = state.settings.model;
+        const effort = state.settings.effort;
         const messages = [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userContent }
         ];
+        
+        // Track request start time
+        const startTime = performance.now();
         
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -1666,6 +1681,9 @@ async function callGPT(systemPrompt, userContent, callName = 'API Call') {
             body: JSON.stringify(buildAPIRequestBody(messages, 4000))
         });
 
+        // Calculate response time
+        const responseTime = Math.round(performance.now() - startTime);
+
         if (!response.ok) {
             const error = await response.json().catch(() => ({}));
             const err = new Error(error.error?.message || `API error: ${response.status}`);
@@ -1675,16 +1693,51 @@ async function callGPT(systemPrompt, userContent, callName = 'API Call') {
 
         const data = await response.json();
 
-        // Track token usage
+        // Track detailed metrics per prompt
         if (data.usage) {
-            currentMetrics.gptInputTokens += data.usage.prompt_tokens || 0;
-            currentMetrics.gptOutputTokens += data.usage.completion_tokens || 0;
-            currentMetrics.apiCalls.push({
+            const inputTokens = data.usage.prompt_tokens || 0;
+            const outputTokens = data.usage.completion_tokens || 0;
+            
+            // Calculate cost for this call
+            const pricing = PRICING[model] || PRICING['gpt-5.2'];
+            const inputCost = (inputTokens / 1000000) * pricing.input;
+            const outputCost = (outputTokens / 1000000) * pricing.output;
+            const callCost = inputCost + outputCost;
+            
+            // Update running totals
+            currentMetrics.gptInputTokens += inputTokens;
+            currentMetrics.gptOutputTokens += outputTokens;
+            currentMetrics.totalCost += callCost;
+            currentMetrics.totalResponseTime += responseTime;
+            
+            // Create detailed prompt log entry
+            const promptLog = {
+                id: generatePromptLogId(),
+                timestamp: new Date().toISOString(),
                 name: callName,
                 model: model,
-                inputTokens: data.usage.prompt_tokens || 0,
-                outputTokens: data.usage.completion_tokens || 0
-            });
+                settings: {
+                    effort: model === 'gpt-5.2' ? effort : 'N/A',
+                    maxTokens: 4000
+                },
+                tokens: {
+                    input: inputTokens,
+                    output: outputTokens,
+                    total: inputTokens + outputTokens
+                },
+                cost: {
+                    input: inputCost,
+                    output: outputCost,
+                    total: callCost
+                },
+                responseTime: responseTime,
+                // Response fidelity/confidence - extracted from API response if available
+                confidence: extractConfidenceMetrics(data),
+                // Store prompt preview for debugging
+                promptPreview: userContent.substring(0, 100) + (userContent.length > 100 ? '...' : '')
+            };
+            
+            currentMetrics.promptLogs.push(promptLog);
             updateMetricsDisplay();
         }
 
@@ -1695,6 +1748,10 @@ async function callGPT(systemPrompt, userContent, callName = 'API Call') {
 async function callGPTWithMessages(messages, callName = 'Chat Query') {
     return await callAPIWithRetry(async () => {
         const model = state.settings.model;
+        const effort = state.settings.effort;
+        
+        // Track request start time
+        const startTime = performance.now();
         
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -1705,6 +1762,9 @@ async function callGPTWithMessages(messages, callName = 'Chat Query') {
             body: JSON.stringify(buildAPIRequestBody(messages, 2000))
         });
 
+        // Calculate response time
+        const responseTime = Math.round(performance.now() - startTime);
+
         if (!response.ok) {
             const error = await response.json().catch(() => ({}));
             const err = new Error(error.error?.message || `API error: ${response.status}`);
@@ -1714,16 +1774,56 @@ async function callGPTWithMessages(messages, callName = 'Chat Query') {
 
         const data = await response.json();
 
-        // Track token usage
+        // Track detailed metrics per prompt
         if (data.usage) {
-            currentMetrics.gptInputTokens += data.usage.prompt_tokens || 0;
-            currentMetrics.gptOutputTokens += data.usage.completion_tokens || 0;
-            currentMetrics.apiCalls.push({
+            const inputTokens = data.usage.prompt_tokens || 0;
+            const outputTokens = data.usage.completion_tokens || 0;
+            
+            // Calculate cost for this call
+            const pricing = PRICING[model] || PRICING['gpt-5.2'];
+            const inputCost = (inputTokens / 1000000) * pricing.input;
+            const outputCost = (outputTokens / 1000000) * pricing.output;
+            const callCost = inputCost + outputCost;
+            
+            // Update running totals
+            currentMetrics.gptInputTokens += inputTokens;
+            currentMetrics.gptOutputTokens += outputTokens;
+            currentMetrics.totalCost += callCost;
+            currentMetrics.totalResponseTime += responseTime;
+            
+            // Extract user message for preview (last user message)
+            const userMessage = messages.filter(m => m.role === 'user').pop();
+            const promptPreview = userMessage ? 
+                userMessage.content.substring(0, 100) + (userMessage.content.length > 100 ? '...' : '') :
+                '(No user message)';
+            
+            // Create detailed prompt log entry
+            const promptLog = {
+                id: generatePromptLogId(),
+                timestamp: new Date().toISOString(),
                 name: callName,
                 model: model,
-                inputTokens: data.usage.prompt_tokens || 0,
-                outputTokens: data.usage.completion_tokens || 0
-            });
+                settings: {
+                    effort: model === 'gpt-5.2' ? effort : 'N/A',
+                    maxTokens: 2000
+                },
+                tokens: {
+                    input: inputTokens,
+                    output: outputTokens,
+                    total: inputTokens + outputTokens
+                },
+                cost: {
+                    input: inputCost,
+                    output: outputCost,
+                    total: callCost
+                },
+                responseTime: responseTime,
+                // Response fidelity/confidence - extracted from API response if available
+                confidence: extractConfidenceMetrics(data),
+                promptPreview: promptPreview
+            };
+            
+            currentMetrics.promptLogs.push(promptLog);
             updateMetricsDisplay();
         }
 
@@ -1731,22 +1831,74 @@ async function callGPTWithMessages(messages, callName = 'Chat Query') {
     }, 3, callName);
 }
 
+/**
+ * Extract confidence/fidelity metrics from API response
+ * OpenAI API may include logprobs or other confidence indicators
+ * @param {Object} data - API response data
+ * @returns {Object} Confidence metrics
+ */
+function extractConfidenceMetrics(data) {
+    const choice = data.choices?.[0];
+    if (!choice) return { available: false };
+    
+    const metrics = {
+        available: false,
+        finishReason: choice.finish_reason || 'unknown',
+        // Model's own assessment (if using reasoning effort)
+        reasoningTokens: null,
+        // Logprobs if available (requires logprobs=true in request)
+        avgLogprob: null,
+        // Token confidence scores if available
+        tokenConfidences: null
+    };
+    
+    // Check for logprobs (if requested in API call)
+    if (choice.logprobs?.content) {
+        const logprobs = choice.logprobs.content;
+        if (logprobs.length > 0) {
+            // Calculate average log probability (higher = more confident)
+            const avgLogprob = logprobs.reduce((sum, t) => sum + (t.logprob || 0), 0) / logprobs.length;
+            // Convert to probability (0-1 scale)
+            metrics.avgLogprob = Math.exp(avgLogprob);
+            metrics.available = true;
+        }
+    }
+    
+    // Check for reasoning tokens (GPT-5.2 with reasoning effort)
+    if (data.usage?.completion_tokens_details?.reasoning_tokens) {
+        metrics.reasoningTokens = data.usage.completion_tokens_details.reasoning_tokens;
+        metrics.available = true;
+    }
+    
+    // Finish reason can indicate confidence issues
+    if (choice.finish_reason === 'length') {
+        // Response was truncated - lower confidence in completeness
+        metrics.truncated = true;
+    }
+    
+    return metrics;
+}
+
 // ============================================
 // Metrics Display & Management
 // ============================================
 
 function calculateMetrics() {
-    // Calculate costs based on actual models used in each call
+    // Calculate totals from prompt logs
     let inputCost = 0;
     let outputCost = 0;
+    let totalResponseTime = 0;
     
-    currentMetrics.apiCalls.forEach(call => {
-        const pricing = PRICING[call.model] || PRICING['gpt-5.2'];
-        inputCost += (call.inputTokens / 1000000) * pricing.input;
-        outputCost += (call.outputTokens / 1000000) * pricing.output;
+    currentMetrics.promptLogs.forEach(log => {
+        inputCost += log.cost.input;
+        outputCost += log.cost.output;
+        totalResponseTime += log.responseTime;
     });
     
     const totalCost = inputCost + outputCost;
+    const avgResponseTime = currentMetrics.promptLogs.length > 0 
+        ? Math.round(totalResponseTime / currentMetrics.promptLogs.length) 
+        : 0;
 
     return {
         gptInputTokens: currentMetrics.gptInputTokens,
@@ -1755,7 +1907,10 @@ function calculateMetrics() {
         inputCost,
         outputCost,
         totalCost,
-        apiCalls: currentMetrics.apiCalls
+        totalResponseTime,
+        avgResponseTime,
+        promptCount: currentMetrics.promptLogs.length,
+        promptLogs: currentMetrics.promptLogs
     };
 }
 
@@ -1772,42 +1927,57 @@ function updateMetricsDisplay() {
 
     const metrics = calculateMetrics();
 
-    // Build API calls breakdown
-    let breakdownHtml = '';
-    metrics.apiCalls.forEach((call, idx) => {
-        const totalTokens = call.inputTokens + call.outputTokens;
-        breakdownHtml += `
-            <div class="metric-breakdown-item">
-                <span>${call.name}</span>
-                <span>${formatTokens(totalTokens)} tokens</span>
-            </div>`;
-    });
+    // Build detailed per-prompt logs (most recent first)
+    const promptLogsHtml = buildPromptLogsHtml(metrics.promptLogs);
 
     elements.metricsContent.innerHTML = `
-        <div class="metrics-grid">
-            <div class="metric-item">
-                <span class="metric-value">${formatTokens(metrics.totalTokens)}</span>
-                <span class="metric-label">Total Tokens</span>
+        <!-- Summary Totals Section -->
+        <div class="metrics-summary">
+            <div class="metrics-summary-header">📊 Session Summary</div>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <span class="metric-value">${formatTokens(metrics.totalTokens)}</span>
+                    <span class="metric-label">Total Tokens</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-value">${formatCost(metrics.totalCost)}</span>
+                    <span class="metric-label">Est. Cost</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-value">${metrics.promptCount}</span>
+                    <span class="metric-label">API Calls</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-value">${formatTime(metrics.avgResponseTime)}</span>
+                    <span class="metric-label">Avg Response</span>
+                </div>
             </div>
-            <div class="metric-item">
-                <span class="metric-value">${formatCost(metrics.totalCost)}</span>
-                <span class="metric-label">Est. Cost</span>
+            <div class="metric-breakdown">
+                <div class="metric-breakdown-item">
+                    <span>📥 Input Tokens</span>
+                    <span>${formatTokens(metrics.gptInputTokens)} (${formatCost(metrics.inputCost)})</span>
+                </div>
+                <div class="metric-breakdown-item">
+                    <span>📤 Output Tokens</span>
+                    <span>${formatTokens(metrics.gptOutputTokens)} (${formatCost(metrics.outputCost)})</span>
+                </div>
+                <div class="metric-breakdown-item">
+                    <span>⏱️ Total Time</span>
+                    <span>${formatTime(metrics.totalResponseTime)}</span>
+                </div>
             </div>
         </div>
-        <div class="metric-breakdown">
-            <div class="metric-breakdown-item">
-                <span>GPT-5.2 Input</span>
-                <span>${formatTokens(metrics.gptInputTokens)} tokens (${formatCost(metrics.inputCost)})</span>
+        
+        <!-- Detailed Per-Prompt Logs Section -->
+        ${metrics.promptLogs.length > 0 ? `
+        <div class="metrics-prompt-logs">
+            <div class="prompt-logs-header">
+                <span>📝 Prompt-by-Prompt Breakdown</span>
+                <span class="prompt-logs-count">${metrics.promptCount} calls</span>
             </div>
-            <div class="metric-breakdown-item">
-                <span>GPT-5.2 Output</span>
-                <span>${formatTokens(metrics.gptOutputTokens)} tokens (${formatCost(metrics.outputCost)})</span>
+            <div class="prompt-logs-list">
+                ${promptLogsHtml}
             </div>
-        </div>
-        ${metrics.apiCalls.length > 0 ? `
-        <div class="metric-breakdown" style="margin-top: var(--space-sm);">
-            <strong style="color: var(--text-secondary);">API Calls (${metrics.apiCalls.length}):</strong>
-            ${breakdownHtml}
         </div>` : ''}
     `;
 
@@ -1824,6 +1994,150 @@ function updateMetricsDisplay() {
         // Auto-collapse after 10 seconds if not pinned
         scheduleAutoCollapse();
     }
+}
+
+/**
+ * Build HTML for detailed prompt logs
+ * Shows each API call with model, settings, tokens, cost, time, and confidence
+ */
+function buildPromptLogsHtml(promptLogs) {
+    if (!promptLogs || promptLogs.length === 0) return '';
+    
+    // Show most recent first
+    const reversedLogs = [...promptLogs].reverse();
+    
+    return reversedLogs.map((log, index) => {
+        const logNumber = promptLogs.length - index;
+        const timestamp = formatTimestamp(log.timestamp);
+        const confidenceHtml = buildConfidenceHtml(log.confidence);
+        
+        // Model display name with effort indicator
+        const modelDisplay = log.model === 'gpt-5.2' && log.settings.effort !== 'none' 
+            ? `${log.model} (${log.settings.effort} effort)`
+            : log.model;
+        
+        return `
+        <details class="prompt-log-entry" id="${log.id}">
+            <summary class="prompt-log-header">
+                <span class="prompt-log-number">#${logNumber}</span>
+                <span class="prompt-log-name">${escapeHtml(log.name)}</span>
+                <span class="prompt-log-cost">${formatCost(log.cost.total)}</span>
+                <span class="prompt-log-time">${formatTime(log.responseTime)}</span>
+            </summary>
+            <div class="prompt-log-details">
+                <div class="prompt-log-row">
+                    <span class="log-label">🤖 Model:</span>
+                    <span class="log-value model-tag">${modelDisplay}</span>
+                </div>
+                <div class="prompt-log-row">
+                    <span class="log-label">⏰ Time:</span>
+                    <span class="log-value">${timestamp}</span>
+                </div>
+                <div class="prompt-log-row">
+                    <span class="log-label">📥 Input:</span>
+                    <span class="log-value">${formatTokens(log.tokens.input)} tokens (${formatCost(log.cost.input)})</span>
+                </div>
+                <div class="prompt-log-row">
+                    <span class="log-label">📤 Output:</span>
+                    <span class="log-value">${formatTokens(log.tokens.output)} tokens (${formatCost(log.cost.output)})</span>
+                </div>
+                <div class="prompt-log-row">
+                    <span class="log-label">⏱️ Response:</span>
+                    <span class="log-value">${formatTime(log.responseTime)}</span>
+                </div>
+                <div class="prompt-log-row">
+                    <span class="log-label">💰 Cost:</span>
+                    <span class="log-value cost-highlight">${formatCost(log.cost.total)}</span>
+                </div>
+                ${confidenceHtml}
+                <div class="prompt-log-row prompt-preview">
+                    <span class="log-label">💬 Prompt:</span>
+                    <span class="log-value prompt-text">${escapeHtml(log.promptPreview)}</span>
+                </div>
+            </div>
+        </details>`;
+    }).join('');
+}
+
+/**
+ * Build confidence/fidelity display HTML
+ */
+function buildConfidenceHtml(confidence) {
+    if (!confidence || !confidence.available) {
+        return `
+        <div class="prompt-log-row">
+            <span class="log-label">🎯 Confidence:</span>
+            <span class="log-value confidence-na">N/A (request logprobs for confidence data)</span>
+        </div>`;
+    }
+    
+    let confidenceItems = [];
+    
+    if (confidence.finishReason) {
+        const reasonIcon = confidence.finishReason === 'stop' ? '✅' : 
+                          confidence.finishReason === 'length' ? '⚠️' : '❓';
+        confidenceItems.push(`
+            <div class="prompt-log-row">
+                <span class="log-label">🏁 Finish:</span>
+                <span class="log-value">${reasonIcon} ${confidence.finishReason}</span>
+            </div>`);
+    }
+    
+    if (confidence.reasoningTokens !== null) {
+        confidenceItems.push(`
+            <div class="prompt-log-row">
+                <span class="log-label">🧠 Reasoning:</span>
+                <span class="log-value">${formatTokens(confidence.reasoningTokens)} tokens</span>
+            </div>`);
+    }
+    
+    if (confidence.avgLogprob !== null) {
+        const confidencePercent = Math.round(confidence.avgLogprob * 100);
+        const confidenceClass = confidencePercent >= 80 ? 'high' : 
+                               confidencePercent >= 50 ? 'medium' : 'low';
+        confidenceItems.push(`
+            <div class="prompt-log-row">
+                <span class="log-label">🎯 Confidence:</span>
+                <span class="log-value confidence-${confidenceClass}">${confidencePercent}%</span>
+            </div>`);
+    }
+    
+    if (confidence.truncated) {
+        confidenceItems.push(`
+            <div class="prompt-log-row">
+                <span class="log-label">⚠️ Warning:</span>
+                <span class="log-value warning-text">Response was truncated</span>
+            </div>`);
+    }
+    
+    return confidenceItems.length > 0 ? confidenceItems.join('') : `
+        <div class="prompt-log-row">
+            <span class="log-label">🎯 Confidence:</span>
+            <span class="log-value">Completed (${confidence.finishReason || 'unknown'})</span>
+        </div>`;
+}
+
+/**
+ * Format time in milliseconds to human readable string
+ */
+function formatTime(ms) {
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.round((ms % 60000) / 1000);
+    return `${minutes}m ${seconds}s`;
+}
+
+/**
+ * Format timestamp for display
+ */
+function formatTimestamp(isoString) {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+    });
 }
 
 function scheduleAutoCollapse() {
@@ -1850,8 +2164,11 @@ function resetMetrics() {
     currentMetrics = {
         gptInputTokens: 0,
         gptOutputTokens: 0,
-        apiCalls: []
+        totalCost: 0,
+        totalResponseTime: 0,
+        promptLogs: []
     };
+    promptLogIdCounter = 0;
     updateMetricsDisplay();
     if (elements.metricsCard) {
         elements.metricsCard.classList.add('hidden');
