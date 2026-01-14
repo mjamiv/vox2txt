@@ -45,7 +45,7 @@ const state = {
 // Pricing Configuration (per 1M tokens / per minute / per unit)
 // ============================================
 const PRICING = {
-    'gpt-5.2': {
+    'gpt-4o': {
         input: 2.50,   // $ per 1M input tokens
         output: 10.00  // $ per 1M output tokens
     },
@@ -902,7 +902,7 @@ async function analyzeImageWithVision(base64Image) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: 'gpt-5.2',
+            model: 'gpt-4o',
             messages: [
                 {
                     role: 'system',
@@ -953,7 +953,7 @@ Be thorough and capture every piece of text visible in the image.`
     }
     currentMetrics.apiCalls.push({
         endpoint: 'chat/completions (vision)',
-        model: 'gpt-5.2',
+        model: 'gpt-4o',
         tokens: data.usage?.total_tokens || 0
     });
 
@@ -1223,7 +1223,7 @@ async function callChatAPI(systemPrompt, userContent, callName = 'API Call', use
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'gpt-5.2',
+                model: 'gpt-4o',
                 temperature: 0,
                 messages: [
                     { role: 'system', content: systemPrompt },
@@ -1247,7 +1247,7 @@ async function callChatAPI(systemPrompt, userContent, callName = 'API Call', use
             currentMetrics.gptOutputTokens += data.usage.completion_tokens || 0;
             currentMetrics.apiCalls.push({
                 name: callName,
-                model: 'gpt-5.2',
+                model: 'gpt-4o',
                 inputTokens: data.usage.prompt_tokens || 0,
                 outputTokens: data.usage.completion_tokens || 0
             });
@@ -1363,8 +1363,8 @@ Respond with exactly one word: "Positive", "Negative", or "Neutral".`;
 // ============================================
 function calculateMetrics() {
     const whisperCost = currentMetrics.whisperMinutes * PRICING['whisper-1'].perMinute;
-    const gptInputCost = (currentMetrics.gptInputTokens / 1000000) * PRICING['gpt-5.2'].input;
-    const gptOutputCost = (currentMetrics.gptOutputTokens / 1000000) * PRICING['gpt-5.2'].output;
+    const gptInputCost = (currentMetrics.gptInputTokens / 1000000) * PRICING['gpt-4o'].input;
+    const gptOutputCost = (currentMetrics.gptOutputTokens / 1000000) * PRICING['gpt-4o'].output;
     const ttsCost = (currentMetrics.ttsCharacters / 1000) * PRICING['gpt-4o-mini-tts'].perKChars;
     const imageInputCost = (currentMetrics.imageInputTokens / 1000000) * PRICING['gpt-image-1.5'].input;
     const imageOutputCost = (currentMetrics.imageOutputTokens / 1000000) * PRICING['gpt-image-1.5'].output;
@@ -3233,7 +3233,7 @@ async function chatWithData(context, history) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: 'gpt-5.2',
+            model: 'gpt-4o',
             messages: messages,
             max_completion_tokens: 1000,
             temperature: 0.7
@@ -3253,7 +3253,7 @@ async function chatWithData(context, history) {
     currentMetrics.gptOutputTokens += usage.completion_tokens || 0;
     currentMetrics.apiCalls.push({
         name: 'Chat Query',
-        model: 'gpt-5.2',
+        model: 'gpt-4o',
         inputTokens: usage.prompt_tokens || 0,
         outputTokens: usage.completion_tokens || 0
     });

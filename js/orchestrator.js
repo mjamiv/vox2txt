@@ -27,18 +27,17 @@ const state = {
     chatHistory: [],
     isProcessing: false,
     settings: {
-        model: 'gpt-5.2',      // 'gpt-5.2', 'gpt-5-mini', or 'gpt-5-nano'
-        effort: 'medium',      // 'low', 'medium', 'high' (only for gpt-5.2)
+        model: 'gpt-4o',       // 'gpt-4o', 'gpt-4o-mini', or 'gpt-3.5-turbo'
+        effort: 'medium',      // 'low', 'medium', 'high' (placeholder - not used in API)
         useRLM: true           // Enable/disable RLM processing
     }
 };
 
-// Model pricing (per 1M tokens)
-// Model pricing (per 1M tokens) - from OpenAI docs
+// Model pricing (per 1M tokens) - from OpenAI docs (January 2025)
 const PRICING = {
-    'gpt-5.2': { input: 2.50, output: 10.00 },      // Full reasoning model
-    'gpt-5-mini': { input: 0.25, output: 2.00 },    // Fast, cost-efficient
-    'gpt-5-nano': { input: 0.05, output: 0.40 }     // Fastest, cheapest
+    'gpt-4o': { input: 2.50, output: 10.00 },           // Full capability model
+    'gpt-4o-mini': { input: 0.15, output: 0.60 },       // Fast, cost-efficient
+    'gpt-3.5-turbo': { input: 0.50, output: 1.50 }      // Legacy model
 };
 
 // Metrics tracking for current session
@@ -265,8 +264,9 @@ function updateSettingsUI() {
  */
 function updateEffortVisibility() {
     if (elements.effortGroup) {
-        // Only show effort for GPT-5.2 (reasoning model), not for mini
-        const showEffort = state.settings.model === 'gpt-5.2';
+        // Only show effort for GPT-4o (main model)
+        // Effort is a UI-only setting for potential future use
+        const showEffort = state.settings.model === 'gpt-4o';
         elements.effortGroup.style.display = showEffort ? 'flex' : 'none';
     }
 }
@@ -1064,8 +1064,8 @@ async function sendChatMessage() {
         const useREPL = rlmEnabled && rlmPipeline.shouldUseREPL && rlmPipeline.shouldUseREPL(message);
         const useRLM = rlmEnabled && !useREPL && rlmPipeline.shouldUseRLM(message);
         const activeAgentCount = state.agents.filter(a => a.enabled).length;
-        const modelNames = { 'gpt-5.2': 'GPT-5.2', 'gpt-5-mini': 'GPT-5-mini', 'gpt-5-nano': 'GPT-5-nano' };
-        const modelName = modelNames[state.settings.model] || 'GPT-5.2';
+        const modelNames = { 'gpt-4o': 'GPT-4o', 'gpt-4o-mini': 'GPT-4o-mini', 'gpt-3.5-turbo': 'GPT-3.5-turbo' };
+        const modelName = modelNames[state.settings.model] || 'GPT-4o';
 
         // Update title based on mode
         if (useREPL) {
@@ -1587,35 +1587,21 @@ async function callAPIWithRetry(fn, maxRetries = 3, operation = 'API call') {
 
 /**
  * Build the API request body with model settings
- * 
- * Per OpenAI API guidance (2026):
- * - reasoning.effort: 'none' | 'low' | 'medium' | 'high' | 'xhigh'
- *   - Default is 'none' (favors speed)
- *   - 'xhigh' is new in GPT-5.2 for deeper reasoning
- * - Only GPT-5.2 supports reasoning effort and temperature
- * - GPT-5-mini and GPT-5-nano only support temperature=1 (default)
+ *
+ * Per OpenAI API guidance (January 2025):
+ * - All models (gpt-4o, gpt-4o-mini, gpt-3.5-turbo) support temperature
+ * - The effort parameter is a UI-only setting for future use, not sent to API
+ * - Using standard parameters supported by all current OpenAI models
  */
 function buildAPIRequestBody(messages, maxTokens = 4000) {
     const model = state.settings.model;
     const body = {
         model: model,
         messages: messages,
-        max_completion_tokens: maxTokens
+        max_completion_tokens: maxTokens,
+        temperature: 0.7  // All current models support temperature
     };
-    
-    // Only GPT-5.2 supports custom temperature (mini/nano only support default=1)
-    if (model === 'gpt-5.2') {
-        body.temperature = 0.7;
-        
-        // Add reasoning.effort for GPT-5.2
-        // Format: { reasoning: { effort: "value" } }
-        if (state.settings.effort && state.settings.effort !== 'none') {
-            body.reasoning = {
-                effort: state.settings.effort
-            };
-        }
-    }
-    
+
     return body;
 }
 
@@ -1711,7 +1697,7 @@ function calculateMetrics() {
     let outputCost = 0;
     
     currentMetrics.apiCalls.forEach(call => {
-        const pricing = PRICING[call.model] || PRICING['gpt-5.2'];
+        const pricing = PRICING[call.model] || PRICING['gpt-4o'];
         inputCost += (call.inputTokens / 1000000) * pricing.input;
         outputCost += (call.outputTokens / 1000000) * pricing.output;
     });
