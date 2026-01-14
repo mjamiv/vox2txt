@@ -771,12 +771,13 @@ Be concise and focus only on information relevant to the question.`;
     /**
      * Check if a query should use REPL execution
      * @param {string} query - User query
+     * @param {{ auto?: boolean }} options - Auto-route REPL only for ambiguous prompts when true
      * @returns {boolean}
      */
-    shouldUseREPL(query) {
+    shouldUseREPL(query, { auto = true } = {}) {
         if (!this.config.enableREPL) return false;
         if (!isREPLSupported()) return false;
-        if (!this._isAmbiguousQuery(query)) return false;
+        if (auto && !this._isAmbiguousQuery(query)) return false;
 
         // Queries that benefit from code execution
         const replPatterns = [
@@ -835,10 +836,12 @@ Be concise and focus only on information relevant to the question.`;
     /**
      * Check if RLM should be used for a query
      * @param {string} query - User query
+     * @param {{ auto?: boolean }} options - Auto-route RLM only for ambiguous prompts when true
      * @returns {boolean} Whether to use RLM
      */
-    shouldUseRLM(query) {
+    shouldUseRLM(query, { auto = true } = {}) {
         if (!this.config.enableRLM) return false;
+        if (!auto) return true;
         return this._isAmbiguousQuery(query);
     }
 
