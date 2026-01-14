@@ -776,6 +776,7 @@ Be concise and focus only on information relevant to the question.`;
     shouldUseREPL(query) {
         if (!this.config.enableREPL) return false;
         if (!isREPLSupported()) return false;
+        if (!this._isAmbiguousQuery(query)) return false;
 
         // Queries that benefit from code execution
         const replPatterns = [
@@ -838,21 +839,41 @@ Be concise and focus only on information relevant to the question.`;
      */
     shouldUseRLM(query) {
         if (!this.config.enableRLM) return false;
+        return this._isAmbiguousQuery(query);
+    }
 
-        const stats = this.contextStore.getStats();
+    /**
+     * Heuristic ambiguity detector for routing RLM only on unclear prompts.
+     * @param {string} query - User query
+     * @returns {boolean}
+     */
+    _isAmbiguousQuery(query) {
+        const normalizedQuery = (query || '').trim();
+        if (!normalizedQuery) return true;
 
-        // Use RLM if we have 3+ agents (decomposition beneficial)
-        if (stats.activeAgents >= 3) return true;
+        const tokenCount = normalizedQuery.split(/\s+/).filter(Boolean).length;
+        if (tokenCount <= 3) return true;
 
-        // Use RLM for complex queries even with fewer agents
-        const complexityIndicators = [
-            /compare|contrast|differ/i,
-            /all|every|across/i,
-            /pattern|trend|theme/i,
-            /\?.*\?/  // Multiple questions
+        const ambiguityIndicators = [
+            // Vague referents without context
+            /\b(this|that|these|those|it|they|them|do it|do that|fix it|make it)\b/i,
+            // Undefined scope or targets
+            /\b(something|anything|stuff|etc\.?)\b/i,
+            // Multiple possible interpretations
+            /\b(or|either)\b/i,
+            // Explicit uncertainty
+            /\b(not sure|unsure|maybe|kind of|sort of|roughly)\b/i
         ];
 
-        return complexityIndicators.some(pattern => pattern.test(query));
+        if (ambiguityIndicators.some(pattern => pattern.test(normalizedQuery))) {
+            return true;
+        }
+
+        // If multiple questions are asked, treat as ambiguous to decompose.
+        const questionCount = (normalizedQuery.match(/\?/g) || []).length;
+        if (questionCount > 1) return true;
+
+        return false;
     }
 
     /**
