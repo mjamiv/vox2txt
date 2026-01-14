@@ -40,6 +40,14 @@ const PRICING = {
     'gpt-5-nano': { input: 0.05, output: 0.40 }     // Fastest, cheapest
 };
 
+// Model-specific max completion token limits
+// Smaller models may have stricter limits to prevent truncation issues
+const MODEL_TOKEN_LIMITS = {
+    'gpt-5.2': 4000,      // Full model, higher limit
+    'gpt-5-mini': 2000,   // Medium limit
+    'gpt-5-nano': 1000    // Lower limit to prevent truncation
+};
+
 // Metrics tracking for current session - ENHANCED per-prompt logging
 let currentMetrics = {
     // Running totals
@@ -88,7 +96,9 @@ function startPromptGroup(queryName, usesRLM = false, mode = 'direct') {
         subCalls: [],  // Individual API calls within this group
         tokens: { input: 0, output: 0, total: 0 },
         cost: { input: 0, output: 0, total: 0 },
-        confidence: { available: false, samples: [] }
+        confidence: { available: false, samples: [] },
+        emptyResponse: false,  // Track if any sub-call had empty response
+        maxRetryAttempt: 0  // Track maximum retry attempts across sub-calls
     };
     return activePromptGroup.id;
 }
@@ -100,9 +110,34 @@ function endPromptGroup() {
     console.log('[Metrics] endPromptGroup called, activePromptGroup:', !!activePromptGroup);
     if (!activePromptGroup) return;
     
-    // Calculate total response time
+    // Calculate total response time (wall-clock time for entire group, not sum of sub-calls)
     activePromptGroup.responseTime = Math.round(performance.now() - activePromptGroup.startTime);
     console.log('[Metrics] Ending prompt group:', activePromptGroup.name, 'with', activePromptGroup.subCalls?.length || 0, 'sub-calls');
+    
+    // Aggregate finish reasons from sub-calls (priority: content_filter > length > stop_sequence > stop > unknown)
+    if (activePromptGroup.subCalls && activePromptGroup.subCalls.length > 0) {
+        const finishReasonPriority = {
+            'content_filter': 4,
+            'length': 3,
+            'stop_sequence': 2,
+            'stop': 1,
+            'unknown': 0
+        };
+        
+        let highestPriorityReason = 'stop';
+        let highestPriority = 1;
+        
+        activePromptGroup.subCalls.forEach(subCall => {
+            const reason = subCall.finishReason || 'unknown';
+            const priority = finishReasonPriority[reason] !== undefined ? finishReasonPriority[reason] : 0;
+            if (priority > highestPriority) {
+                highestPriority = priority;
+                highestPriorityReason = reason;
+            }
+        });
+        
+        activePromptGroup.finishReason = highestPriorityReason;
+    }
     
     // Aggregate confidence from sub-calls (with safe null checks)
     if (activePromptGroup.confidence && activePromptGroup.confidence.samples && activePromptGroup.confidence.samples.length > 0) {
@@ -162,6 +197,14 @@ function addAPICallToMetrics(callData) {
         activePromptGroup.cost.output += callData.cost.output;
         activePromptGroup.cost.total += callData.cost.total;
         
+        // Track empty responses and retry attempts
+        if (callData.emptyResponse) {
+            activePromptGroup.emptyResponse = true;
+        }
+        if (callData.retryAttempt && callData.retryAttempt > activePromptGroup.maxRetryAttempt) {
+            activePromptGroup.maxRetryAttempt = callData.retryAttempt;
+        }
+        
         // Collect confidence samples
         if (callData.confidence) {
             activePromptGroup.confidence.samples.push(callData.confidence);
@@ -182,7 +225,10 @@ function addAPICallToMetrics(callData) {
             cost: callData.cost,
             confidence: callData.confidence,
             promptPreview: callData.promptPreview,
-            response: callData.response  // Store the response from the call
+            response: callData.response,  // Store the response from the call
+            emptyResponse: callData.emptyResponse || false,  // Track empty responses
+            finishReason: callData.finishReason || 'unknown',  // Track finish reason
+            retryAttempt: callData.retryAttempt || 0  // Track retry attempts
         };
         currentMetrics.promptLogs.push(standaloneEntry);
         currentMetrics.totalResponseTime += callData.responseTime;
@@ -1316,7 +1362,24 @@ async function sendChatMessage() {
             activePromptGroup.response = `Error: ${error.message}`;
         }
         removeThinkingIndicator(thinkingId);
-        appendChatMessage('assistant', `Sorry, I encountered an error: ${error.message}`);
+        
+        // Enhanced error messages with model-specific guidance
+        let errorMessage = `Sorry, I encountered an error: ${error.message}`;
+        const modelNames = { 'gpt-5.2': 'GPT-5.2', 'gpt-5-mini': 'GPT-5-mini', 'gpt-5-nano': 'GPT-5-nano' };
+        const modelName = modelNames[state.settings.model] || state.settings.model;
+        
+        // Provide helpful guidance based on error type
+        if (error.message.includes('content_filter')) {
+            errorMessage = `The ${modelName} response was filtered by content policy. Please try rephrasing your query.`;
+        } else if (error.message.includes('truncated') || error.message.includes('max tokens')) {
+            errorMessage = `The ${modelName} response was truncated. Try a shorter query or switch to a model with higher token limits.`;
+        } else if (error.message.includes('empty response')) {
+            errorMessage = `The ${modelName} model returned an empty response after multiple attempts. This may indicate an issue with the model or query. Try switching to ${modelName === 'GPT-5-nano' ? 'GPT-5-mini' : 'GPT-5.2'} or rephrasing your query.`;
+        } else if (error.message.includes('failed to produce')) {
+            errorMessage = `The ${modelName} model failed to produce a valid response after multiple attempts. Consider trying a different model or simplifying your query.`;
+        }
+        
+        appendChatMessage('assistant', errorMessage);
     } finally {
         // End prompt group and finalize metrics
         endPromptGroup();
@@ -1823,12 +1886,15 @@ async function callAPIWithRetry(fn, maxRetries = 3, operation = 'API call') {
  * - IMPORTANT: temperature is NOT supported when reasoning_effort is enabled
  * - GPT-5-mini and GPT-5-nano do not support reasoning_effort or custom temperature
  */
-function buildAPIRequestBody(messages, maxTokens = 4000) {
+function buildAPIRequestBody(messages, maxTokens = null) {
     const model = state.settings.model;
+    // Use model-specific limit if maxTokens not provided, otherwise use provided value
+    const tokenLimit = maxTokens !== null ? maxTokens : (MODEL_TOKEN_LIMITS[model] || 4000);
+    
     const body = {
         model: model,
         messages: messages,
-        max_completion_tokens: maxTokens
+        max_completion_tokens: tokenLimit
     };
 
     // Only GPT-5.2 supports logprobs for confidence tracking
@@ -1858,171 +1924,281 @@ function buildAPIRequestBody(messages, maxTokens = 4000) {
 }
 
 async function callGPT(systemPrompt, userContent, callName = 'API Call') {
-    return await callAPIWithRetry(async () => {
-        const model = state.settings.model;
-        const effort = state.settings.effort;
-        const messages = [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userContent }
-        ];
-        
-        // Track request start time
-        const startTime = performance.now();
-        
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${state.apiKey}`
-            },
-            body: JSON.stringify(buildAPIRequestBody(messages, 4000))
-        });
-
-        // Calculate response time
-        const responseTime = Math.round(performance.now() - startTime);
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            const err = new Error(error.error?.message || `API error: ${response.status}`);
-            err.status = response.status;
-            throw err;
-        }
-
-        const data = await response.json();
-        const responseText = data.choices[0].message.content;
-
-        // Track detailed metrics per API call
-        if (data.usage) {
-            const inputTokens = data.usage.prompt_tokens || 0;
-            const outputTokens = data.usage.completion_tokens || 0;
+    const model = state.settings.model;
+    const effort = state.settings.effort;
+    const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent }
+    ];
+    
+    let lastError = null;
+    let retryAttempt = 0;
+    const maxRetries = 3; // Total attempts including initial call
+    
+    while (retryAttempt < maxRetries) {
+        try {
+            // Track request start time
+            const startTime = performance.now();
             
-            // Calculate cost for this call
-            const pricing = PRICING[model] || PRICING['gpt-5.2'];
-            const inputCost = (inputTokens / 1000000) * pricing.input;
-            const outputCost = (outputTokens / 1000000) * pricing.output;
-            const callCost = inputCost + outputCost;
-            
-            // Create API call data
-            const callData = {
-                timestamp: new Date().toISOString(),
-                name: callName,
-                model: model,
-                effort: model === 'gpt-5.2' ? effort : 'N/A',
-                tokens: {
-                    input: inputTokens,
-                    output: outputTokens,
-                    total: inputTokens + outputTokens
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${state.apiKey}`
                 },
-                cost: {
-                    input: inputCost,
-                    output: outputCost,
-                    total: callCost
-                },
-                responseTime: responseTime,
-                confidence: extractConfidenceMetrics(data),
-                promptPreview: userContent.substring(0, 100) + (userContent.length > 100 ? '...' : ''),
-                response: responseText  // Store the full response
-            };
-            
-            // Add to metrics (grouped or standalone)
-            addAPICallToMetrics(callData);
-        }
+                body: JSON.stringify(buildAPIRequestBody(messages))
+            });
 
-        return responseText;
-    }, 3, callName);
+            // Calculate response time
+            const responseTime = Math.round(performance.now() - startTime);
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                const err = new Error(error.error?.message || `API error: ${response.status}`);
+                err.status = response.status;
+                throw err;
+            }
+
+            const data = await response.json();
+            
+            // Validate and extract response using helper
+            const validationResult = validateAndExtractResponse(data, model);
+            
+            // Check if we have valid content first
+            if (validationResult.content && typeof validationResult.content === 'string' && validationResult.content.trim().length > 0) {
+                // Only track metrics for successful calls to avoid inflating totals with retry attempts
+                if (data.usage) {
+                    const inputTokens = data.usage.prompt_tokens || 0;
+                    const outputTokens = data.usage.completion_tokens || 0;
+                    
+                    // Calculate cost for this call
+                    const pricing = PRICING[model] || PRICING['gpt-5.2'];
+                    const inputCost = (inputTokens / 1000000) * pricing.input;
+                    const outputCost = (outputTokens / 1000000) * pricing.output;
+                    const callCost = inputCost + outputCost;
+                    
+                    // Create API call data
+                    const callData = {
+                        timestamp: new Date().toISOString(),
+                        name: callName,
+                        model: model,
+                        effort: model === 'gpt-5.2' ? effort : 'N/A',
+                        tokens: {
+                            input: inputTokens,
+                            output: outputTokens,
+                            total: inputTokens + outputTokens
+                        },
+                        cost: {
+                            input: inputCost,
+                            output: outputCost,
+                            total: callCost
+                        },
+                        responseTime: responseTime,
+                        confidence: extractConfidenceMetrics(data, validationResult.finishReason),
+                        promptPreview: userContent.substring(0, 100) + (userContent.length > 100 ? '...' : ''),
+                        response: validationResult.content,
+                        emptyResponse: false,
+                        finishReason: validationResult.finishReason,
+                        retryAttempt: retryAttempt
+                    };
+                    
+                    // Add to metrics (grouped or standalone)
+                    addAPICallToMetrics(callData);
+                }
+                
+                return validationResult.content;
+            }
+            
+            // Handle empty response
+            if (!validationResult.shouldRetry) {
+                // Don't retry for content_filter, length, stop_sequence
+                const errorMsg = validationResult.error || `${model} returned empty response`;
+                console.warn(`[API] ${errorMsg} (finish_reason: ${validationResult.finishReason})`);
+                throw new Error(errorMsg);
+            }
+            
+            // Should retry - log and continue
+            lastError = new Error(validationResult.error || `${model} returned empty response`);
+            console.warn(`[API] ${lastError.message} (attempt ${retryAttempt + 1}/${maxRetries}), retrying...`);
+            
+            // Exponential backoff for retries
+            if (retryAttempt < maxRetries - 1) {
+                const delay = Math.min(1000 * Math.pow(2, retryAttempt), 5000); // Max 5 seconds
+                await sleep(delay);
+            }
+            
+        } catch (error) {
+            // Don't retry on client errors (4xx except 429)
+            if (error.status && error.status >= 400 && error.status < 500 && error.status !== 429) {
+                throw error;
+            }
+            
+            lastError = error;
+            
+            // For rate limits (429) or server errors (5xx), retry with exponential backoff
+            if (retryAttempt < maxRetries - 1) {
+                const delay = Math.min(2000 * Math.pow(2, retryAttempt), 16000); // Max 16 seconds
+                console.warn(`[API] ${callName} failed (attempt ${retryAttempt + 1}/${maxRetries}), retrying in ${delay}ms...`, error.message);
+                await sleep(delay);
+            }
+        }
+        
+        retryAttempt++;
+    }
+    
+    // All retries exhausted
+    const finalError = lastError || new Error(`${model} failed to produce a valid response after ${maxRetries} attempts`);
+    throw finalError;
 }
 
 async function callGPTWithMessages(messages, callName = 'Chat Query') {
-    return await callAPIWithRetry(async () => {
-        const model = state.settings.model;
-        const effort = state.settings.effort;
-        
-        // Track request start time
-        const startTime = performance.now();
-        
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${state.apiKey}`
-            },
-            body: JSON.stringify(buildAPIRequestBody(messages, 2000))
-        });
-
-        // Calculate response time
-        const responseTime = Math.round(performance.now() - startTime);
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            const err = new Error(error.error?.message || `API error: ${response.status}`);
-            err.status = response.status;
-            throw err;
-        }
-
-        const data = await response.json();
-        const responseText = data.choices[0].message.content;
-
-        // Track detailed metrics per API call
-        if (data.usage) {
-            const inputTokens = data.usage.prompt_tokens || 0;
-            const outputTokens = data.usage.completion_tokens || 0;
+    const model = state.settings.model;
+    const effort = state.settings.effort;
+    
+    let lastError = null;
+    let retryAttempt = 0;
+    const maxRetries = 3; // Total attempts including initial call
+    
+    while (retryAttempt < maxRetries) {
+        try {
+            // Track request start time
+            const startTime = performance.now();
             
-            // Calculate cost for this call
-            const pricing = PRICING[model] || PRICING['gpt-5.2'];
-            const inputCost = (inputTokens / 1000000) * pricing.input;
-            const outputCost = (outputTokens / 1000000) * pricing.output;
-            const callCost = inputCost + outputCost;
-            
-            // Extract user message for preview (last user message)
-            const userMessage = messages.filter(m => m.role === 'user').pop();
-            const promptPreview = userMessage ? 
-                userMessage.content.substring(0, 100) + (userMessage.content.length > 100 ? '...' : '') :
-                '(No user message)';
-            
-            // Create API call data
-            const callData = {
-                timestamp: new Date().toISOString(),
-                name: callName,
-                model: model,
-                effort: model === 'gpt-5.2' ? effort : 'N/A',
-                tokens: {
-                    input: inputTokens,
-                    output: outputTokens,
-                    total: inputTokens + outputTokens
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${state.apiKey}`
                 },
-                cost: {
-                    input: inputCost,
-                    output: outputCost,
-                    total: callCost
-                },
-                responseTime: responseTime,
-                confidence: extractConfidenceMetrics(data),
-                promptPreview: promptPreview,
-                response: responseText  // Store the full response
-            };
-            
-            // Add to metrics (grouped or standalone)
-            addAPICallToMetrics(callData);
-        }
+                body: JSON.stringify(buildAPIRequestBody(messages))
+            });
 
-        return responseText;
-    }, 3, callName);
+            // Calculate response time
+            const responseTime = Math.round(performance.now() - startTime);
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                const err = new Error(error.error?.message || `API error: ${response.status}`);
+                err.status = response.status;
+                throw err;
+            }
+
+            const data = await response.json();
+            
+            // Validate and extract response using helper
+            const validationResult = validateAndExtractResponse(data, model);
+            
+            // Check if we have valid content first
+            if (validationResult.content && typeof validationResult.content === 'string' && validationResult.content.trim().length > 0) {
+                // Only track metrics for successful calls to avoid inflating totals with retry attempts
+                if (data.usage) {
+                    const inputTokens = data.usage.prompt_tokens || 0;
+                    const outputTokens = data.usage.completion_tokens || 0;
+                    
+                    // Calculate cost for this call
+                    const pricing = PRICING[model] || PRICING['gpt-5.2'];
+                    const inputCost = (inputTokens / 1000000) * pricing.input;
+                    const outputCost = (outputTokens / 1000000) * pricing.output;
+                    const callCost = inputCost + outputCost;
+                    
+                    // Extract user message for preview (last user message)
+                    const userMessage = messages.filter(m => m.role === 'user').pop();
+                    const promptPreview = userMessage ? 
+                        userMessage.content.substring(0, 100) + (userMessage.content.length > 100 ? '...' : '') :
+                        '(No user message)';
+                    
+                    // Create API call data
+                    const callData = {
+                        timestamp: new Date().toISOString(),
+                        name: callName,
+                        model: model,
+                        effort: model === 'gpt-5.2' ? effort : 'N/A',
+                        tokens: {
+                            input: inputTokens,
+                            output: outputTokens,
+                            total: inputTokens + outputTokens
+                        },
+                        cost: {
+                            input: inputCost,
+                            output: outputCost,
+                            total: callCost
+                        },
+                        responseTime: responseTime,
+                        confidence: extractConfidenceMetrics(data, validationResult.finishReason),
+                        promptPreview: promptPreview,
+                        response: validationResult.content,
+                        emptyResponse: false,
+                        finishReason: validationResult.finishReason,
+                        retryAttempt: retryAttempt
+                    };
+                    
+                    // Add to metrics (grouped or standalone)
+                    addAPICallToMetrics(callData);
+                }
+                
+                return validationResult.content;
+            }
+            
+            // Handle empty response
+            if (!validationResult.shouldRetry) {
+                // Don't retry for content_filter, length, stop_sequence
+                const errorMsg = validationResult.error || `${model} returned empty response`;
+                console.warn(`[API] ${errorMsg} (finish_reason: ${validationResult.finishReason})`);
+                throw new Error(errorMsg);
+            }
+            
+            // Should retry - log and continue
+            lastError = new Error(validationResult.error || `${model} returned empty response`);
+            console.warn(`[API] ${lastError.message} (attempt ${retryAttempt + 1}/${maxRetries}), retrying...`);
+            
+            // Exponential backoff for retries
+            if (retryAttempt < maxRetries - 1) {
+                const delay = Math.min(1000 * Math.pow(2, retryAttempt), 5000); // Max 5 seconds
+                await sleep(delay);
+            }
+            
+        } catch (error) {
+            // Don't retry on client errors (4xx except 429)
+            if (error.status && error.status >= 400 && error.status < 500 && error.status !== 429) {
+                throw error;
+            }
+            
+            lastError = error;
+            
+            // For rate limits (429) or server errors (5xx), retry with exponential backoff
+            if (retryAttempt < maxRetries - 1) {
+                const delay = Math.min(2000 * Math.pow(2, retryAttempt), 16000); // Max 16 seconds
+                console.warn(`[API] ${callName} failed (attempt ${retryAttempt + 1}/${maxRetries}), retrying in ${delay}ms...`, error.message);
+                await sleep(delay);
+            }
+        }
+        
+        retryAttempt++;
+    }
+    
+    // All retries exhausted
+    const finalError = lastError || new Error(`${model} failed to produce a valid response after ${maxRetries} attempts`);
+    throw finalError;
 }
 
 /**
  * Extract confidence/fidelity metrics from API response
  * OpenAI API may include logprobs or other confidence indicators
  * @param {Object} data - API response data
+ * @param {string} finishReason - Optional finish reason from validation (takes precedence)
  * @returns {Object} Confidence metrics
  */
-function extractConfidenceMetrics(data) {
+function extractConfidenceMetrics(data, finishReason = null) {
     try {
         const choice = data?.choices?.[0];
-        if (!choice) return { available: false, finishReason: 'unknown' };
+        if (!choice) return { available: false };
+        
+        // Use provided finishReason from validation if available, otherwise extract from choice
+        const finalFinishReason = finishReason || choice.finish_reason || 'unknown';
         
         const metrics = {
             available: false,
-            finishReason: choice.finish_reason || 'unknown',
+            // Note: finishReason is stored at log level, not in confidence object
             // Model's own assessment (if using reasoning effort)
             reasoningTokens: null,
             // Logprobs if available (requires logprobs=true in request, GPT-5.2 only)
@@ -2054,7 +2230,7 @@ function extractConfidenceMetrics(data) {
         }
         
         // Finish reason can indicate confidence issues
-        if (choice.finish_reason === 'length') {
+        if (finalFinishReason === 'length') {
             // Response was truncated - lower confidence in completeness
             metrics.truncated = true;
         }
@@ -2062,7 +2238,110 @@ function extractConfidenceMetrics(data) {
         return metrics;
     } catch (error) {
         console.warn('[Metrics] Error extracting confidence metrics:', error);
-        return { available: false, finishReason: 'error' };
+        return { available: false };
+    }
+}
+
+/**
+ * Validate API response structure and extract content safely
+ * Handles empty responses and provides meaningful error information
+ * @param {Object} data - API response data
+ * @param {string} model - Model name for error messages
+ * @returns {Object} { content, finishReason, error, shouldRetry }
+ */
+function validateAndExtractResponse(data, model) {
+    try {
+        // Validate response structure
+        if (!data) {
+            return {
+                content: null,
+                finishReason: 'unknown',
+                error: 'No response data received',
+                shouldRetry: true
+            };
+        }
+
+        if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+            return {
+                content: null,
+                finishReason: 'unknown',
+                error: 'No choices in API response',
+                shouldRetry: true
+            };
+        }
+
+        const choice = data.choices[0];
+        if (!choice) {
+            return {
+                content: null,
+                finishReason: 'unknown',
+                error: 'Empty choice in API response',
+                shouldRetry: true
+            };
+        }
+
+        if (!choice.message) {
+            return {
+                content: null,
+                finishReason: choice.finish_reason || 'unknown',
+                error: 'No message object in choice',
+                shouldRetry: true
+            };
+        }
+
+        const finishReason = choice.finish_reason || 'stop';
+        const content = choice.message.content;
+
+        // Check for null/undefined content
+        if (content === null || content === undefined) {
+            let errorMsg = `${model} returned null/undefined content`;
+            let shouldRetry = true;
+
+            if (finishReason === 'content_filter') {
+                errorMsg = `${model} response was filtered by content policy`;
+                shouldRetry = false; // Don't retry content filter issues
+            } else if (finishReason === 'length') {
+                errorMsg = `${model} response was truncated (max tokens reached)`;
+                shouldRetry = false; // Don't retry length issues - need to increase limit
+            } else if (finishReason === 'stop_sequence') {
+                errorMsg = `${model} response stopped at stop sequence`;
+                shouldRetry = false;
+            }
+
+            return {
+                content: null,
+                finishReason: finishReason,
+                error: errorMsg,
+                shouldRetry: shouldRetry
+            };
+        }
+
+        // Check for empty string content
+        if (typeof content === 'string' && content.trim().length === 0) {
+            return {
+                content: '',
+                finishReason: finishReason,
+                error: `${model} returned empty string content`,
+                shouldRetry: true
+            };
+        }
+
+        // Valid content
+        return {
+            content: content,
+            finishReason: finishReason,
+            error: null,
+            shouldRetry: false
+        };
+
+    } catch (error) {
+        console.error('[API] Error validating response:', error);
+        return {
+            content: null,
+            finishReason: 'error',
+            error: `Error validating response: ${error.message}`,
+            shouldRetry: true
+        };
     }
 }
 
@@ -2217,7 +2496,8 @@ function buildPromptLogsHtml(promptLogs) {
         
         const logNumber = promptLogs.length - index;
         const timestamp = log.timestamp ? formatTimestamp(log.timestamp) : 'N/A';
-        const confidenceHtml = buildConfidenceHtml(log.confidence || { available: false });
+        // Prefer log-level finishReason over confidence-level (validation result is more accurate)
+        const confidenceHtml = buildConfidenceHtml(log.confidence || { available: false }, log.finishReason);
         
         // Ensure cost and tokens objects exist with defaults
         const cost = log.cost || { input: 0, output: 0, total: 0 };
@@ -2297,6 +2577,24 @@ function buildPromptLogsHtml(promptLogs) {
                     <span class="log-label">🔢 API Calls:</span>
                     <span class="log-value">${subCallsCount} sub-calls aggregated</span>
                 </div>` : ''}
+                ${(log.emptyResponse || (log.retryAttempt > 0) || (log.maxRetryAttempt > 0)) ? `
+                <div class="prompt-log-row">
+                    <span class="log-label">⚠️ Status:</span>
+                    <span class="log-value">
+                        ${log.emptyResponse ? '<span class="warning-text">Empty Response</span>' : ''}
+                        ${(log.retryAttempt > 0 || log.maxRetryAttempt > 0) ? `<span class="info-text">Retried ${log.maxRetryAttempt || log.retryAttempt || 0} time(s)</span>` : ''}
+                    </span>
+                </div>` : ''}
+                ${log.finishReason && log.finishReason !== 'stop' && log.finishReason !== 'unknown' ? `
+                <div class="prompt-log-row">
+                    <span class="log-label">🏁 Finish Reason:</span>
+                    <span class="log-value">
+                        ${log.finishReason === 'content_filter' ? '⚠️ Content Filtered' : ''}
+                        ${log.finishReason === 'length' ? '⚠️ Truncated (Length)' : ''}
+                        ${log.finishReason === 'stop_sequence' ? '⏹️ Stop Sequence' : ''}
+                        ${!['content_filter', 'length', 'stop_sequence'].includes(log.finishReason) ? log.finishReason : ''}
+                    </span>
+                </div>` : ''}
                 ${confidenceHtml}
                 <div class="prompt-log-row prompt-preview">
                     <span class="log-label">💬 Prompt:</span>
@@ -2309,8 +2607,11 @@ function buildPromptLogsHtml(promptLogs) {
 
 /**
  * Build confidence/fidelity display HTML
+ * Note: finishReason is displayed separately in log details, not here
+ * @param {Object} confidence - Confidence metrics object
+ * @param {string} logFinishReason - Optional finish reason (unused, kept for API compatibility)
  */
-function buildConfidenceHtml(confidence) {
+function buildConfidenceHtml(confidence, logFinishReason = null) {
     if (!confidence || !confidence.available) {
         return `
         <div class="prompt-log-row">
@@ -2321,15 +2622,8 @@ function buildConfidenceHtml(confidence) {
     
     let confidenceItems = [];
     
-    if (confidence.finishReason) {
-        const reasonIcon = confidence.finishReason === 'stop' ? '✅' : 
-                          confidence.finishReason === 'length' ? '⚠️' : '❓';
-        confidenceItems.push(`
-            <div class="prompt-log-row">
-                <span class="log-label">🏁 Finish:</span>
-                <span class="log-value">${reasonIcon} ${confidence.finishReason}</span>
-            </div>`);
-    }
+    // Note: finishReason is displayed separately in the log details, not here
+    // This function only shows confidence-specific metrics (logprobs, reasoning tokens, truncation)
     
     if (confidence.reasoningTokens != null && confidence.reasoningTokens > 0) {
         confidenceItems.push(`
@@ -2361,7 +2655,7 @@ function buildConfidenceHtml(confidence) {
     return confidenceItems.length > 0 ? confidenceItems.join('') : `
         <div class="prompt-log-row">
             <span class="log-label">🎯 Confidence:</span>
-            <span class="log-value">Completed (${confidence.finishReason || 'unknown'})</span>
+            <span class="log-value">Completed</span>
         </div>`;
 }
 
@@ -2496,6 +2790,8 @@ function downloadMetricsCSV() {
         'Reasoning Tokens',
         'Finish Reason',
         'Truncated',
+        'Empty Response',
+        'Retry Attempts',
         'Sub-Calls Count',
         'Prompt Preview',
         'Response'
@@ -2534,8 +2830,10 @@ function downloadMetricsCSV() {
             escapeCSV(log.confidence?.available ? 'Yes' : 'No'),
             escapeCSV(log.confidence?.avgLogprob != null ? (log.confidence.avgLogprob * 100).toFixed(2) + '%' : ''),
             escapeCSV(log.confidence?.reasoningTokens || ''),
-            escapeCSV(log.confidence?.finishReason || ''),
+            escapeCSV(log.confidence?.finishReason || log.finishReason || ''),
             escapeCSV(log.confidence?.truncated ? 'Yes' : 'No'),
+            escapeCSV(log.emptyResponse ? 'Yes' : 'No'),
+            escapeCSV(log.maxRetryAttempt || log.retryAttempt || 0),
             escapeCSV(log.subCalls?.length || 1),
             escapeCSV(log.promptPreview || ''),
             escapeCSV(log.response || '')  // Include the full response
