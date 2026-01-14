@@ -101,24 +101,26 @@ function endPromptGroup() {
     // Calculate total response time
     activePromptGroup.responseTime = Math.round(performance.now() - activePromptGroup.startTime);
     
-    // Aggregate confidence from sub-calls
-    if (activePromptGroup.confidence.samples.length > 0) {
-        activePromptGroup.confidence.available = true;
-        // Average the confidence scores
-        const validSamples = activePromptGroup.confidence.samples.filter(s => s.avgLogprob !== null);
+    // Aggregate confidence from sub-calls (with safe null checks)
+    if (activePromptGroup.confidence && activePromptGroup.confidence.samples && activePromptGroup.confidence.samples.length > 0) {
+        // Average the confidence scores (only from valid samples)
+        const validSamples = activePromptGroup.confidence.samples.filter(s => s && s.avgLogprob !== null && s.avgLogprob !== undefined);
         if (validSamples.length > 0) {
+            activePromptGroup.confidence.available = true;
             activePromptGroup.confidence.avgLogprob = 
                 validSamples.reduce((sum, s) => sum + s.avgLogprob, 0) / validSamples.length;
         }
         // Check for any truncations
         activePromptGroup.confidence.truncated = 
-            activePromptGroup.confidence.samples.some(s => s.truncated);
+            activePromptGroup.confidence.samples.some(s => s && s.truncated);
         // Get reasoning tokens total
-        const reasoningTotal = activePromptGroup.confidence.samples
-            .filter(s => s.reasoningTokens !== null)
-            .reduce((sum, s) => sum + s.reasoningTokens, 0);
-        if (reasoningTotal > 0) {
-            activePromptGroup.confidence.reasoningTokens = reasoningTotal;
+        const reasoningSamples = activePromptGroup.confidence.samples.filter(s => s && s.reasoningTokens !== null && s.reasoningTokens !== undefined);
+        if (reasoningSamples.length > 0) {
+            const reasoningTotal = reasoningSamples.reduce((sum, s) => sum + s.reasoningTokens, 0);
+            if (reasoningTotal > 0) {
+                activePromptGroup.confidence.reasoningTokens = reasoningTotal;
+                activePromptGroup.confidence.available = true;
+            }
         }
     }
     
@@ -1773,14 +1775,15 @@ function buildAPIRequestBody(messages, maxTokens = 4000) {
     const body = {
         model: model,
         messages: messages,
-        max_completion_tokens: maxTokens,
-        // Enable logprobs for confidence/fidelity tracking
-        logprobs: true,
-        top_logprobs: 1  // Get top 1 logprob for each token
+        max_completion_tokens: maxTokens
     };
 
-    // Only GPT-5.2 supports reasoning_effort
+    // Only GPT-5.2 supports logprobs for confidence tracking
+    // Other models (gpt-5-mini, gpt-5-nano) may not support this parameter
     if (model === 'gpt-5.2') {
+        body.logprobs = true;
+        body.top_logprobs = 1;  // Get top 1 logprob for each token
+        
         const effort = state.settings.effort || 'none';
 
         if (effort !== 'none') {
@@ -1791,6 +1794,9 @@ function buildAPIRequestBody(messages, maxTokens = 4000) {
             // Only set temperature when NOT using reasoning effort
             body.temperature = 0.7;
         }
+    } else {
+        // For gpt-5-mini and gpt-5-nano, just set temperature
+        body.temperature = 0.7;
     }
 
     return body;
@@ -1951,45 +1957,54 @@ async function callGPTWithMessages(messages, callName = 'Chat Query') {
  * @returns {Object} Confidence metrics
  */
 function extractConfidenceMetrics(data) {
-    const choice = data.choices?.[0];
-    if (!choice) return { available: false };
-    
-    const metrics = {
-        available: false,
-        finishReason: choice.finish_reason || 'unknown',
-        // Model's own assessment (if using reasoning effort)
-        reasoningTokens: null,
-        // Logprobs if available (requires logprobs=true in request)
-        avgLogprob: null,
-        // Token confidence scores if available
-        tokenConfidences: null
-    };
-    
-    // Check for logprobs (if requested in API call)
-    if (choice.logprobs?.content) {
-        const logprobs = choice.logprobs.content;
-        if (logprobs.length > 0) {
-            // Calculate average log probability (higher = more confident)
-            const avgLogprob = logprobs.reduce((sum, t) => sum + (t.logprob || 0), 0) / logprobs.length;
-            // Convert to probability (0-1 scale)
-            metrics.avgLogprob = Math.exp(avgLogprob);
+    try {
+        const choice = data?.choices?.[0];
+        if (!choice) return { available: false, finishReason: 'unknown' };
+        
+        const metrics = {
+            available: false,
+            finishReason: choice.finish_reason || 'unknown',
+            // Model's own assessment (if using reasoning effort)
+            reasoningTokens: null,
+            // Logprobs if available (requires logprobs=true in request, GPT-5.2 only)
+            avgLogprob: null,
+            // Token confidence scores if available
+            tokenConfidences: null,
+            truncated: false
+        };
+        
+        // Check for logprobs (if requested in API call - GPT-5.2 only)
+        if (choice.logprobs?.content && Array.isArray(choice.logprobs.content)) {
+            const logprobs = choice.logprobs.content;
+            if (logprobs.length > 0) {
+                // Calculate average log probability (higher = more confident)
+                const validLogprobs = logprobs.filter(t => t && typeof t.logprob === 'number');
+                if (validLogprobs.length > 0) {
+                    const avgLogprob = validLogprobs.reduce((sum, t) => sum + t.logprob, 0) / validLogprobs.length;
+                    // Convert to probability (0-1 scale), clamp to valid range
+                    metrics.avgLogprob = Math.min(1, Math.max(0, Math.exp(avgLogprob)));
+                    metrics.available = true;
+                }
+            }
+        }
+        
+        // Check for reasoning tokens (GPT-5.2 with reasoning effort)
+        if (data.usage?.completion_tokens_details?.reasoning_tokens) {
+            metrics.reasoningTokens = data.usage.completion_tokens_details.reasoning_tokens;
             metrics.available = true;
         }
+        
+        // Finish reason can indicate confidence issues
+        if (choice.finish_reason === 'length') {
+            // Response was truncated - lower confidence in completeness
+            metrics.truncated = true;
+        }
+        
+        return metrics;
+    } catch (error) {
+        console.warn('[Metrics] Error extracting confidence metrics:', error);
+        return { available: false, finishReason: 'error' };
     }
-    
-    // Check for reasoning tokens (GPT-5.2 with reasoning effort)
-    if (data.usage?.completion_tokens_details?.reasoning_tokens) {
-        metrics.reasoningTokens = data.usage.completion_tokens_details.reasoning_tokens;
-        metrics.available = true;
-    }
-    
-    // Finish reason can indicate confidence issues
-    if (choice.finish_reason === 'length') {
-        // Response was truncated - lower confidence in completeness
-        metrics.truncated = true;
-    }
-    
-    return metrics;
 }
 
 // ============================================
@@ -2120,9 +2135,16 @@ function buildPromptLogsHtml(promptLogs) {
     const reversedLogs = [...promptLogs].reverse();
     
     return reversedLogs.map((log, index) => {
+        // Safety checks for required properties
+        if (!log) return '';
+        
         const logNumber = promptLogs.length - index;
-        const timestamp = formatTimestamp(log.timestamp);
-        const confidenceHtml = buildConfidenceHtml(log.confidence);
+        const timestamp = log.timestamp ? formatTimestamp(log.timestamp) : 'N/A';
+        const confidenceHtml = buildConfidenceHtml(log.confidence || { available: false });
+        
+        // Ensure cost and tokens objects exist with defaults
+        const cost = log.cost || { input: 0, output: 0, total: 0 };
+        const tokens = log.tokens || { input: 0, output: 0, total: 0 };
         
         // Mode indicator with icon
         const modeIcons = { 'direct': '⚡', 'rlm': '🔄', 'repl': '🐍' };
@@ -2142,19 +2164,19 @@ function buildPromptLogsHtml(promptLogs) {
             : '';
         
         return `
-        <details class="prompt-log-entry ${log.usesRLM ? 'uses-rlm' : ''}" id="${log.id}">
+        <details class="prompt-log-entry ${log.usesRLM ? 'uses-rlm' : ''}" id="${log.id || 'unknown'}">
             <summary class="prompt-log-header">
                 <span class="prompt-log-number">#${logNumber}</span>
                 <span class="prompt-log-mode" title="${modeLabel} mode">${modeIcon}</span>
-                <span class="prompt-log-name">${escapeHtml(log.name)}</span>
-                <span class="prompt-log-cost">${formatCost(log.cost.total)}</span>
-                <span class="prompt-log-time">${formatTime(log.responseTime)}</span>
+                <span class="prompt-log-name">${escapeHtml(log.name || 'Unknown')}</span>
+                <span class="prompt-log-cost">${formatCost(cost.total)}</span>
+                <span class="prompt-log-time">${formatTime(log.responseTime || 0)}</span>
             </summary>
             <div class="prompt-log-details">
                 <div class="prompt-log-row">
                     <span class="log-label">🤖 Model:</span>
                     <span class="log-value">
-                        <span class="model-tag">${log.model}</span>
+                        <span class="model-tag">${log.model || 'unknown'}</span>
                         ${effortDisplay}
                         ${subCallsDisplay}
                     </span>
@@ -2162,7 +2184,7 @@ function buildPromptLogsHtml(promptLogs) {
                 <div class="prompt-log-row">
                     <span class="log-label">🔀 Mode:</span>
                     <span class="log-value">
-                        <span class="mode-tag mode-${log.mode}">${modeIcon} ${modeLabel}</span>
+                        <span class="mode-tag mode-${log.mode || 'direct'}">${modeIcon} ${modeLabel}</span>
                         ${log.usesRLM ? '<span class="rlm-indicator">RLM Active</span>' : ''}
                     </span>
                 </div>
@@ -2170,7 +2192,7 @@ function buildPromptLogsHtml(promptLogs) {
                 <div class="prompt-log-row">
                     <span class="log-label">🧠 Effort:</span>
                     <span class="log-value effort-display ${log.effort && log.effort !== 'none' ? 'effort-' + log.effort : 'effort-none'}">
-                        ${log.effort === 'none' || log.effort === 'N/A' ? 'None (Fast)' : log.effort.charAt(0).toUpperCase() + log.effort.slice(1)}
+                        ${log.effort === 'none' || log.effort === 'N/A' || !log.effort ? 'None (Fast)' : log.effort.charAt(0).toUpperCase() + log.effort.slice(1)}
                     </span>
                 </div>` : ''}
                 <div class="prompt-log-row">
@@ -2179,19 +2201,19 @@ function buildPromptLogsHtml(promptLogs) {
                 </div>
                 <div class="prompt-log-row">
                     <span class="log-label">📥 Input:</span>
-                    <span class="log-value">${formatTokens(log.tokens.input)} tokens (${formatCost(log.cost.input)})</span>
+                    <span class="log-value">${formatTokens(tokens.input)} tokens (${formatCost(cost.input)})</span>
                 </div>
                 <div class="prompt-log-row">
                     <span class="log-label">📤 Output:</span>
-                    <span class="log-value">${formatTokens(log.tokens.output)} tokens (${formatCost(log.cost.output)})</span>
+                    <span class="log-value">${formatTokens(tokens.output)} tokens (${formatCost(cost.output)})</span>
                 </div>
                 <div class="prompt-log-row">
                     <span class="log-label">⏱️ Response:</span>
-                    <span class="log-value">${formatTime(log.responseTime)}</span>
+                    <span class="log-value">${formatTime(log.responseTime || 0)}</span>
                 </div>
                 <div class="prompt-log-row">
                     <span class="log-label">💰 Cost:</span>
-                    <span class="log-value cost-highlight">${formatCost(log.cost.total)}</span>
+                    <span class="log-value cost-highlight">${formatCost(cost.total)}</span>
                 </div>
                 ${subCallsCount > 1 ? `
                 <div class="prompt-log-row">
