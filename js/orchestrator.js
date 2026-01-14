@@ -25,12 +25,18 @@ const state = {
     agents: [],  // In-memory storage (session-only)
     insights: null,
     chatHistory: [],
-    isProcessing: false
+    isProcessing: false,
+    settings: {
+        model: 'gpt-5.2',      // 'gpt-5.2' or 'gpt-5.2-mini'
+        effort: 'medium',      // 'low', 'medium', 'high' (only for gpt-5.2)
+        useRLM: true           // Enable/disable RLM processing
+    }
 };
 
 // Model pricing (per 1M tokens)
 const PRICING = {
-    'gpt-5.2': { input: 2.50, output: 10.00 }
+    'gpt-5.2': { input: 2.50, output: 10.00 },
+    'gpt-5.2-mini': { input: 0.30, output: 1.25 }
 };
 
 // Metrics tracking for current session
@@ -111,7 +117,14 @@ function initElements() {
         
         // About Dropdown
         aboutBtn: document.getElementById('about-btn'),
-        aboutDropdown: document.getElementById('about-dropdown')
+        aboutDropdown: document.getElementById('about-dropdown'),
+        
+        // Model Settings
+        modelSettings: document.getElementById('model-settings'),
+        modelSelect: document.getElementById('model-select'),
+        effortGroup: document.getElementById('effort-group'),
+        effortSelect: document.getElementById('effort-select'),
+        rlmToggle: document.getElementById('rlm-toggle')
     };
 }
 
@@ -201,6 +214,62 @@ function restoreChatHistoryUI() {
 }
 
 /**
+ * Load settings from localStorage
+ */
+function loadSettings() {
+    try {
+        const savedSettings = localStorage.getItem('northstar.LM_settings');
+        if (savedSettings) {
+            const parsed = JSON.parse(savedSettings);
+            state.settings = { ...state.settings, ...parsed };
+            console.log('[Settings] Loaded from localStorage:', state.settings);
+        }
+    } catch (error) {
+        console.warn('[Settings] Failed to load settings:', error.message);
+    }
+}
+
+/**
+ * Save settings to localStorage
+ */
+function saveSettings() {
+    try {
+        localStorage.setItem('northstar.LM_settings', JSON.stringify(state.settings));
+        console.log('[Settings] Saved to localStorage:', state.settings);
+    } catch (error) {
+        console.warn('[Settings] Failed to save settings:', error.message);
+    }
+}
+
+/**
+ * Update settings UI to match state
+ */
+function updateSettingsUI() {
+    if (elements.modelSelect) {
+        elements.modelSelect.value = state.settings.model;
+    }
+    if (elements.effortSelect) {
+        elements.effortSelect.value = state.settings.effort;
+    }
+    if (elements.rlmToggle) {
+        elements.rlmToggle.checked = state.settings.useRLM;
+    }
+    // Show/hide effort dropdown based on model
+    updateEffortVisibility();
+}
+
+/**
+ * Update effort dropdown visibility based on selected model
+ */
+function updateEffortVisibility() {
+    if (elements.effortGroup) {
+        // Only show effort for GPT-5.2 (reasoning model), not for mini
+        const showEffort = state.settings.model === 'gpt-5.2';
+        elements.effortGroup.style.display = showEffort ? 'flex' : 'none';
+    }
+}
+
+/**
  * Clear saved state
  */
 function clearSavedState() {
@@ -217,6 +286,7 @@ function clearSavedState() {
 function init() {
     initElements();
     loadApiKey();
+    loadSettings();
 
     // Restore state from sessionStorage if available
     const restored = restoreState();
@@ -225,6 +295,7 @@ function init() {
     }
 
     setupEventListeners();
+    updateSettingsUI();
     updateUI();
 }
 
@@ -314,6 +385,49 @@ function setupEventListeners() {
             }
         });
     }
+    
+    // Model Settings
+    if (elements.modelSelect) {
+        elements.modelSelect.addEventListener('change', handleModelChange);
+    }
+    if (elements.effortSelect) {
+        elements.effortSelect.addEventListener('change', handleEffortChange);
+    }
+    if (elements.rlmToggle) {
+        elements.rlmToggle.addEventListener('change', handleRLMToggle);
+    }
+}
+
+// ============================================
+// Model Settings Handlers
+// ============================================
+
+/**
+ * Handle model selection change
+ */
+function handleModelChange(e) {
+    state.settings.model = e.target.value;
+    updateEffortVisibility();
+    saveSettings();
+    console.log('[Settings] Model changed to:', state.settings.model);
+}
+
+/**
+ * Handle effort level change
+ */
+function handleEffortChange(e) {
+    state.settings.effort = e.target.value;
+    saveSettings();
+    console.log('[Settings] Effort changed to:', state.settings.effort);
+}
+
+/**
+ * Handle RLM toggle change
+ */
+function handleRLMToggle(e) {
+    state.settings.useRLM = e.target.checked;
+    saveSettings();
+    console.log('[Settings] RLM toggled:', state.settings.useRLM ? 'enabled' : 'disabled');
 }
 
 // ============================================
@@ -943,10 +1057,12 @@ async function sendChatMessage() {
     const thinkingId = showThinkingIndicator();
 
     try {
-        // Check execution mode
-        const useREPL = rlmPipeline.shouldUseREPL && rlmPipeline.shouldUseREPL(message);
-        const useRLM = !useREPL && rlmPipeline.shouldUseRLM(message);
+        // Check execution mode (respects RLM toggle setting)
+        const rlmEnabled = state.settings.useRLM;
+        const useREPL = rlmEnabled && rlmPipeline.shouldUseREPL && rlmPipeline.shouldUseREPL(message);
+        const useRLM = rlmEnabled && !useREPL && rlmPipeline.shouldUseRLM(message);
         const activeAgentCount = state.agents.filter(a => a.enabled).length;
+        const modelName = state.settings.model === 'gpt-5.2-mini' ? 'GPT-5.2-mini' : 'GPT-5.2';
 
         // Update title based on mode
         if (useREPL) {
@@ -954,7 +1070,7 @@ async function sendChatMessage() {
         } else if (useRLM) {
             updateThinkingTitle(thinkingId, 'RLM: Recursive Processing');
         } else {
-            updateThinkingTitle(thinkingId, 'Direct Query Processing');
+            updateThinkingTitle(thinkingId, `Direct Query (${modelName})`);
         }
 
         // Initial step: Query received
@@ -968,7 +1084,7 @@ async function sendChatMessage() {
             addThinkingStep(thinkingId, `Mode: RLM with ${activeAgentCount} agents`, 'classify');
             updateThinkingStatus(thinkingId, 'Starting recursive decomposition...');
         } else {
-            addThinkingStep(thinkingId, `Mode: Direct analysis`, 'classify');
+            addThinkingStep(thinkingId, `Mode: Direct ${modelName}${!rlmEnabled ? ' (RLM off)' : ''}`, 'classify');
             updateThinkingStatus(thinkingId, 'Analyzing with LLM...');
             addThinkingStep(thinkingId, `Building context from ${state.agents.length} meetings`, 'info');
         }
@@ -1008,6 +1124,12 @@ async function sendChatMessage() {
 }
 
 async function chatWithAgents(userMessage, thinkingId = null) {
+    // Check if RLM is enabled in settings
+    if (!state.settings.useRLM) {
+        console.log('[Chat] RLM disabled via settings, using legacy processing');
+        return await chatWithAgentsLegacy(userMessage);
+    }
+    
     // Check if REPL should be used (code-assisted queries)
     const useREPL = rlmPipeline.shouldUseREPL && rlmPipeline.shouldUseREPL(userMessage);
 
@@ -1460,23 +1582,50 @@ async function callAPIWithRetry(fn, maxRetries = 3, operation = 'API call') {
 // API Calls
 // ============================================
 
+/**
+ * Build the API request body with model settings
+ * 
+ * Per OpenAI API guidance (2026):
+ * - reasoning.effort: 'none' | 'low' | 'medium' | 'high' | 'xhigh'
+ *   - Default is 'none' (favors speed)
+ *   - 'xhigh' is new in GPT-5.2 for deeper reasoning
+ * - Only GPT-5.2 supports reasoning effort (not mini)
+ */
+function buildAPIRequestBody(messages, maxTokens = 4000) {
+    const model = state.settings.model;
+    const body = {
+        model: model,
+        messages: messages,
+        max_completion_tokens: maxTokens,
+        temperature: 0.7
+    };
+    
+    // Add reasoning.effort for GPT-5.2 (not supported on mini)
+    // Format: { reasoning: { effort: "value" } }
+    if (model === 'gpt-5.2' && state.settings.effort && state.settings.effort !== 'none') {
+        body.reasoning = {
+            effort: state.settings.effort
+        };
+    }
+    
+    return body;
+}
+
 async function callGPT(systemPrompt, userContent, callName = 'API Call') {
     return await callAPIWithRetry(async () => {
+        const model = state.settings.model;
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userContent }
+        ];
+        
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${state.apiKey}`
             },
-            body: JSON.stringify({
-                model: 'gpt-5.2',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userContent }
-                ],
-                max_completion_tokens: 4000,
-                temperature: 0.7
-            })
+            body: JSON.stringify(buildAPIRequestBody(messages, 4000))
         });
 
         if (!response.ok) {
@@ -1494,7 +1643,7 @@ async function callGPT(systemPrompt, userContent, callName = 'API Call') {
             currentMetrics.gptOutputTokens += data.usage.completion_tokens || 0;
             currentMetrics.apiCalls.push({
                 name: callName,
-                model: 'gpt-5.2',
+                model: model,
                 inputTokens: data.usage.prompt_tokens || 0,
                 outputTokens: data.usage.completion_tokens || 0
             });
@@ -1507,18 +1656,15 @@ async function callGPT(systemPrompt, userContent, callName = 'API Call') {
 
 async function callGPTWithMessages(messages, callName = 'Chat Query') {
     return await callAPIWithRetry(async () => {
+        const model = state.settings.model;
+        
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${state.apiKey}`
             },
-            body: JSON.stringify({
-                model: 'gpt-5.2',
-                messages: messages,
-                max_completion_tokens: 2000,
-                temperature: 0.7
-            })
+            body: JSON.stringify(buildAPIRequestBody(messages, 2000))
         });
 
         if (!response.ok) {
@@ -1536,7 +1682,7 @@ async function callGPTWithMessages(messages, callName = 'Chat Query') {
             currentMetrics.gptOutputTokens += data.usage.completion_tokens || 0;
             currentMetrics.apiCalls.push({
                 name: callName,
-                model: 'gpt-5.2',
+                model: model,
                 inputTokens: data.usage.prompt_tokens || 0,
                 outputTokens: data.usage.completion_tokens || 0
             });
@@ -1552,8 +1698,16 @@ async function callGPTWithMessages(messages, callName = 'Chat Query') {
 // ============================================
 
 function calculateMetrics() {
-    const inputCost = (currentMetrics.gptInputTokens / 1000000) * PRICING['gpt-5.2'].input;
-    const outputCost = (currentMetrics.gptOutputTokens / 1000000) * PRICING['gpt-5.2'].output;
+    // Calculate costs based on actual models used in each call
+    let inputCost = 0;
+    let outputCost = 0;
+    
+    currentMetrics.apiCalls.forEach(call => {
+        const pricing = PRICING[call.model] || PRICING['gpt-5.2'];
+        inputCost += (call.inputTokens / 1000000) * pricing.input;
+        outputCost += (call.outputTokens / 1000000) * pricing.output;
+    });
+    
     const totalCost = inputCost + outputCost;
 
     return {
