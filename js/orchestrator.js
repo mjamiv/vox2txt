@@ -2085,10 +2085,12 @@ function calculateMetrics() {
 }
 
 function formatTokens(tokens) {
+    if (tokens == null || typeof tokens !== 'number') return '0';
     return tokens.toLocaleString();
 }
 
 function formatCost(cost) {
+    if (cost == null || typeof cost !== 'number') return '$0.00';
     return cost < 0.01 ? '<$0.01' : `$${cost.toFixed(4)}`;
 }
 
@@ -2312,7 +2314,7 @@ function buildConfidenceHtml(confidence) {
             </div>`);
     }
     
-    if (confidence.reasoningTokens !== null) {
+    if (confidence.reasoningTokens != null && confidence.reasoningTokens > 0) {
         confidenceItems.push(`
             <div class="prompt-log-row">
                 <span class="log-label">🧠 Reasoning:</span>
@@ -2320,7 +2322,7 @@ function buildConfidenceHtml(confidence) {
             </div>`);
     }
     
-    if (confidence.avgLogprob !== null) {
+    if (confidence.avgLogprob != null && typeof confidence.avgLogprob === 'number') {
         const confidencePercent = Math.round(confidence.avgLogprob * 100);
         const confidenceClass = confidencePercent >= 80 ? 'high' : 
                                confidencePercent >= 50 ? 'medium' : 'low';
@@ -2350,6 +2352,7 @@ function buildConfidenceHtml(confidence) {
  * Format time in milliseconds to human readable string
  */
 function formatTime(ms) {
+    if (ms == null || typeof ms !== 'number') return '0ms';
     if (ms < 1000) return `${ms}ms`;
     if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
     const minutes = Math.floor(ms / 60000);
