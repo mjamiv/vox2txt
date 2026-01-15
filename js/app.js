@@ -72,8 +72,8 @@ const state = {
 // ============================================
 const PRICING = {
     'gpt-5.2': {
-        input: 2.50,   // $ per 1M input tokens
-        output: 10.00  // $ per 1M output tokens
+        input: 1.75,   // $ per 1M input tokens
+        output: 14.00  // $ per 1M output tokens
     },
     'whisper-1': {
         perMinute: 0.006  // $ per minute of audio

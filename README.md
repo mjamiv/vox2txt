@@ -585,10 +585,10 @@ The app provides real-time cost estimates based on OpenAI's pricing:
 
 | Model | Pricing |
 |-------|---------|
-| GPT-5.2 Input | $2.50 / 1M tokens |
-| GPT-5.2 Output | $10.00 / 1M tokens |
-| GPT-5-mini Input | $0.40 / 1M tokens |
-| GPT-5-mini Output | $1.60 / 1M tokens |
+| GPT-5.2 Input | $1.75 / 1M tokens |
+| GPT-5.2 Output | $14.00 / 1M tokens |
+| GPT-5-mini Input | $0.25 / 1M tokens |
+| GPT-5-mini Output | $2.00 / 1M tokens |
 | Whisper | $0.006 / minute |
 | GPT-4o-mini-TTS | $0.015 / 1K characters |
 | GPT-Image-1.5 Input | $10.00 / 1M tokens |
