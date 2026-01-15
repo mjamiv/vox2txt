@@ -888,6 +888,87 @@ function readFileContent(file) {
 // Agent File Parsing
 // ============================================
 
+function escapeRegex(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function extractJsonSection(content, sectionName) {
+    const safeName = escapeRegex(sectionName);
+    const regex = new RegExp(`## ${safeName}[\\s\\S]*?\\n\`\`\`json\\s*\\n([\\s\\S]*?)\\n\`\`\``, 'i');
+    const match = content.match(regex);
+    if (!match || !match[1]) return null;
+    try {
+        return JSON.parse(match[1].trim());
+    } catch (error) {
+        console.warn('Failed to parse JSON section:', sectionName, error);
+        return null;
+    }
+}
+
+function stripBase64Fields(value, keyHint = '') {
+    if (value === null || value === undefined) return value;
+    if (typeof value === 'string') {
+        if (keyHint && keyHint.toLowerCase().includes('base64')) {
+            return `[base64 omitted: ${value.length} chars]`;
+        }
+        return value;
+    }
+    if (Array.isArray(value)) {
+        return value.map(item => stripBase64Fields(item));
+    }
+    if (typeof value === 'object') {
+        const next = {};
+        Object.entries(value).forEach(([key, entry]) => {
+            next[key] = stripBase64Fields(entry, key);
+        });
+        return next;
+    }
+    return value;
+}
+
+function summarizeAttachments(attachments) {
+    const summary = {};
+    if (!attachments || typeof attachments !== 'object') return summary;
+
+    Object.entries(attachments).forEach(([key, attachment]) => {
+        if (!attachment) {
+            summary[key] = null;
+            return;
+        }
+        const base64Length = typeof attachment.base64 === 'string' ? attachment.base64.length : 0;
+        summary[key] = {
+            mimeType: attachment.mimeType || '',
+            base64Length
+        };
+    });
+
+    return summary;
+}
+
+function sanitizeExportPayload(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    const sanitized = stripBase64Fields(payload);
+    if (payload.attachments && typeof payload.attachments === 'object') {
+        sanitized.attachments = summarizeAttachments(payload.attachments);
+    }
+    return sanitized;
+}
+
+function buildExtendedContext(payload) {
+    if (!payload) return '';
+    const contextPayload = JSON.parse(JSON.stringify(payload));
+
+    if (contextPayload.analysis) {
+        delete contextPayload.analysis.summary;
+        delete contextPayload.analysis.keyPoints;
+        delete contextPayload.analysis.actionItems;
+        delete contextPayload.analysis.sentiment;
+        delete contextPayload.analysis.transcript;
+    }
+
+    return JSON.stringify(contextPayload, null, 2);
+}
+
 function parseAgentFile(content) {
     const result = {
         title: 'Untitled Meeting',
@@ -897,7 +978,9 @@ function parseAgentFile(content) {
         keyPoints: '',
         actionItems: '',
         sentiment: '',
-        transcript: ''
+        transcript: '',
+        payload: null,
+        extendedContext: ''
     };
     
     // Parse YAML frontmatter
@@ -953,6 +1036,36 @@ function parseAgentFile(content) {
         // Try without code block
         const plainTranscriptMatch = content.match(/## (?:Full )?Transcript\n\n?([\s\S]*?)(?=\n## |$)/);
         if (plainTranscriptMatch) result.transcript = plainTranscriptMatch[1].trim();
+    }
+
+    const exportPayload = extractJsonSection(content, 'Export Payload (JSON)');
+    if (exportPayload) {
+        const sanitizedPayload = sanitizeExportPayload(exportPayload);
+        result.payload = sanitizedPayload;
+        result.extendedContext = buildExtendedContext(sanitizedPayload);
+
+        if (exportPayload.agent?.name) {
+            result.title = exportPayload.agent.name;
+        }
+
+        if (exportPayload.agent?.readableDate) {
+            result.date = exportPayload.agent.readableDate;
+        } else if (exportPayload.agent?.created || exportPayload.exportedAt) {
+            const dateInput = exportPayload.agent?.created || exportPayload.exportedAt;
+            const parsedDate = new Date(dateInput);
+            result.date = isNaN(parsedDate.getTime())
+                ? dateInput
+                : parsedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        result.sourceType = exportPayload.agent?.sourceType || exportPayload.source?.inputMode || result.sourceType;
+
+        const analysis = exportPayload.analysis || {};
+        result.summary = analysis.summary || result.summary;
+        result.keyPoints = analysis.keyPoints || result.keyPoints;
+        result.actionItems = analysis.actionItems || result.actionItems;
+        result.sentiment = analysis.sentiment || result.sentiment;
+        result.transcript = analysis.transcript || result.transcript;
     }
     
     return result;
@@ -1268,7 +1381,8 @@ function getAgentTokenCounts() {
             agent.summary,
             agent.keyPoints,
             agent.actionItems,
-            agent.sentiment
+            agent.sentiment,
+            agent.extendedContext
         ];
 
         const romTotal = romFields.reduce((sum, field) => sum + estimateTokens(field), 0);
@@ -1450,6 +1564,10 @@ ${agent.sentiment}
 ${agent.transcript ? `
 TRANSCRIPT:
 ${agent.transcript}
+` : ''}
+${agent.extendedContext ? `
+EXTENDED CONTEXT:
+${agent.extendedContext}
 ` : ''}
 `).join('\n\n---\n\n');
 }
@@ -1876,6 +1994,9 @@ function buildChatContext(userQuery = '') {
                 ? `Transcript: ${agent.transcript.substring(0, transcriptLimit)}...[truncated]`
                 : `Transcript: ${agent.transcript}`)
             : '';
+        const extendedSection = agent.extendedContext
+            ? `Extended Context:\n${agent.extendedContext}`
+            : '';
 
         return `
 --- Meeting ${index + 1}: ${agent.displayName || agent.title} (${agent.date || 'No date'}) ---
@@ -1884,6 +2005,7 @@ Key Points: ${agent.keyPoints}
 Action Items: ${agent.actionItems}
 Sentiment: ${agent.sentiment}
 ${transcriptSection}
+${extendedSection}
 `;
     }).join('\n\n');
 }

@@ -38,6 +38,32 @@ const state = {
     results: null,
     metrics: null,
     chatHistory: [], // Stores chat conversation history
+    sourceUrl: null,
+    exportMeta: {
+        agentId: null,
+        source: {
+            audio: null,
+            pdf: null,
+            image: null,
+            video: null,
+            url: null
+        },
+        processing: {
+            inputMode: null,
+            analysis: null,
+            transcriptionMethod: null,
+            pdf: {
+                totalPages: null,
+                usedVisionOcr: false,
+                ocrPagesAnalyzed: 0,
+                ocrPageLimit: 0
+            }
+        },
+        artifacts: {
+            audioBriefing: null,
+            infographic: null
+        }
+    },
     urlContent: null // Stores fetched URL content
 };
 
@@ -61,6 +87,45 @@ const PRICING = {
     }
 };
 
+const PROMPTS = {
+    analysisBatchSystem: `You are an expert meeting analyst. Analyze the following meeting transcript and provide a comprehensive analysis in JSON format with these fields:
+
+{
+"summary": "A concise abstract paragraph summarizing the meeting. Retain the most important points, providing a coherent and readable summary that helps someone understand the main points without reading the entire text.",
+"keyPoints": "List of main points discussed, separated by newlines. Start each point with a dash (-). These should be the most important ideas, findings, or topics that are crucial to the essence of the discussion.",
+"actionItems": "List of specific tasks or action items that were assigned or discussed, separated by newlines. Start each item with a dash (-). If no action items are found, respond with 'No specific action items identified.'",
+"sentiment": "Overall sentiment of the meeting. Respond with exactly one word: 'Positive', 'Negative', or 'Neutral'."
+}
+
+Ensure your response is valid JSON only, no additional text.`,
+    summarySystem: `You are a highly skilled AI trained in language comprehension and summarization.
+Read the following text and summarize it into a concise abstract paragraph.
+Retain the most important points, providing a coherent and readable summary that helps someone understand the main points without reading the entire text.
+Avoid unnecessary details or tangential points.`,
+    keyPointsSystem: `You are a proficient AI with a specialty in distilling information into key points. 
+Based on the following text, identify and list the main points that were discussed or brought up. 
+These should be the most important ideas, findings, or topics that are crucial to the essence of the discussion. 
+Format each point on its own line starting with a dash (-).`,
+    actionItemsSystem: `You are a highly skilled AI trained in identifying action items. 
+Review the following text and identify any specific tasks or action items that were assigned or discussed. 
+Format each action item on its own line starting with a dash (-).
+If no action items are found, respond with "No specific action items identified."`,
+    sentimentSystem: `You are an AI trained in sentiment analysis. 
+Analyze the overall sentiment of the following text. 
+Respond with exactly one word: "Positive", "Negative", or "Neutral".`,
+    visionOcrSystem: `You are an expert at analyzing images of documents, meeting notes, whiteboards, diagrams, and other visual content.
+
+Your task is to extract and transcribe ALL text content visible in the image, and describe any relevant visual elements (diagrams, charts, drawings, etc.) that provide context.
+
+Format your response as follows:
+1. First, provide a complete transcription of all visible text, preserving the original structure as much as possible
+2. Then describe any diagrams, charts, or visual elements
+3. Finally, summarize what this image appears to be about
+
+Be thorough and capture every piece of text visible in the image.`,
+    audioBriefingSystem: 'You create professional executive audio briefings.'
+};
+
 // Metrics tracking for current run
 let currentMetrics = {
     whisperMinutes: 0,
@@ -76,6 +141,7 @@ let currentMetrics = {
 
 // Store generated audio/image data for download
 let generatedAudioUrl = null;
+let generatedAudioBase64 = null;
 let generatedImageUrl = null;
 let generatedImageBase64 = null; // Store base64 for DOCX embedding
 
@@ -577,6 +643,7 @@ function processSelectedFile(file) {
     }
     
     state.selectedFile = file;
+    state.exportMeta.source.audio = getFileMeta(file);
     elements.fileName.textContent = file.name;
     elements.fileInfo.classList.remove('hidden');
     elements.dropZone.style.display = 'none';
@@ -585,6 +652,7 @@ function processSelectedFile(file) {
 
 function removeSelectedFile() {
     state.selectedFile = null;
+    state.exportMeta.source.audio = null;
     elements.audioFileInput.value = '';
     elements.fileInfo.classList.add('hidden');
     elements.dropZone.style.display = 'block';
@@ -635,6 +703,7 @@ function processSelectedPdfFile(file) {
     }
     
     state.selectedPdfFile = file;
+    state.exportMeta.source.pdf = getFileMeta(file);
     elements.pdfFileName.textContent = file.name;
     elements.pdfFileInfo.classList.remove('hidden');
     elements.pdfDropZone.style.display = 'none';
@@ -643,6 +712,7 @@ function processSelectedPdfFile(file) {
 
 function removeSelectedPdfFile() {
     state.selectedPdfFile = null;
+    state.exportMeta.source.pdf = null;
     elements.pdfFileInput.value = '';
     elements.pdfFileInfo.classList.add('hidden');
     elements.pdfDropZone.style.display = 'block';
@@ -698,6 +768,7 @@ async function processSelectedImageFile(file) {
         const base64 = await fileToBase64(file);
         state.selectedImageFile = file;
         state.selectedImageBase64 = base64;
+        state.exportMeta.source.image = getFileMeta(file);
 
         // Update UI
         elements.imageFileName.textContent = file.name;
@@ -724,9 +795,20 @@ function fileToBase64(file) {
     });
 }
 
+function base64ToBlob(base64, mimeType) {
+    if (!base64) return null;
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mimeType || 'application/octet-stream' });
+}
+
 function removeSelectedImageFile() {
     state.selectedImageFile = null;
     state.selectedImageBase64 = null;
+    state.exportMeta.source.image = null;
     elements.imageFileInput.value = '';
     elements.imageFileInfo.classList.add('hidden');
     elements.imagePreview.classList.add('hidden');
@@ -781,6 +863,7 @@ function processSelectedVideoFile(file) {
     }
 
     state.selectedVideoFile = file;
+    state.exportMeta.source.video = getFileMeta(file);
     elements.videoFileName.textContent = file.name;
     elements.videoFileInfo.classList.remove('hidden');
     elements.videoDropZone.style.display = 'none';
@@ -789,6 +872,7 @@ function processSelectedVideoFile(file) {
 
 function removeSelectedVideoFile() {
     state.selectedVideoFile = null;
+    state.exportMeta.source.video = null;
     elements.videoFileInput.value = '';
     elements.videoFileInfo.classList.add('hidden');
     elements.videoDropZone.style.display = 'block';
@@ -813,6 +897,12 @@ async function extractTextFromPdf(file) {
 
     let fullText = '';
     const totalPages = pdf.numPages;
+    if (state.exportMeta?.processing?.pdf) {
+        state.exportMeta.processing.pdf.totalPages = totalPages;
+        state.exportMeta.processing.pdf.usedVisionOcr = false;
+        state.exportMeta.processing.pdf.ocrPagesAnalyzed = 0;
+        state.exportMeta.processing.pdf.ocrPageLimit = 0;
+    }
 
     for (let i = 1; i <= totalPages; i++) {
         const page = await pdf.getPage(i);
@@ -869,6 +959,11 @@ async function analyzeImageBasedPdf(pdf, totalPages) {
 
     // Render PDF pages to images
     const images = await renderPdfPagesToImages(pdf, totalPages);
+    if (state.exportMeta?.processing?.pdf) {
+        state.exportMeta.processing.pdf.usedVisionOcr = true;
+        state.exportMeta.processing.pdf.ocrPagesAnalyzed = images.length;
+        state.exportMeta.processing.pdf.ocrPageLimit = Math.min(totalPages, images.length);
+    }
 
     updateProgress(25, 'Analyzing PDF images with Vision AI...');
 
@@ -906,16 +1001,7 @@ async function analyzeImageWithVision(base64Image) {
             messages: [
                 {
                     role: 'system',
-                    content: `You are an expert at analyzing images of documents, meeting notes, whiteboards, diagrams, and other visual content.
-
-Your task is to extract and transcribe ALL text content visible in the image, and describe any relevant visual elements (diagrams, charts, drawings, etc.) that provide context.
-
-Format your response as follows:
-1. First, provide a complete transcription of all visible text, preserving the original structure as much as possible
-2. Then describe any diagrams, charts, or visual elements
-3. Finally, summarize what this image appears to be about
-
-Be thorough and capture every piece of text visible in the image.`
+                        content: PROMPTS.visionOcrSystem
                 },
                 {
                     role: 'user',
@@ -1008,20 +1094,43 @@ async function startAnalysis() {
         imageOutputTokens: 0,
         apiCalls: []
     };
+    const analysisStartMs = performance.now();
+    const analysisStartIso = new Date().toISOString();
+    state.exportMeta.processing = {
+        inputMode: state.inputMode,
+        analysis: {
+            startedAt: analysisStartIso,
+            completedAt: null,
+            durationMs: null,
+            mode: null,
+            usedFallback: false,
+            jsonRecovered: false
+        },
+        transcriptionMethod: null,
+        pdf: {
+            totalPages: null,
+            usedVisionOcr: false,
+            ocrPagesAnalyzed: 0,
+            ocrPageLimit: 0
+        }
+    };
     
     try {
         let transcriptionText;
 
         if (state.inputMode === 'audio') {
+            state.exportMeta.processing.transcriptionMethod = 'whisper-1';
             updateProgress(5, 'Transcribing audio with Whisper...');
             transcriptionText = await transcribeAudio(state.selectedFile);
         } else if (state.inputMode === 'pdf') {
+            state.exportMeta.processing.transcriptionMethod = 'pdf.js';
             updateProgress(5, 'Extracting text from PDF...');
             const pdfResult = await extractTextFromPdf(state.selectedPdfFile);
 
             // Check if PDF has meaningful text content
             if (!pdfResult.text || pdfResult.text.length < 50) {
                 // PDF appears to be image-based, use Vision API
+                state.exportMeta.processing.transcriptionMethod = 'vision-ocr';
                 transcriptionText = await analyzeImageBasedPdf(pdfResult.pdf, pdfResult.totalPages);
 
                 if (!transcriptionText || transcriptionText.length < 10) {
@@ -1031,6 +1140,7 @@ async function startAnalysis() {
                 transcriptionText = pdfResult.text;
             }
         } else if (state.inputMode === 'image') {
+            state.exportMeta.processing.transcriptionMethod = 'vision-ocr';
             updateProgress(5, 'Analyzing image with Vision AI...');
             transcriptionText = await analyzeImageWithVision(state.selectedImageBase64);
 
@@ -1038,21 +1148,32 @@ async function startAnalysis() {
                 throw new Error('Could not extract meaningful content from the image.');
             }
         } else if (state.inputMode === 'video') {
+            state.exportMeta.processing.transcriptionMethod = 'whisper-1';
             updateProgress(5, 'Transcribing video audio with Whisper...');
             transcriptionText = await transcribeAudio(state.selectedVideoFile);
         } else if (state.inputMode === 'url') {
+            state.exportMeta.processing.transcriptionMethod = 'url-extract';
             transcriptionText = state.urlContent;
 
             if (!transcriptionText || transcriptionText.length < 10) {
                 throw new Error('No content available from URL. Please fetch the URL first.');
             }
         } else {
+            state.exportMeta.processing.transcriptionMethod = 'text-input';
             transcriptionText = elements.textInput.value.trim();
         }
 
         updateProgress(30, 'Analyzing meeting content...');
         const analysis = await analyzeMeetingBatch(transcriptionText);
-
+        const analysisMeta = analysis._meta || {};
+        state.exportMeta.processing.analysis = {
+            ...state.exportMeta.processing.analysis,
+            ...analysisMeta,
+            model: 'gpt-5.2',
+            completedAt: new Date().toISOString(),
+            durationMs: Math.round(performance.now() - analysisStartMs)
+        };
+        
         const summary = analysis.summary;
         const keyPoints = analysis.keyPoints;
         const actionItems = analysis.actionItems;
@@ -1265,16 +1386,12 @@ async function callChatAPI(systemPrompt, userContent, callName = 'API Call', use
 }
 
 async function analyzeMeetingBatch(text) {
-    const systemPrompt = `You are an expert meeting analyst. Analyze the following meeting transcript and provide a comprehensive analysis in JSON format with these fields:
-
-{
-    "summary": "A concise abstract paragraph summarizing the meeting. Retain the most important points, providing a coherent and readable summary that helps someone understand the main points without reading the entire text.",
-    "keyPoints": "List of main points discussed, separated by newlines. Start each point with a dash (-). These should be the most important ideas, findings, or topics that are crucial to the essence of the discussion.",
-    "actionItems": "List of specific tasks or action items that were assigned or discussed, separated by newlines. Start each item with a dash (-). If no action items are found, respond with 'No specific action items identified.'",
-    "sentiment": "Overall sentiment of the meeting. Respond with exactly one word: 'Positive', 'Negative', or 'Neutral'."
-}
-
-Ensure your response is valid JSON only, no additional text.`;
+    const meta = {
+        mode: 'batch-json',
+        jsonRecovered: false,
+        usedFallback: false
+    };
+    const systemPrompt = PROMPTS.analysisBatchSystem;
 
     const response = await callChatAPI(systemPrompt, text, 'Meeting Analysis');
 
@@ -1285,7 +1402,8 @@ Ensure your response is valid JSON only, no additional text.`;
             summary: parsed.summary || '',
             keyPoints: parsed.keyPoints || '',
             actionItems: parsed.actionItems || '',
-            sentiment: parsed.sentiment || 'Neutral'
+            sentiment: parsed.sentiment || 'Neutral',
+            _meta: meta
         };
     } catch (error) {
         // Fallback: try to extract JSON from response
@@ -1293,67 +1411,63 @@ Ensure your response is valid JSON only, no additional text.`;
         if (jsonMatch) {
             try {
                 const parsed = JSON.parse(jsonMatch[0]);
+                meta.jsonRecovered = true;
+                meta.mode = 'batch-json-extracted';
                 return {
                     summary: parsed.summary || '',
                     keyPoints: parsed.keyPoints || '',
                     actionItems: parsed.actionItems || '',
-                    sentiment: parsed.sentiment || 'Neutral'
+                    sentiment: parsed.sentiment || 'Neutral',
+                    _meta: meta
                 };
             } catch (e) {
                 // If still fails, use individual functions as fallback
                 console.warn('Batch analysis failed, falling back to individual calls');
+                meta.usedFallback = true;
+                meta.mode = 'fallback-individual';
                 const [summary, keyPoints, actionItems, sentiment] = await Promise.all([
                     extractSummary(text),
                     extractKeyPoints(text),
                     extractActionItems(text),
                     analyzeSentiment(text)
                 ]);
-                return { summary, keyPoints, actionItems, sentiment };
+                return { summary, keyPoints, actionItems, sentiment, _meta: meta };
             }
         }
         // Final fallback
         console.warn('JSON extraction failed, falling back to individual calls');
+        meta.usedFallback = true;
+        meta.mode = 'fallback-individual';
         const [summary, keyPoints, actionItems, sentiment] = await Promise.all([
             extractSummary(text),
             extractKeyPoints(text),
             extractActionItems(text),
             analyzeSentiment(text)
         ]);
-        return { summary, keyPoints, actionItems, sentiment };
+        return { summary, keyPoints, actionItems, sentiment, _meta: meta };
     }
 }
 
 async function extractSummary(text) {
-    const systemPrompt = `You are a highly skilled AI trained in language comprehension and summarization.
-Read the following text and summarize it into a concise abstract paragraph.
-Retain the most important points, providing a coherent and readable summary that helps someone understand the main points without reading the entire text.
-Avoid unnecessary details or tangential points.`;
+    const systemPrompt = PROMPTS.summarySystem;
 
     return await callChatAPI(systemPrompt, text, 'Summary');
 }
 
 async function extractKeyPoints(text) {
-    const systemPrompt = `You are a proficient AI with a specialty in distilling information into key points. 
-Based on the following text, identify and list the main points that were discussed or brought up. 
-These should be the most important ideas, findings, or topics that are crucial to the essence of the discussion. 
-Format each point on its own line starting with a dash (-).`;
+    const systemPrompt = PROMPTS.keyPointsSystem;
     
     return await callChatAPI(systemPrompt, text, 'Key Points');
 }
 
 async function extractActionItems(text) {
-    const systemPrompt = `You are a highly skilled AI trained in identifying action items. 
-Review the following text and identify any specific tasks or action items that were assigned or discussed. 
-Format each action item on its own line starting with a dash (-).
-If no action items are found, respond with "No specific action items identified."`;
+    const systemPrompt = PROMPTS.actionItemsSystem;
     
     return await callChatAPI(systemPrompt, text, 'Action Items');
 }
 
 async function analyzeSentiment(text) {
-    const systemPrompt = `You are an AI trained in sentiment analysis. 
-Analyze the overall sentiment of the following text. 
-Respond with exactly one word: "Positive", "Negative", or "Neutral".`;
+    const systemPrompt = PROMPTS.sentimentSystem;
     
     return await callChatAPI(systemPrompt, text, 'Sentiment');
 }
@@ -2613,6 +2727,8 @@ function resetForNewAnalysis() {
     state.selectedImageBase64 = null;
     state.selectedVideoFile = null;
     state.urlContent = null;
+    state.sourceUrl = null;
+    resetExportMeta();
     
     // Reset metrics tracking
     currentMetrics = {
@@ -2635,6 +2751,7 @@ function resetForNewAnalysis() {
         URL.revokeObjectURL(generatedAudioUrl);
         generatedAudioUrl = null;
     }
+    generatedAudioBase64 = null;
     generatedImageUrl = null;
     generatedImageBase64 = null;
     
@@ -2779,7 +2896,7 @@ ${state.results.actionItems}
 Sentiment: ${state.results.sentiment}`;
 
         const script = await callChatAPI(
-            'You create professional executive audio briefings.',
+            PROMPTS.audioBriefingSystem,
             scriptPrompt,
             'Audio Script'
         );
@@ -2787,6 +2904,17 @@ Sentiment: ${state.results.sentiment}`;
         // Step 2: Convert script to speech using TTS API
         const selectedVoice = elements.voiceSelect.value;
         const audioBlob = await textToSpeech(script, selectedVoice);
+        const audioDataUrl = await fileToBase64(audioBlob);
+        const audioParts = splitDataUrl(audioDataUrl);
+        generatedAudioBase64 = audioParts.base64 || null;
+        state.exportMeta.artifacts.audioBriefing = {
+            promptStyle: customStyle || '',
+            voice: selectedVoice,
+            script,
+            scriptPrompt,
+            audioMimeType: audioParts.mimeType || 'audio/mpeg',
+            generatedAt: new Date().toISOString()
+        };
         
         // Step 3: Create audio URL and display player
         if (generatedAudioUrl) {
@@ -2906,6 +3034,12 @@ CRITICAL DESIGN REQUIREMENTS:
 
         // Store URL for download
         generatedImageUrl = imageUrl;
+        state.exportMeta.artifacts.infographic = {
+            userStyle,
+            prompt: dallePrompt,
+            size: '1536x1024',
+            generatedAt: new Date().toISOString()
+        };
 
         // Update metrics display
         displayMetrics();
@@ -3073,6 +3207,8 @@ async function fetchUrlContent() {
         
         // Store the content
         state.urlContent = textContent;
+        state.sourceUrl = url;
+        state.exportMeta.source.url = url;
         
         // Show preview
         elements.urlPreviewContent.textContent = textContent.substring(0, 2000) + 
@@ -3122,6 +3258,8 @@ function extractTextFromHtml(html) {
 
 function clearUrlContent() {
     state.urlContent = null;
+    state.sourceUrl = null;
+    state.exportMeta.source.url = null;
     elements.urlInput.value = '';
     elements.urlPreview.classList.add('hidden');
     elements.urlPreviewContent.textContent = '';
@@ -3144,7 +3282,11 @@ async function sendChatMessage() {
     appendChatMessage('user', message);
     
     // Add to chat history
-    state.chatHistory.push({ role: 'user', content: message });
+    state.chatHistory.push({
+        role: 'user',
+        content: message,
+        timestamp: new Date().toISOString()
+    });
     
     // Show thinking indicator with train of thought
     const thinkingId = showThinkingIndicator();
@@ -3172,7 +3314,12 @@ async function sendChatMessage() {
         
         // Add assistant response to UI and history
         appendChatMessage('assistant', response);
-        state.chatHistory.push({ role: 'assistant', content: response });
+        state.chatHistory.push({
+            role: 'assistant',
+            content: response,
+            model: 'gpt-5.2',
+            timestamp: new Date().toISOString()
+        });
         
     } catch (error) {
         console.error('Chat error:', error);
@@ -3219,11 +3366,14 @@ Instructions:
 async function chatWithData(context, history) {
     // Build messages array with system context and conversation history
     const messages = [
-        { 
-            role: 'system', 
-            content: context 
+        {
+            role: 'system',
+            content: context
         },
-        ...history.slice(-10) // Keep last 10 messages to avoid token limits
+        ...history.slice(-10).map(entry => ({
+            role: entry.role,
+            content: entry.content
+        })) // Keep last 10 messages to avoid token limits
     ];
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -3369,6 +3519,14 @@ function resetChatHistory() {
     }
 }
 
+function restoreChatHistoryUI() {
+    if (!elements.chatMessages || state.chatHistory.length === 0) return;
+    elements.chatMessages.innerHTML = '';
+    state.chatHistory.forEach(message => {
+        appendChatMessage(message.role, message.content);
+    });
+}
+
 // ============================================
 // Agent Export/Import
 // ============================================
@@ -3496,6 +3654,176 @@ function confirmExportAgent() {
     exportAgentWithName(agentName);
 }
 
+function createExportMeta() {
+    return {
+        agentId: null,
+        source: {
+            audio: null,
+            pdf: null,
+            image: null,
+            video: null,
+            url: null
+        },
+        processing: {
+            inputMode: null,
+            analysis: null,
+            transcriptionMethod: null,
+            pdf: {
+                totalPages: null,
+                usedVisionOcr: false,
+                ocrPagesAnalyzed: 0,
+                ocrPageLimit: 0
+            }
+        },
+        artifacts: {
+            audioBriefing: null,
+            infographic: null
+        }
+    };
+}
+
+function resetExportMeta() {
+    state.exportMeta = createExportMeta();
+}
+
+function getFileMeta(file) {
+    if (!file) return null;
+    return {
+        name: file.name,
+        sizeBytes: file.size,
+        type: file.type || '',
+        lastModified: file.lastModified || null,
+        lastModifiedIso: file.lastModified ? new Date(file.lastModified).toISOString() : null
+    };
+}
+
+function splitDataUrl(dataUrl) {
+    if (!dataUrl || typeof dataUrl !== 'string') return { mimeType: '', base64: '' };
+    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return { mimeType: '', base64: '' };
+    return { mimeType: match[1], base64: match[2] };
+}
+
+function getAgentId() {
+    if (!state.exportMeta.agentId) {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            state.exportMeta.agentId = crypto.randomUUID();
+        } else {
+            state.exportMeta.agentId = `agent-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        }
+    }
+    return state.exportMeta.agentId;
+}
+
+function getWordCount(text) {
+    if (!text) return 0;
+    return text.split(/\s+/).filter(word => word.length > 0).length;
+}
+
+function escapeYamlValue(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).replace(/"/g, '\\"');
+}
+
+function buildExportPayload(agentName, now, readableDate) {
+    const results = state.results || {};
+    const transcript = results.transcription || '';
+    const wordCount = getWordCount(transcript);
+    const keyPointsCount = (results.keyPoints || '').split('\n').filter(line => line.trim().length > 0).length;
+    const actionItemsCount = (results.actionItems || '').split('\n').filter(line => line.trim().length > 0).length;
+    const readTimeMinutes = wordCount ? Math.ceil(wordCount / 200) : 0;
+    const topicsCount = Math.min(keyPointsCount, 10);
+
+    const imageInput = splitDataUrl(state.selectedImageBase64);
+
+    const audioBriefingMeta = state.exportMeta.artifacts.audioBriefing
+        ? { ...state.exportMeta.artifacts.audioBriefing }
+        : null;
+
+    const infographicMeta = state.exportMeta.artifacts.infographic
+        ? { ...state.exportMeta.artifacts.infographic }
+        : null;
+
+    const attachments = {
+        sourceImage: imageInput.base64
+            ? { mimeType: imageInput.mimeType, base64: imageInput.base64 }
+            : null,
+        audioBriefing: generatedAudioBase64
+            ? { mimeType: audioBriefingMeta?.audioMimeType || 'audio/mpeg', base64: generatedAudioBase64 }
+            : null,
+        infographic: generatedImageBase64
+            ? { mimeType: 'image/png', base64: generatedImageBase64 }
+            : null
+    };
+
+    return {
+        schema: 'northstar-agent-md',
+        schemaVersion: 2,
+        exportedAt: now.toISOString(),
+        agent: {
+            id: getAgentId(),
+            name: agentName,
+            created: now.toISOString(),
+            readableDate,
+            sourceType: state.inputMode,
+            sourceLabel: getSourceTypeLabel(state.inputMode),
+            app: 'northstar.LM'
+        },
+        source: {
+            inputMode: state.inputMode,
+            sourceLabel: getSourceTypeLabel(state.inputMode),
+            url: state.sourceUrl || state.exportMeta.source.url || null,
+            audioFile: state.exportMeta.source.audio,
+            pdfFile: state.exportMeta.source.pdf,
+            imageFile: state.exportMeta.source.image,
+            videoFile: state.exportMeta.source.video
+        },
+        processing: {
+            inputMode: state.exportMeta.processing.inputMode || state.inputMode,
+            analysis: state.exportMeta.processing.analysis,
+            transcriptionMethod: state.exportMeta.processing.transcriptionMethod || null,
+            pdf: state.exportMeta.processing.pdf
+        },
+        analysis: {
+            summary: results.summary || '',
+            keyPoints: results.keyPoints || '',
+            actionItems: results.actionItems || '',
+            sentiment: results.sentiment || '',
+            transcript,
+            model: 'gpt-5.2'
+        },
+        kpis: {
+            wordsAnalyzed: wordCount,
+            keyPointsCount,
+            actionItemsCount,
+            readTimeMinutes,
+            topicsCount
+        },
+        metrics: state.metrics || null,
+        currentMetrics: currentMetrics || null,
+        apiCalls: currentMetrics?.apiCalls || [],
+        chatHistory: state.chatHistory || [],
+        prompts: {
+            analysisBatchSystem: PROMPTS.analysisBatchSystem,
+            summarySystem: PROMPTS.summarySystem,
+            keyPointsSystem: PROMPTS.keyPointsSystem,
+            actionItemsSystem: PROMPTS.actionItemsSystem,
+            sentimentSystem: PROMPTS.sentimentSystem,
+            visionOcrSystem: PROMPTS.visionOcrSystem,
+            audioBriefingSystem: PROMPTS.audioBriefingSystem,
+            audioBriefingScriptPrompt: audioBriefingMeta?.scriptPrompt || null,
+            infographicPrompt: infographicMeta?.prompt || null,
+            chatContext: buildChatContext()
+        },
+        artifacts: {
+            audioBriefing: audioBriefingMeta,
+            infographic: infographicMeta,
+            sourceImage: imageInput.base64 ? { mimeType: imageInput.mimeType } : null
+        },
+        attachments
+    };
+}
+
 function exportAgentWithName(agentName) {
     if (!state.results) {
         showError('No analysis results to export. Please analyze content first.');
@@ -3507,14 +3835,19 @@ function exportAgentWithName(agentName) {
     const readableDate = now.toLocaleDateString('en-US', { 
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
     });
+    const exportPayload = buildExportPayload(agentName, now, readableDate);
+    const agentId = exportPayload.agent.id;
+    const exportJson = JSON.stringify(exportPayload, null, 2);
     
     // Build the markdown content with YAML frontmatter
     const markdown = `---
 agent_type: northstar-meeting-agent
-version: 1.0
+version: 2.0
 created: ${dateStr}
 source_type: ${state.inputMode}
-agent_name: "${agentName}"
+agent_name: "${escapeYamlValue(agentName)}"
+agent_id: "${agentId}"
+export_format: northstar-agent-md
 ---
 
 # Meeting Agent: ${agentName}
@@ -3522,7 +3855,43 @@ agent_name: "${agentName}"
 ## Metadata
 - **Created**: ${readableDate}
 - **Source**: ${getSourceTypeLabel(state.inputMode)}
+- **Agent ID**: ${agentId}
+- **Export Format**: northstar-agent-md v2
+- **Exported At**: ${now.toLocaleString('en-US')}
 - **Powered by**: northstar.LM
+- **API Key Included**: No
+
+---
+
+## Source Details (JSON)
+
+\`\`\`json
+${JSON.stringify(exportPayload.source, null, 2)}
+\`\`\`
+
+---
+
+## Processing Details (JSON)
+
+\`\`\`json
+${JSON.stringify(exportPayload.processing, null, 2)}
+\`\`\`
+
+---
+
+## KPI Dashboard (JSON)
+
+\`\`\`json
+${JSON.stringify(exportPayload.kpis, null, 2)}
+\`\`\`
+
+---
+
+## Metrics (JSON)
+
+\`\`\`json
+${JSON.stringify(exportPayload.metrics, null, 2)}
+\`\`\`
 
 ---
 
@@ -3555,6 +3924,54 @@ ${formatAsCheckboxList(state.results.actionItems)}
 \`\`\`
 ${state.results.transcription}
 \`\`\`
+
+---
+
+## Chat History (JSON)
+
+\`\`\`json
+${JSON.stringify(exportPayload.chatHistory, null, 2)}
+\`\`\`
+
+---
+
+## Artifacts (JSON)
+
+\`\`\`json
+${JSON.stringify(exportPayload.artifacts, null, 2)}
+\`\`\`
+
+---
+
+## API Calls (JSON)
+
+\`\`\`json
+${JSON.stringify(exportPayload.apiCalls, null, 2)}
+\`\`\`
+
+---
+
+## Prompts (JSON)
+
+\`\`\`json
+${JSON.stringify(exportPayload.prompts, null, 2)}
+\`\`\`
+
+---
+
+## Current Metrics (JSON)
+
+\`\`\`json
+${JSON.stringify(exportPayload.currentMetrics, null, 2)}
+\`\`\`
+
+---
+
+## Export Payload (JSON)
+
+\`\`\`json
+${exportJson}
+\`\`\`
 `;
 
     // Create filename from agent name (sanitized)
@@ -3580,6 +3997,8 @@ function getSourceTypeLabel(inputMode) {
     const labels = {
         'audio': 'Audio Transcription',
         'pdf': 'PDF Document',
+        'image': 'Image (Vision OCR)',
+        'video': 'Video Transcription',
         'text': 'Text Input',
         'url': 'Web Page',
         'agent': 'Imported Agent'
@@ -3673,18 +4092,21 @@ function parseAgentFile(content) {
     const actionItems = extractSection(bodyContent, 'Action Items');
     const sentiment = extractSentimentFromSection(bodyContent);
     const transcription = extractTranscript(bodyContent);
+    const payload = extractJsonSection(bodyContent, 'Export Payload (JSON)');
+    const payloadAnalysis = payload?.analysis || null;
     
-    if (!summary && !transcription) {
+    if (!summary && !transcription && !payloadAnalysis?.summary && !payloadAnalysis?.transcript) {
         return null;
     }
     
     return {
         frontmatter,
-        summary: summary || '',
-        keyPoints: keyPoints || '',
-        actionItems: actionItems || '',
-        sentiment: sentiment || 'Neutral',
-        transcription: transcription || ''
+        summary: summary || payloadAnalysis?.summary || '',
+        keyPoints: keyPoints || payloadAnalysis?.keyPoints || '',
+        actionItems: actionItems || payloadAnalysis?.actionItems || '',
+        sentiment: sentiment || payloadAnalysis?.sentiment || 'Neutral',
+        transcription: transcription || payloadAnalysis?.transcript || '',
+        payload
     };
 }
 
@@ -3698,18 +4120,21 @@ function parseLegacyAgentFile(content) {
     const sentiment = extractSentimentFromSection(content);
     const transcription = extractTranscript(content) || 
                           extractSection(content, 'Transcript');
+    const payload = extractJsonSection(content, 'Export Payload (JSON)');
+    const payloadAnalysis = payload?.analysis || null;
     
-    if (!summary && !transcription) {
+    if (!summary && !transcription && !payloadAnalysis?.summary && !payloadAnalysis?.transcript) {
         return null;
     }
     
     return {
         frontmatter: { source_type: 'agent' },
-        summary: summary || '',
-        keyPoints: keyPoints || '',
-        actionItems: actionItems || '',
-        sentiment: sentiment || 'Neutral',
-        transcription: transcription || ''
+        summary: summary || payloadAnalysis?.summary || '',
+        keyPoints: keyPoints || payloadAnalysis?.keyPoints || '',
+        actionItems: actionItems || payloadAnalysis?.actionItems || '',
+        sentiment: sentiment || payloadAnalysis?.sentiment || 'Neutral',
+        transcription: transcription || payloadAnalysis?.transcript || '',
+        payload
     };
 }
 
@@ -3722,6 +4147,23 @@ function extractSection(content, sectionName) {
         return match[1].trim();
     }
     return null;
+}
+
+function escapeRegex(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function extractJsonSection(content, sectionName) {
+    const safeName = escapeRegex(sectionName);
+    const regex = new RegExp(`## ${safeName}[\\s\\S]*?\\n\`\`\`json\\s*\\n([\\s\\S]*?)\\n\`\`\``, 'i');
+    const match = content.match(regex);
+    if (!match || !match[1]) return null;
+    try {
+        return JSON.parse(match[1].trim());
+    } catch (error) {
+        console.warn('Failed to parse JSON section:', sectionName, error);
+        return null;
+    }
 }
 
 function extractSentimentFromSection(content) {
@@ -3760,6 +4202,7 @@ function importAgentSession(agentData) {
         URL.revokeObjectURL(generatedAudioUrl);
         generatedAudioUrl = null;
     }
+    generatedAudioBase64 = null;
     generatedImageUrl = null;
     generatedImageBase64 = null;
     
@@ -3774,40 +4217,120 @@ function importAgentSession(agentData) {
     
     // Set input mode to indicate this is from an agent
     state.inputMode = agentData.frontmatter?.source_type || 'agent';
+    const payload = agentData.payload || null;
+    resetExportMeta();
+    if (payload) {
+        state.exportMeta.agentId = payload.agent?.id || null;
+        state.exportMeta.source = {
+            audio: payload.source?.audioFile || null,
+            pdf: payload.source?.pdfFile || null,
+            image: payload.source?.imageFile || null,
+            video: payload.source?.videoFile || null,
+            url: payload.source?.url || null
+        };
+        state.exportMeta.processing = payload.processing || state.exportMeta.processing;
+        state.exportMeta.artifacts = {
+            audioBriefing: payload.artifacts?.audioBriefing || null,
+            infographic: payload.artifacts?.infographic || null
+        };
+        state.sourceUrl = payload.source?.url || null;
+    } else {
+        state.sourceUrl = null;
+    }
     
-    // Reset metrics (no API calls were made for import)
-    currentMetrics = {
-        whisperMinutes: 0,
-        gptInputTokens: 0,
-        gptOutputTokens: 0,
-        chatInputTokens: 0,
-        chatOutputTokens: 0,
-        ttsCharacters: 0,
-        imageInputTokens: 0,
-        imageOutputTokens: 0,
-        apiCalls: []
-    };
-    // Provide all expected metric fields for displayMetrics
-    state.metrics = {
-        whisperMinutes: 0,
-        gptInputTokens: 0,
-        gptOutputTokens: 0,
-        totalTokens: 0,
-        ttsCharacters: 0,
-        imageInputTokens: 0,
-        imageOutputTokens: 0,
-        imageTotalTokens: 0,
-        whisperCost: 0,
-        gptInputCost: 0,
-        gptOutputCost: 0,
-        ttsCost: 0,
-        imageInputCost: 0,
-        imageOutputCost: 0,
-        imageCost: 0,
-        totalCost: 0,
-        apiCalls: [],
-        isImported: true  // Flag to indicate this is an imported agent
-    };
+    if (payload?.currentMetrics) {
+        currentMetrics = {
+            whisperMinutes: payload.currentMetrics.whisperMinutes || 0,
+            gptInputTokens: payload.currentMetrics.gptInputTokens || 0,
+            gptOutputTokens: payload.currentMetrics.gptOutputTokens || 0,
+            chatInputTokens: payload.currentMetrics.chatInputTokens || 0,
+            chatOutputTokens: payload.currentMetrics.chatOutputTokens || 0,
+            ttsCharacters: payload.currentMetrics.ttsCharacters || 0,
+            imageInputTokens: payload.currentMetrics.imageInputTokens || 0,
+            imageOutputTokens: payload.currentMetrics.imageOutputTokens || 0,
+            apiCalls: payload.apiCalls || payload.currentMetrics.apiCalls || []
+        };
+        state.metrics = calculateMetrics();
+    } else if (payload?.metrics) {
+        currentMetrics = {
+            whisperMinutes: payload.metrics.whisperMinutes || 0,
+            gptInputTokens: payload.metrics.gptInputTokens || 0,
+            gptOutputTokens: payload.metrics.gptOutputTokens || 0,
+            chatInputTokens: payload.metrics.chatInputTokens || 0,
+            chatOutputTokens: payload.metrics.chatOutputTokens || 0,
+            ttsCharacters: payload.metrics.ttsCharacters || 0,
+            imageInputTokens: payload.metrics.imageInputTokens || 0,
+            imageOutputTokens: payload.metrics.imageOutputTokens || 0,
+            apiCalls: payload.apiCalls || []
+        };
+        state.metrics = { ...payload.metrics, apiCalls: payload.apiCalls || payload.metrics.apiCalls || [] };
+    } else {
+        // Reset metrics (no API calls were made for import)
+        currentMetrics = {
+            whisperMinutes: 0,
+            gptInputTokens: 0,
+            gptOutputTokens: 0,
+            chatInputTokens: 0,
+            chatOutputTokens: 0,
+            ttsCharacters: 0,
+            imageInputTokens: 0,
+            imageOutputTokens: 0,
+            apiCalls: []
+        };
+        // Provide all expected metric fields for displayMetrics
+        state.metrics = {
+            whisperMinutes: 0,
+            gptInputTokens: 0,
+            gptOutputTokens: 0,
+            totalTokens: 0,
+            ttsCharacters: 0,
+            imageInputTokens: 0,
+            imageOutputTokens: 0,
+            imageTotalTokens: 0,
+            whisperCost: 0,
+            gptInputCost: 0,
+            gptOutputCost: 0,
+            ttsCost: 0,
+            imageInputCost: 0,
+            imageOutputCost: 0,
+            imageCost: 0,
+            totalCost: 0,
+            apiCalls: [],
+            isImported: true  // Flag to indicate this is an imported agent
+        };
+    }
+
+    if (payload?.chatHistory && Array.isArray(payload.chatHistory)) {
+        state.chatHistory = payload.chatHistory;
+        restoreChatHistoryUI();
+    }
+
+    const audioAttachment = payload?.attachments?.audioBriefing;
+    if (audioAttachment?.base64) {
+        generatedAudioBase64 = audioAttachment.base64;
+        const audioBlob = base64ToBlob(audioAttachment.base64, audioAttachment.mimeType || 'audio/mpeg');
+        if (audioBlob) {
+            generatedAudioUrl = URL.createObjectURL(audioBlob);
+            elements.audioPlayer.src = generatedAudioUrl;
+            elements.audioPlayerContainer.classList.remove('hidden');
+        }
+    }
+
+    const infographicAttachment = payload?.attachments?.infographic;
+    if (infographicAttachment?.base64) {
+        generatedImageBase64 = infographicAttachment.base64;
+        const imageMime = infographicAttachment.mimeType || 'image/png';
+        elements.infographicImage.src = `data:${imageMime};base64,${infographicAttachment.base64}`;
+        elements.infographicContainer.classList.remove('hidden');
+    }
+
+    const sourceImageAttachment = payload?.attachments?.sourceImage;
+    if (sourceImageAttachment?.base64) {
+        const sourceImageUrl = `data:${sourceImageAttachment.mimeType || 'image/png'};base64,${sourceImageAttachment.base64}`;
+        state.selectedImageBase64 = sourceImageUrl;
+        elements.imagePreviewImg.src = sourceImageUrl;
+        elements.imagePreview.classList.remove('hidden');
+    }
     
     // Hide progress if visible
     hideProgress();

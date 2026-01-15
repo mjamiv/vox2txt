@@ -51,7 +51,8 @@ export class ContextStore {
             agent.keyPoints || '',
             agent.actionItems || '',
             agent.sentiment || '',
-            agent.transcript || ''  // Include transcript in search index
+            agent.transcript || '',  // Include transcript in search index
+            agent.extendedContext || ''
         ].join(' ').toLowerCase();
 
         return {
@@ -208,7 +209,7 @@ Summary: ${agent.summary || 'N/A'}
 Key Points: ${agent.keyPoints || 'N/A'}
 Action Items: ${agent.actionItems || 'N/A'}
 Sentiment: ${agent.sentiment || 'N/A'}
-${agent.transcript ? `Transcript: ${agent.transcript}` : ''}`;
+${agent.transcript ? `Transcript: ${agent.transcript}` : ''}${agent.extendedContext ? `\nExtended Context:\n${agent.extendedContext}` : ''}`;
 
             default:
                 return this.getContextSlice(agentId, 'standard');
@@ -362,6 +363,13 @@ ${agent.transcript ? `Transcript: ${agent.transcript}` : ''}`;
                         : agent.transcript;
                     optimized.transcriptTruncated = agent.transcript.length > maxTranscriptLength;
                     optimized.originalTranscriptLength = agent.transcript.length;
+                }
+
+                if (agent.extendedContext || includeEmptyFields) {
+                    optimized.extendedContext = agent.extendedContext || '';
+                }
+                if (agent.payload) {
+                    optimized.payload = agent.payload;
                 }
 
                 return optimized;
@@ -530,6 +538,13 @@ ${agent.transcript ? `Transcript: ${agent.transcript}` : ''}`;
                         : agent.transcript;
                 } else {
                     pythonAgent.transcript = '';
+                }
+
+                if (agent.extendedContext) {
+                    pythonAgent.extendedContext = agent.extendedContext;
+                }
+                if (agent.payload) {
+                    pythonAgent.payload = agent.payload;
                 }
 
                 return pythonAgent;
