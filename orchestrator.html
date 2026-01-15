@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=35">
+    <link rel="stylesheet" href="css/styles.css?v=36">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a853">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230a0e17' width='32' height='32' rx='6'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23d4a853'%3E⭐%3C/text%3E%3C/svg%3E" type="image/svg+xml">
@@ -88,6 +88,9 @@
                             <span class="spinner"></span>
                             Analyzing...
                         </span>
+                    </button>
+                    <button id="run-test-prompting-btn" class="btn-secondary btn-large" disabled title="Load agents first">
+                        <span class="btn-text">🧪 Run Test Prompting</span>
                     </button>
                     <p class="insights-hint">Upload at least 2 agents to generate cross-meeting insights</p>
                 </div>
@@ -207,6 +210,60 @@
             </div>
         </section>
 
+        <!-- Test Analytics Dashboard -->
+        <section id="test-analytics-section" class="test-analytics-section hidden">
+            <div class="section-header">
+                <h2><span>📊</span> Test Analytics Dashboard</h2>
+                <div class="analytics-actions">
+                    <button id="rerun-test-btn" class="btn-secondary">🔄 Run Again</button>
+                    <button id="export-test-html-btn" class="btn-primary">📄 Export HTML Report</button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="analytics-summary-grid">
+                <div class="analytics-card">
+                    <span class="analytics-icon">✅</span>
+                    <span class="analytics-value" id="analytics-prompts-run">0</span>
+                    <span class="analytics-label">Prompts Run</span>
+                </div>
+                <div class="analytics-card">
+                    <span class="analytics-icon">⏱️</span>
+                    <span class="analytics-value" id="analytics-total-time">0s</span>
+                    <span class="analytics-label">Total Time</span>
+                </div>
+                <div class="analytics-card">
+                    <span class="analytics-icon">🔢</span>
+                    <span class="analytics-value" id="analytics-total-tokens">0</span>
+                    <span class="analytics-label">Total Tokens</span>
+                </div>
+                <div class="analytics-card">
+                    <span class="analytics-icon">💰</span>
+                    <span class="analytics-value" id="analytics-total-cost">$0.00</span>
+                    <span class="analytics-label">Est. Cost</span>
+                </div>
+            </div>
+
+            <!-- Context Window Gauge -->
+            <div class="context-window-gauge">
+                <div class="gauge-header">
+                    <span>Context Window Usage</span>
+                    <span id="context-usage-text">0 / 128,000 tokens</span>
+                </div>
+                <div class="gauge-container">
+                    <div class="gauge-fill" id="context-gauge-fill"></div>
+                </div>
+            </div>
+
+            <!-- Individual Results -->
+            <div class="analytics-results-section">
+                <h3>Detailed Results</h3>
+                <div id="analytics-results-list" class="analytics-results-list">
+                    <!-- Results populated dynamically -->
+                </div>
+            </div>
+        </section>
+
         <!-- About Section -->
         <section class="about-section">
             <details class="about-card">
@@ -244,9 +301,89 @@
         </p>
     </footer>
 
+    <!-- Test Prompting Modal -->
+    <div id="test-prompting-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content test-prompting-modal-content">
+            <div class="modal-header">
+                <h2>🧪 Configure Test Prompts</h2>
+                <button class="modal-close-btn" id="close-test-modal">✕</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- RLM Settings -->
+                <div class="rlm-settings">
+                    <label class="rlm-label">Reasoning Language Model:</label>
+                    <div class="rlm-toggle-group">
+                        <button class="rlm-btn" data-mode="off">Off</button>
+                        <button class="rlm-btn active" data-mode="auto">Auto</button>
+                        <button class="rlm-btn" data-mode="on">On</button>
+                    </div>
+                    <p class="rlm-hint">Auto enables reasoning for complex analytical prompts</p>
+                </div>
+
+                <!-- Prompt Selection -->
+                <div class="prompt-selection">
+                    <div class="prompt-selection-header">
+                        <span>Select prompts to test (max 10):</span>
+                        <span class="prompts-selected-count" id="prompts-selected-count">0/10 selected</span>
+                    </div>
+                    <div id="prompts-list" class="prompts-list">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Custom Prompt Input -->
+                <div class="custom-prompt-section">
+                    <label>Add Custom Prompt:</label>
+                    <div class="custom-prompt-input-group">
+                        <input type="text" id="custom-prompt-input" placeholder="Enter a custom test prompt..." maxlength="500">
+                        <button id="add-custom-prompt-btn" class="btn-secondary">+ Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="deploy-test-agent-btn" class="btn-primary btn-large" disabled>
+                    🚀 Deploy Test Agent
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Runner Screen -->
+    <div id="test-runner-screen" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content test-runner-content">
+            <div class="test-runner-header">
+                <div class="test-runner-icon">🤖</div>
+                <h2>Testing Agent Running</h2>
+                <p id="test-progress-text">Initializing test sequence...</p>
+            </div>
+
+            <div class="test-progress-section">
+                <div class="test-progress-container">
+                    <div class="test-progress-bar" id="test-progress-bar"></div>
+                </div>
+                <span class="test-progress-label" id="test-progress-label">0 / 0 prompts</span>
+            </div>
+
+            <div class="test-status-section">
+                <label>Status Log:</label>
+                <div class="test-status-stream" id="test-status-stream">
+                    <!-- Status messages streamed here -->
+                </div>
+            </div>
+
+            <div class="test-runner-footer">
+                <button id="cancel-test-btn" class="btn-secondary">Cancel Test</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Marked.js for markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/orchestrator.js?v=8" type="module"></script>
+    <script src="js/orchestrator.js?v=9" type="module"></script>
 
     <!-- Service Worker Registration -->
     <script>
