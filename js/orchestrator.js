@@ -195,7 +195,8 @@ function startPromptGroup(queryName, usesRLM = false, mode = 'direct') {
         actualModels: [],
         modelFallbacks: [],
         modelFallbackNotified: false,
-        cached: false
+        cached: false,
+        focusEpisodes: []
     };
     return activePromptGroup.id;
 }
@@ -224,6 +225,22 @@ function attachShadowPromptTelemetry(userMessage) {
         tokenEstimate: shadowPrompt.tokenEstimate,
         tokenBreakdown: shadowPrompt.tokenBreakdown
     };
+}
+
+function recordFocusTelemetry(details = {}) {
+    if (!activePromptGroup || !details?.focusSummary) {
+        return;
+    }
+
+    if (!Array.isArray(activePromptGroup.focusEpisodes)) {
+        activePromptGroup.focusEpisodes = [];
+    }
+
+    activePromptGroup.focusEpisodes.push({
+        summary: details.focusSummary,
+        reason: details.focusReason || 'unknown',
+        shadowOnly: Boolean(details.shadowOnly)
+    });
 }
 
 /**
@@ -3285,18 +3302,19 @@ async function chatWithREPL(userMessage, thinkingId = null) {
         });
     };
 
-    // Set up progress callback if we have a thinking ID
+    // Set up progress callback (captures focus telemetry even without thinking ID)
     // Phase 3.2: Now passes details for depth-based indentation
     // Phase 3.4: Also update status bar to sync with step log
-    if (thinkingId) {
-        rlmPipeline.setProgressCallback((step, type, details) => {
+    rlmPipeline.setProgressCallback((step, type, details) => {
+        if (thinkingId) {
             addThinkingStep(thinkingId, step, type, details);
             // Update status bar for in-progress steps (not completion types)
             if (type !== 'success' && type !== 'warning' && type !== 'cache') {
                 updateThinkingStatus(thinkingId, step);
             }
-        });
-    }
+        }
+        recordFocusTelemetry(details);
+    });
 
     // Process through REPL pipeline
     const result = await rlmPipeline.processWithREPL(userMessage, llmCallWrapper, {
@@ -3362,18 +3380,19 @@ async function chatWithRLM(userMessage, thinkingId = null) {
         });
     };
 
-    // Set up progress callback if we have a thinking ID
+    // Set up progress callback (captures focus telemetry even without thinking ID)
     // Phase 3.2: Now passes details for depth-based indentation
     // Phase 3.4: Also update status bar to sync with step log
-    if (thinkingId) {
-        rlmPipeline.setProgressCallback((step, type, details) => {
+    rlmPipeline.setProgressCallback((step, type, details) => {
+        if (thinkingId) {
             addThinkingStep(thinkingId, step, type, details);
             // Update status bar for in-progress steps (not completion types)
             if (type !== 'success' && type !== 'warning' && type !== 'cache') {
                 updateThinkingStatus(thinkingId, step);
             }
-        });
-    }
+        }
+        recordFocusTelemetry(details);
+    });
 
     // Process through RLM pipeline
     const result = await rlmPipeline.process(userMessage, llmCallWrapper, {
@@ -4891,6 +4910,22 @@ function buildPromptLogsHtml(promptLogs) {
         const shadowPromptTokens = shadowPrompt?.tokenBreakdown
             ? escapeHtml(JSON.stringify(shadowPrompt.tokenBreakdown, null, 2))
             : '';
+        const focusEpisodes = Array.isArray(log.focusEpisodes) ? log.focusEpisodes : [];
+        const focusHtml = focusEpisodes.map((episode, focusIndex) => {
+            const focusLabel = focusEpisodes.length > 1 ? `#${focusIndex + 1}` : '';
+            const focusReason = escapeHtml(episode.reason || 'unknown');
+            const focusSummary = escapeHtml(episode.summary || '');
+            const focusMode = episode.shadowOnly ? '<span class="muted">(shadow)</span>' : '';
+            return `
+                <div class="prompt-log-row">
+                    <span class="log-label">🧠 Focus ${focusLabel}:</span>
+                    <span class="log-value">${focusReason} ${focusMode}</span>
+                </div>
+                <div class="prompt-log-row prompt-preview">
+                    <span class="log-label">🧠 Summary:</span>
+                    <span class="log-value prompt-text">${focusSummary || '(No summary)'}</span>
+                </div>`;
+        }).join('');
         
         return `
         <details class="prompt-log-entry ${log.usesRLM ? 'uses-rlm' : ''}" id="${log.id || 'unknown'}">
@@ -4984,6 +5019,7 @@ function buildPromptLogsHtml(promptLogs) {
                     </span>
                 </div>` : ''}
                 ${confidenceHtml}
+                ${focusHtml}
                 ${shadowPrompt ? `
                 <div class="prompt-log-row">
                     <span class="log-label">🕶️ Shadow-only tokens:</span>
