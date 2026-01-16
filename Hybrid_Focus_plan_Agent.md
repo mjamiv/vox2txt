@@ -191,11 +191,13 @@ Per prompt:
 ---
 
 ## 12) Implementation Order (Milestones)
-### Milestone 1 — Data Model + SWM Capture (No behavior change)
+### Milestone 1 — Data Model + SWM Capture (No behavior change) ✅ Complete
 - Implement memory schema and storage APIs.
 - Add SWM capture at end of each assistant completion.
 - Store slices without changing prompt assembly.
-- **Success criteria:** metrics show slice writes; existing behavior unchanged.
+- Note: `js/rlm/memory-store.js` added with `MemoryStore` capture logic.
+- Note: `js/rlm/index.js` now instantiates `memoryStore`, calls `_captureMemory()` for `process`, `_legacyProcess`, and `processWithREPL`, and exposes memory stats in `getStats()`/`reset()`.
+- **Success criteria:** metrics show slice writes; no prompt assembly changes.
 
 ### Milestone 2 — Retrieval + Prompt Builder (Shadow mode)
 - Add retrieval pipeline and prompt assembler.
