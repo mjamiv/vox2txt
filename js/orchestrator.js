@@ -1985,11 +1985,7 @@ function estimateTokens(text) {
     return Math.ceil(trimmed.length / 4);
 }
 
-const CONTEXT_GAUGE_HISTORY_LIMITS = {
-    direct: 20,
-    rlm: 10,
-    repl: 0
-};
+const CHAT_HISTORY_TOKEN_BUFFER = 1000;
 
 const CONTEXT_GAUGE_MESSAGE_OVERHEAD = 4;
 let contextGaugeRunId = 0;
@@ -2030,9 +2026,33 @@ function getDraftQuery() {
     return elements.chatInput ? elements.chatInput.value.trim() : '';
 }
 
-function getHistorySlice(limit) {
-    if (!limit || limit <= 0) return [];
-    return state.chatHistory.slice(-limit);
+function buildHistoryWithinTokenBudget(maxTokens) {
+    if (!maxTokens || maxTokens <= 0) return [];
+    let totalTokens = 0;
+    const selected = [];
+
+    for (let i = state.chatHistory.length - 1; i >= 0; i -= 1) {
+        const message = state.chatHistory[i];
+        const messageTokens = estimateMessageTokens(message);
+        if (totalTokens + messageTokens > maxTokens) {
+            break;
+        }
+        selected.push(message);
+        totalTokens += messageTokens;
+    }
+
+    return selected.reverse();
+}
+
+function getHistoryTokenBudget(systemPrompt, userPrompt) {
+    const modelLimit = MODEL_CONTEXT_WINDOWS[state.settings.model] || 64000;
+    const baseTokens = estimatePromptTokens(systemPrompt, [], userPrompt);
+    return Math.max(modelLimit - baseTokens - CHAT_HISTORY_TOKEN_BUFFER, 0);
+}
+
+function getHistoryForPrompt(systemPrompt, userPrompt) {
+    const budget = getHistoryTokenBudget(systemPrompt, userPrompt);
+    return buildHistoryWithinTokenBudget(budget);
 }
 
 function estimatePromptTokens(systemPrompt, historyMessages, userPrompt) {
@@ -2079,14 +2099,15 @@ function resolveContextGaugeMode(draftMessage) {
 
 function estimateDirectContextUsage(draftMessage) {
     const relevantAgents = getRelevantAgentsForChat(draftMessage, 5);
-    const history = getHistorySlice(CONTEXT_GAUGE_HISTORY_LIMITS.direct);
     const transcriptLimit = Math.floor(30000 / Math.max(relevantAgents.length, 1));
 
     const context = buildChatContext(draftMessage, { maxAgents: 5 });
     const rawContext = buildChatContext(draftMessage, { maxAgents: 5, useFullTranscripts: true });
+    const history = getHistoryForPrompt(buildDirectSystemPrompt(context), draftMessage);
+    const rawHistory = getHistoryForPrompt(buildDirectSystemPrompt(rawContext), draftMessage);
 
     const currentTokens = estimatePromptTokens(buildDirectSystemPrompt(context), history, draftMessage);
-    const rawTokens = estimatePromptTokens(buildDirectSystemPrompt(rawContext), history, draftMessage);
+    const rawTokens = estimatePromptTokens(buildDirectSystemPrompt(rawContext), rawHistory, draftMessage);
 
     return {
         currentTokens,
@@ -2101,9 +2122,9 @@ function estimateDirectContextUsage(draftMessage) {
 }
 
 async function estimateRlmContextUsage(draftMessage) {
-    const history = getHistorySlice(CONTEXT_GAUGE_HISTORY_LIMITS.rlm);
     const contextStore = rlmPipeline.contextStore;
     const decomposer = rlmPipeline.decomposer;
+    const modelLimit = MODEL_CONTEXT_WINDOWS[state.settings.model] || 64000;
 
     if (!contextStore || !decomposer) {
         return estimateDirectContextUsage(draftMessage);
@@ -2122,7 +2143,6 @@ async function estimateRlmContextUsage(draftMessage) {
         return estimateDirectContextUsage(draftMessage);
     }
 
-    const historyTokens = estimateMessagesTokens(history);
     const systemTokens = estimateMessageTokens({ role: 'system', content: RLM_SUBQUERY_SYSTEM_PROMPT });
     const mapQueries = subQueries.filter(sq => sq.type === 'map');
     const estimatedMapTokens = mapQueries.length * (RLM_CONFIG.tokensPerSubQuery || 800);
@@ -2144,7 +2164,10 @@ async function estimateRlmContextUsage(draftMessage) {
                 '\n\nProvide a focused answer based only on the context above.'
             ]);
             const reduceUserTokens = reduceContentTokens + CONTEXT_GAUGE_MESSAGE_OVERHEAD;
-            const reduceTotal = systemTokens + historyTokens + reduceUserTokens;
+            const reduceBudget = Math.max(modelLimit - (systemTokens + reduceUserTokens) - CHAT_HISTORY_TOKEN_BUFFER, 0);
+            const reduceHistory = buildHistoryWithinTokenBudget(reduceBudget);
+            const reduceHistoryTokens = estimateMessagesTokens(reduceHistory);
+            const reduceTotal = systemTokens + reduceHistoryTokens + reduceUserTokens;
             currentMax = Math.max(currentMax, reduceTotal);
             rawMax = Math.max(rawMax, reduceTotal);
             return;
@@ -2155,12 +2178,16 @@ async function estimateRlmContextUsage(draftMessage) {
 
         const agentContext = contextStore.getCombinedContext(targetAgents, contextLevel);
         const userPrompt = buildRlmUserPrompt(agentContext, queryText);
-        const currentTokens = systemTokens + historyTokens + estimateMessageTokens({ role: 'user', content: userPrompt });
+        const historyBudget = Math.max(modelLimit - (systemTokens + estimateMessageTokens({ role: 'user', content: userPrompt })) - CHAT_HISTORY_TOKEN_BUFFER, 0);
+        const history = buildHistoryWithinTokenBudget(historyBudget);
+        const currentTokens = systemTokens + estimateMessagesTokens(history) + estimateMessageTokens({ role: 'user', content: userPrompt });
         currentMax = Math.max(currentMax, currentTokens);
 
         const rawContext = contextStore.getCombinedContext(targetAgents, 'full');
         const rawPrompt = buildRlmUserPrompt(rawContext, queryText);
-        const rawTokens = systemTokens + historyTokens + estimateMessageTokens({ role: 'user', content: rawPrompt });
+        const rawHistoryBudget = Math.max(modelLimit - (systemTokens + estimateMessageTokens({ role: 'user', content: rawPrompt })) - CHAT_HISTORY_TOKEN_BUFFER, 0);
+        const rawHistory = buildHistoryWithinTokenBudget(rawHistoryBudget);
+        const rawTokens = systemTokens + estimateMessagesTokens(rawHistory) + estimateMessageTokens({ role: 'user', content: rawPrompt });
         rawMax = Math.max(rawMax, rawTokens);
     });
 
@@ -2169,7 +2196,7 @@ async function estimateRlmContextUsage(draftMessage) {
         rawTokens: rawMax,
         details: {
             mode: 'rlm',
-            historyCount: history.length,
+            historyCount: state.chatHistory.length,
             subQueryCount: subQueries.length,
             strategy: decomposition?.strategy?.type || 'unknown'
         }
@@ -2177,7 +2204,6 @@ async function estimateRlmContextUsage(draftMessage) {
 }
 
 function estimateReplContextUsage(draftMessage) {
-    const history = getHistorySlice(CONTEXT_GAUGE_HISTORY_LIMITS.repl);
     const contextStore = rlmPipeline.contextStore;
     const stats = contextStore?.getStats ? contextStore.getStats() : { activeAgents: 0 };
     const agentNames = contextStore?.getAgentNames ? contextStore.getAgentNames() : [];
@@ -2186,6 +2212,7 @@ function estimateReplContextUsage(draftMessage) {
         activeAgents: stats.activeAgents || 0,
         agentNames
     });
+    const history = getHistoryForPrompt(prompts.systemPrompt, prompts.userPrompt);
 
     let currentTokens = estimatePromptTokens(prompts.systemPrompt, history, prompts.userPrompt);
     let rawTokens = currentTokens;
@@ -2197,11 +2224,15 @@ function estimateReplContextUsage(draftMessage) {
         const fullContext = contextStore.getCombinedContext(activeAgentIds, 'full');
 
         const subLmSystemTokens = estimateMessageTokens({ role: 'system', content: RLM_SUBQUERY_SYSTEM_PROMPT });
-        const subLmUserTokens = estimateMessageTokens({ role: 'user', content: buildSubLmUserPrompt(summaryContext, draftMessage) });
-        const subLmRawTokens = estimateMessageTokens({ role: 'user', content: buildSubLmUserPrompt(fullContext, draftMessage) });
+        const subLmUserPrompt = buildSubLmUserPrompt(summaryContext, draftMessage);
+        const subLmRawPrompt = buildSubLmUserPrompt(fullContext, draftMessage);
+        const subLmHistory = getHistoryForPrompt(RLM_SUBQUERY_SYSTEM_PROMPT, subLmUserPrompt);
+        const subLmRawHistory = getHistoryForPrompt(RLM_SUBQUERY_SYSTEM_PROMPT, subLmRawPrompt);
+        const subLmUserTokens = estimateMessageTokens({ role: 'user', content: subLmUserPrompt });
+        const subLmRawTokens = estimateMessageTokens({ role: 'user', content: subLmRawPrompt });
 
-        currentTokens = Math.max(currentTokens, subLmSystemTokens + subLmUserTokens);
-        rawTokens = Math.max(rawTokens, subLmSystemTokens + subLmRawTokens);
+        currentTokens = Math.max(currentTokens, subLmSystemTokens + estimateMessagesTokens(subLmHistory) + subLmUserTokens);
+        rawTokens = Math.max(rawTokens, subLmSystemTokens + estimateMessagesTokens(subLmRawHistory) + subLmRawTokens);
         subLmEstimated = true;
     }
 
@@ -2651,6 +2682,11 @@ async function chatWithREPL(userMessage, thinkingId = null) {
             { role: 'user', content: userContent }
         ];
 
+        const recentHistory = getHistoryForPrompt(systemPrompt, userContent);
+        if (recentHistory.length > 0) {
+            messages.splice(1, 0, ...recentHistory);
+        }
+
         return callGPTWithMessages(messages, `REPL: ${userMessage.substring(0, 20)}...`);
     };
 
@@ -2719,7 +2755,7 @@ async function chatWithRLM(userMessage, thinkingId = null) {
         ];
 
         // Add recent chat history for context continuity
-        const recentHistory = state.chatHistory.slice(-10);
+        const recentHistory = getHistoryForPrompt(systemPrompt, userContent);
         if (recentHistory.length > 0) {
             messages.splice(1, 0, ...recentHistory);
         }
@@ -2790,8 +2826,8 @@ async function chatWithAgentsLegacy(userMessage) {
         { role: 'system', content: systemPrompt }
     ];
 
-    // Add recent chat history (last 10 exchanges)
-    const recentHistory = state.chatHistory.slice(-20);
+    // Add chat history for continuity
+    const recentHistory = getHistoryForPrompt(systemPrompt, userMessage);
     messages.push(...recentHistory);
 
     // Add current message
