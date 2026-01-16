@@ -17,6 +17,7 @@ northstar.LM consists of two main applications:
 - Imports now restore richer session state, and the Orchestrator consumes the embedded payload to enrich cross-meeting context without loading base64 blobs.
 - GitHub Pages deploy now copies optional asset folders when present (e.g., `images/`, `flowcharts/`, `static/`) to avoid build failures.
 - RLM now builds **signal-weighted chat history** (state block + working window + retrieved memory slices) to keep recursive prompts focused and within token budgets.
+- Hybrid focus + shadow prompting adds structured diagnostics: a compact focus window drives live reasoning while a parallel shadow prompt logs retrieval slices and guardrail telemetry without affecting user-facing outputs.
 
 ## Application Workflow
 
@@ -192,6 +193,14 @@ flowchart TB
 ## RLM: Recursive Language Model
 
 The Agent Orchestrator is powered by **RLM** (Recursive Language Model), based on the paper ["Recursive Language Models"](https://arxiv.org/abs/2512.24601) by Zhang, Kraska & Khattab.
+
+### Hybrid Focus + Shadow Prompting
+
+RLM now separates *execution focus* from *diagnostic context*:
+
+- **Hybrid focus window** keeps the live prompt tight by prioritizing state summaries, active objectives, and the most recent high-signal turns.
+- **Shadow prompt stream** mirrors retrieval slices and guardrail metadata in a parallel prompt used solely for logging and evaluation, so production responses stay stable while prompt quality is measured.
+- **Telemetry-ready outputs** expose focus stats and shadow previews in the Orchestrator to support tuning, regression reviews, and token-budget governance.
 
 ### Complete RLM Architecture
 
