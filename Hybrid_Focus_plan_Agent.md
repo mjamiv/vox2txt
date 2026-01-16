@@ -220,6 +220,7 @@ Per prompt:
 ### Milestone 5 — Instrumentation + Debug Panel
 - Add detailed token breakdown logs.
 - Build Memory Debug Panel views.
+- Attach Focus episode summaries to prompt logs for side-by-side review.
 - **Success criteria:** operators can trace a response end-to-end.
 
 ### Milestone 6 — Evaluation + Rollout
@@ -266,6 +267,7 @@ Per prompt:
 - **RLM mode** shows sharply reduced input tokens, consistent with SWM capture, retrieval shadowing, and aggregation. This is expected with Milestone 2 shadow prompt builder enabled (no behavioral change, just telemetry).
 - **Shadow Prompt + Focus Shadow** runs remain low-token and stable, which is expected because they do not alter the live prompt path; they only emit telemetry and focus summaries.
 - **Focus Episodes** (when enabled) should stay low-token and primarily affect memory persistence, not prompt size, until Milestone 4 prompt budgeting is enforced.
+- **Recent run** confirms the pattern: direct mode input tokens were orders of magnitude higher (~261k) while RLM modes stayed under ~1k input tokens, with focus shadow/episodes remaining stable and low-token.
 
 **Interpretation:** The results align with current enhancements: shadow prompt and focus are emitting structured telemetry without changing the live prompt path. Any remaining latency/quality deltas should be evaluated once Milestone 4 guardrails are active.
 
