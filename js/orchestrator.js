@@ -1680,6 +1680,40 @@ function deployTestAgent() {
     runTestSequence(selectedPrompts, rlmMode);
 }
 
+function getPromptProcessingMode(promptText) {
+    const rlmEnabled = state.settings.useRLM;
+    const rlmAuto = state.settings.rlmAuto;
+    const useREPL = rlmEnabled && rlmPipeline.shouldUseREPL && rlmPipeline.shouldUseREPL(promptText, { auto: rlmAuto });
+    const useRLM = rlmEnabled && !useREPL && rlmPipeline.shouldUseRLM(promptText, { auto: rlmAuto });
+    const processingMode = useREPL ? 'repl' : (useRLM ? 'rlm' : 'direct');
+
+    return { useREPL, useRLM, processingMode };
+}
+
+async function runPromptWithMetrics(promptText, labelPrefix = 'Test') {
+    const queryPreview = promptText.substring(0, 50) + (promptText.length > 50 ? '...' : '');
+    const { useREPL, useRLM, processingMode } = getPromptProcessingMode(promptText);
+
+    startPromptGroup(`${labelPrefix}: ${queryPreview}`, useRLM || useREPL, processingMode);
+
+    try {
+        const response = await chatWithAgents(promptText);
+        if (activePromptGroup) {
+            activePromptGroup.promptPreview = queryPreview;
+            activePromptGroup.response = response;
+        }
+        return response;
+    } catch (error) {
+        if (activePromptGroup) {
+            activePromptGroup.promptPreview = queryPreview;
+            activePromptGroup.response = `Error: ${error.message}`;
+        }
+        throw error;
+    } finally {
+        endPromptGroup();
+    }
+}
+
 async function runTestSequence(prompts, rlmMode) {
     const previousSettings = {
         useRLM: state.settings.useRLM,
@@ -1709,7 +1743,7 @@ async function runTestSequence(prompts, rlmMode) {
         addTestStatusLine(prompt.text, promptLabel);
 
         try {
-            const response = await chatWithAgents(prompt.text);
+            const response = await runPromptWithMetrics(prompt.text, 'Test');
             const logEntry = currentMetrics.promptLogs[currentMetrics.promptLogs.length - 1] || null;
             testPromptState.run.results.push({
                 prompt: prompt.text,
@@ -1718,11 +1752,12 @@ async function runTestSequence(prompts, rlmMode) {
             });
             addTestStatusLine('Response received.', promptLabel);
         } catch (error) {
+            const logEntry = currentMetrics.promptLogs[currentMetrics.promptLogs.length - 1] || null;
             testPromptState.run.results.push({
                 prompt: prompt.text,
                 response: '',
                 error: error.message || 'Unknown error',
-                log: null
+                log: logEntry
             });
             addTestStatusLine(`Error: ${error.message || 'Unknown error'}`, promptLabel);
         }
