@@ -29,6 +29,7 @@ import { ResponseAggregator, createAggregator } from './aggregator.js';
 import { REPLEnvironment, getREPLEnvironment, resetREPLEnvironment, isREPLSupported, isSharedArrayBufferSupported } from './repl-environment.js';
 import { CodeGenerator, createCodeGenerator, generateCodePrompt, parseCodeOutput, parseFinalAnswer, validateCode, classifyQuery, QueryType } from './code-generator.js';
 import { QueryCache, getQueryCache, resetQueryCache, CACHE_CONFIG } from './query-cache.js';
+import { MemoryStore, getMemoryStore, resetMemoryStore } from './memory-store.js';
 
 /**
  * RLM Configuration
@@ -78,6 +79,7 @@ export class RLMPipeline {
         this.config = { ...RLM_CONFIG, ...config };
 
         this.contextStore = getContextStore();
+        this.memoryStore = getMemoryStore();
         this.decomposer = createDecomposer({
             maxSubQueries: this.config.maxSubQueries,
             minRelevanceScore: this.config.minRelevanceScore
@@ -396,6 +398,8 @@ If the information is not available in the provided context, say so briefly.`;
                 }
             };
 
+            this._captureMemory(query, result);
+
             // Phase 3.1: Store result in cache
             this._storeInCache(query, result, 'rlm');
 
@@ -459,7 +463,7 @@ Use the following meeting data to answer questions accurately and comprehensivel
 
         const response = await llmCall(systemPrompt, `${combinedContext}\n\nQuestion: ${query}`, context);
 
-        return {
+        const result = {
             success: true,
             response,
             metadata: {
@@ -467,6 +471,10 @@ Use the following meeting data to answer questions accurately and comprehensivel
                 legacy: true
             }
         };
+
+        this._captureMemory(query, result);
+
+        return result;
     }
 
     /**
@@ -624,6 +632,8 @@ Use the following meeting data to answer questions accurately and comprehensivel
                 }
             };
 
+            this._captureMemory(query, result);
+
             // Phase 3.1: Store result in cache
             this._storeInCache(query, result, 'repl');
 
@@ -688,6 +698,25 @@ Be concise and focus only on information relevant to the question.`;
         }
 
         return results;
+    }
+
+    /**
+     * Capture memory for SWM store (Milestone 1).
+     * @private
+     */
+    _captureMemory(query, result) {
+        if (!this.memoryStore || !result?.success) {
+            return;
+        }
+
+        this.memoryStore.captureCompletion({
+            query,
+            response: result.response,
+            metadata: {
+                agentIds: this.contextStore.getActiveAgents().map(agent => agent.id),
+                mode: result.metadata?.replUsed ? 'repl' : (result.metadata?.legacy ? 'legacy' : 'rlm')
+            }
+        });
     }
 
     // ==========================================
@@ -840,6 +869,7 @@ Be concise and focus only on information relevant to the question.`;
         return {
             ...this.stats,
             contextStore: this.contextStore.getStats(),
+            memoryStore: this.memoryStore.getStats(),
             repl: replStats,
             cache: cacheStats,
             config: this.config
@@ -898,6 +928,8 @@ Be concise and focus only on information relevant to the question.`;
     reset() {
         resetContextStore();
         this.contextStore = getContextStore();
+        resetMemoryStore();
+        this.memoryStore = getMemoryStore();
 
         // Reset REPL if initialized
         if (this.repl) {
@@ -1006,5 +1038,9 @@ export {
     QueryCache,
     getQueryCache,
     resetQueryCache,
-    CACHE_CONFIG
+    CACHE_CONFIG,
+    // Memory Store (Milestone 1)
+    MemoryStore,
+    getMemoryStore,
+    resetMemoryStore
 };
