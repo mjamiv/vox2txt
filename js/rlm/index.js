@@ -78,8 +78,8 @@ export const RLM_CONFIG = {
     shadowPromptMaxPerAgent: 2,
     shadowPromptRecencyWindowDays: 30,
 
-    // Milestone 2.5: Retrieval prompt builder (feature-flagged)
-    enableRetrievalPrompt: false,
+    // Milestone 2.5: Retrieval prompt builder (live SWM context)
+    enableRetrievalPrompt: true,
 
     // Milestone 4: Guardrails + token budgeting
     enablePromptBudgeting: true,

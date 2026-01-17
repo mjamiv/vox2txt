@@ -171,6 +171,15 @@
                             <option value="xhigh">X-High</option>
                         </select>
                     </div>
+                    <div class="setting-group">
+                        <label for="processing-mode-select">Processing Mode</label>
+                        <select id="processing-mode-select">
+                            <option value="direct">Direct Chat (LLM only)</option>
+                            <option value="rlm-swm">RLM + Signal-Weighted Memory</option>
+                            <option value="rlm-hybrid">RLM + Hybrid Focus + Shadow</option>
+                        </select>
+                        <p class="setting-help">Choose how the Orchestrator builds context and diagnostics for responses.</p>
+                    </div>
                     <div class="setting-group setting-toggle">
                         <div class="setting-row">
                             <label for="rlm-toggle">RLM</label>
