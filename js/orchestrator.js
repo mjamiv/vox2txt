@@ -232,6 +232,17 @@ function isGpt52Model(model) {
     return GPT_52_ALIASES.has(model);
 }
 
+function isCorsError(error) {
+    if (!error) {
+        return false;
+    }
+    return error.name === 'TypeError' && /failed to fetch|networkerror|load resource/i.test(error.message || '');
+}
+
+function buildCorsErrorMessage() {
+    return 'Browser blocked this request due to CORS. When running from GitHub Pages, you must route OpenAI API calls through your own backend/proxy so the response includes Access-Control-Allow-Origin.';
+}
+
 function recordModelFallback(requestedModel, actualModel, callName = 'API Call') {
     if (!requestedModel || !actualModel || requestedModel === actualModel) {
         return;
@@ -3617,7 +3628,9 @@ async function sendChatMessage() {
         const modelName = modelNames[state.settings.model] || state.settings.model;
         
         // Provide helpful guidance based on error type
-        if (error.message.includes('content_filter')) {
+        if (error.message.includes('CORS') || error.message.includes('Access-Control-Allow-Origin')) {
+            errorMessage = error.message;
+        } else if (error.message.includes('content_filter')) {
             errorMessage = `The ${modelName} response was filtered by content policy. Please try rephrasing your query.`;
         } else if (error.message.includes('truncated') || error.message.includes('max tokens')) {
             errorMessage = `The ${modelName} response was truncated. Try a shorter query or switch to a model with higher token limits.`;
@@ -4471,6 +4484,9 @@ async function callGPT(systemPrompt, userContent, callName = 'API Call') {
             }
             
         } catch (error) {
+            if (isCorsError(error)) {
+                throw new Error(buildCorsErrorMessage());
+            }
             // Don't retry on client errors (4xx except 429)
             if (error.status && error.status >= 400 && error.status < 500 && error.status !== 429) {
                 throw error;
@@ -4586,6 +4602,9 @@ async function callGPTWithMessages(messages, callName = 'Chat Query', options = 
             }
             
         } catch (error) {
+            if (isCorsError(error)) {
+                throw new Error(buildCorsErrorMessage());
+            }
             // Don't retry on client errors (4xx except 429)
             if (error.status && error.status >= 400 && error.status < 500 && error.status !== 429) {
                 throw error;
@@ -4728,6 +4747,9 @@ async function callGPTWithMessagesStream(messages, callName = 'Chat Query', stre
                 await sleep(delay);
             }
         } catch (error) {
+            if (isCorsError(error)) {
+                throw new Error(buildCorsErrorMessage());
+            }
             if (error.status && error.status >= 400 && error.status < 500 && error.status !== 429) {
                 throw error;
             }

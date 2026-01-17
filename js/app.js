@@ -69,6 +69,28 @@ const state = {
 
 const GPT_52_MODEL = 'gpt-5.2-2025-12-11';
 
+function isCorsError(error) {
+    if (!error) {
+        return false;
+    }
+    return error.name === 'TypeError' && /failed to fetch|networkerror|load resource/i.test(error.message || '');
+}
+
+function buildCorsErrorMessage() {
+    return 'Browser blocked this request due to CORS. When running from GitHub Pages, you must route OpenAI API calls through your own backend/proxy so the response includes Access-Control-Allow-Origin.';
+}
+
+async function fetchOpenAI(url, options) {
+    try {
+        return await fetch(url, options);
+    } catch (error) {
+        if (isCorsError(error)) {
+            throw new Error(buildCorsErrorMessage());
+        }
+        throw error;
+    }
+}
+
 // ============================================
 // Pricing Configuration (per 1M tokens / per minute / per unit)
 // ============================================
@@ -996,7 +1018,7 @@ async function analyzeImageBasedPdf(pdf, totalPages) {
 // Image Analysis with Vision API
 // ============================================
 async function analyzeImageWithVision(base64Image) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetchOpenAI('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${state.apiKey}`,
@@ -1302,7 +1324,7 @@ async function transcribeAudio(file) {
         formData.append('file', file);
         formData.append('model', 'whisper-1');
 
-        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        const response = await fetchOpenAI('https://api.openai.com/v1/audio/transcriptions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${state.apiKey}`
@@ -1343,7 +1365,7 @@ async function callChatAPI(systemPrompt, userContent, callName = 'API Call', use
     }
 
     const result = await callAPIWithRetry(async () => {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        const response = await fetchOpenAI('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${state.apiKey}`,
@@ -2945,7 +2967,7 @@ Sentiment: ${state.results.sentiment}`;
 }
 
 async function textToSpeech(text, voice = 'nova') {
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+    const response = await fetchOpenAI('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${state.apiKey}`,
@@ -3061,7 +3083,7 @@ CRITICAL DESIGN REQUIREMENTS:
 }
 
 async function generateImage(prompt) {
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
+    const response = await fetchOpenAI('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${state.apiKey}`,
@@ -3382,7 +3404,7 @@ async function chatWithData(context, history) {
         })) // Keep last 10 messages to avoid token limits
     ];
     
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetchOpenAI('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${state.apiKey}`,
