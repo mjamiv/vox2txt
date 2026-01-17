@@ -1057,6 +1057,7 @@ function init() {
     updateSettingsUI();
     applyRlmFeatureFlags();
     updateUI();
+    window.__orchestratorInitialized = true;
 }
 
 function setupEventListeners() {
