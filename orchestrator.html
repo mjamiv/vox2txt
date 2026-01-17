@@ -156,7 +156,7 @@
                     <div class="setting-group">
                         <label for="model-select">Model</label>
                         <select id="model-select">
-                            <option value="gpt-5.2">GPT-5.2</option>
+                            <option value="gpt-5.2-2025-12-11">GPT-5.2</option>
                             <option value="gpt-5-mini">GPT-5-mini</option>
                             <option value="gpt-5-nano">GPT-5-nano</option>
                         </select>
@@ -179,6 +179,11 @@
                             <option value="rlm-hybrid">RLM + Hybrid Focus + Shadow</option>
                         </select>
                         <p class="setting-help">Choose how the Orchestrator builds context and diagnostics for responses.</p>
+                    </div>
+                    <div class="setting-group">
+                        <label for="api-base-url">API Base URL</label>
+                        <input type="text" id="api-base-url" placeholder="https://api.openai.com/v1">
+                        <p class="setting-help">Use your proxy URL here when hosting on GitHub Pages to avoid CORS blocking.</p>
                     </div>
                     <div class="setting-section">
                         <span class="setting-section-title">Core Orchestration (Managed by Processing Mode)</span>
@@ -239,7 +244,7 @@
                     </div>
                     <div class="setting-group setting-toggle">
                         <div class="setting-row">
-                            <label for="focus-episodes-toggle">Focus Episodes</label>
+                            <label for="focus-episodes-toggle" title="Use Focus Episodes when you want finished focus sessions saved into memory slices for better long-term recall. Leave it off for quick, one-off questions to keep memory lean.">Focus Episodes</label>
                             <label class="toggle-switch">
                                 <input type="checkbox" id="focus-episodes-toggle">
                                 <span class="toggle-slider"></span>
@@ -249,7 +254,7 @@
                     </div>
                     <div class="setting-group setting-toggle">
                         <div class="setting-row">
-                            <label for="memory-debug-toggle">Memory Debug</label>
+                            <label for="memory-debug-toggle" title="Turn on Memory Debug when troubleshooting recall, retrieval, or focus behavior. It surfaces internal memory slices and diagnostics, which can be noisy for everyday use.">Memory Debug</label>
                             <label class="toggle-switch">
                                 <input type="checkbox" id="memory-debug-toggle">
                                 <span class="toggle-slider"></span>
@@ -558,7 +563,7 @@
                         </div>
                         <div class="test-setting">
                             <div class="test-setting-row">
-                                <label for="test-focus-episodes-toggle">Focus Episodes</label>
+                                <label for="test-focus-episodes-toggle" title="Use Focus Episodes when you want finished focus sessions saved into memory slices for better long-term recall. Leave it off for quick, one-off questions to keep memory lean.">Focus Episodes</label>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="test-focus-episodes-toggle">
                                     <span class="toggle-slider"></span>
@@ -576,7 +581,7 @@
                         </div>
                         <div class="test-setting">
                             <div class="test-setting-row">
-                                <label for="test-memory-debug-toggle">Memory Debug</label>
+                                <label for="test-memory-debug-toggle" title="Turn on Memory Debug when troubleshooting recall, retrieval, or focus behavior. It surfaces internal memory slices and diagnostics, which can be noisy for everyday use.">Memory Debug</label>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="test-memory-debug-toggle">
                                     <span class="toggle-slider"></span>

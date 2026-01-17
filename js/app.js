@@ -23,11 +23,15 @@ async function loadPdfJs() {
     }
 }
 
+const GPT_52_MODEL = 'gpt-5.2-2025-12-11';
+const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
+
 // ============================================
 // State Management
 // ============================================
 const state = {
     apiKey: '',
+    apiBaseUrl: DEFAULT_OPENAI_BASE_URL,
     selectedFile: null,
     selectedPdfFile: null,
     selectedImageFile: null,
@@ -67,11 +71,49 @@ const state = {
     urlContent: null // Stores fetched URL content
 };
 
+function isCorsError(error) {
+    if (!error) {
+        return false;
+    }
+    return error.name === 'TypeError' && /failed to fetch|networkerror|load resource/i.test(error.message || '');
+}
+
+function buildCorsErrorMessage() {
+    return 'Browser blocked this request due to CORS. When running from GitHub Pages, you must route OpenAI API calls through your own backend/proxy so the response includes Access-Control-Allow-Origin.';
+}
+
+function normalizeApiBaseUrl(input) {
+    if (!input) {
+        return DEFAULT_OPENAI_BASE_URL;
+    }
+    return input.replace(/\/+$/, '');
+}
+
+function buildOpenAIUrl(path) {
+    const baseUrl = normalizeApiBaseUrl(state.apiBaseUrl);
+    return `${baseUrl}/${path.replace(/^\/+/, '')}`;
+}
+
+async function fetchOpenAI(path, options) {
+    try {
+        return await fetch(buildOpenAIUrl(path), options);
+    } catch (error) {
+        if (isCorsError(error)) {
+            throw new Error(buildCorsErrorMessage());
+        }
+        throw error;
+    }
+}
+
 // ============================================
 // Pricing Configuration (per 1M tokens / per minute / per unit)
 // ============================================
 const PRICING = {
     'gpt-5.2': {
+        input: 1.75,   // $ per 1M input tokens
+        output: 14.00  // $ per 1M output tokens
+    },
+    'gpt-5.2-2025-12-11': {
         input: 1.75,   // $ per 1M input tokens
         output: 14.00  // $ per 1M output tokens
     },
@@ -158,6 +200,7 @@ async function init() {
     elements = {
         // API Key
         apiKeyInput: document.getElementById('api-key'),
+        apiBaseUrlInput: document.getElementById('api-base-url'),
         toggleKeyBtn: document.getElementById('toggle-key'),
         saveKeyBtn: document.getElementById('save-key'),
         apiKeyContainer: document.getElementById('api-key-container'),
@@ -280,6 +323,7 @@ async function init() {
     };
     
     loadSavedApiKey();
+    loadSavedApiBaseUrl();
     setupEventListeners();
     updateAnalyzeButton();
     
@@ -293,6 +337,18 @@ function loadSavedApiKey() {
         state.apiKey = savedKey;
         elements.apiKeyInput.value = savedKey;
         collapseApiKeySection();
+    }
+}
+
+function loadSavedApiBaseUrl() {
+    const savedBaseUrl = localStorage.getItem('northstar_api_base_url');
+    if (savedBaseUrl) {
+        state.apiBaseUrl = normalizeApiBaseUrl(savedBaseUrl);
+    } else {
+        state.apiBaseUrl = DEFAULT_OPENAI_BASE_URL;
+    }
+    if (elements.apiBaseUrlInput) {
+        elements.apiBaseUrlInput.value = state.apiBaseUrl;
     }
 }
 
@@ -316,6 +372,10 @@ function expandApiKeySection() {
 function setupEventListeners() {
     // API Key
     elements.apiKeyInput.addEventListener('input', handleApiKeyChange);
+    if (elements.apiBaseUrlInput) {
+        elements.apiBaseUrlInput.addEventListener('change', handleApiBaseUrlChange);
+        elements.apiBaseUrlInput.addEventListener('blur', handleApiBaseUrlChange);
+    }
     elements.toggleKeyBtn.addEventListener('click', toggleApiKeyVisibility);
     elements.saveKeyBtn.addEventListener('click', saveApiKey);
     if (elements.expandKeyBtn) {
@@ -555,6 +615,15 @@ function saveApiKey() {
             collapseApiKeySection();
         }, 1000);
     }
+}
+
+function handleApiBaseUrlChange(e) {
+    const nextValue = normalizeApiBaseUrl(e.target.value.trim());
+    state.apiBaseUrl = nextValue;
+    if (elements.apiBaseUrlInput && elements.apiBaseUrlInput.value !== nextValue) {
+        elements.apiBaseUrlInput.value = nextValue;
+    }
+    localStorage.setItem('northstar_api_base_url', nextValue);
 }
 
 function showTemporaryMessage(btn, message, original) {
@@ -990,14 +1059,14 @@ async function analyzeImageBasedPdf(pdf, totalPages) {
 // Image Analysis with Vision API
 // ============================================
 async function analyzeImageWithVision(base64Image) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetchOpenAI('chat/completions', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${state.apiKey}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: 'gpt-5.2',
+            model: GPT_52_MODEL,
             messages: [
                 {
                     role: 'system',
@@ -1039,7 +1108,7 @@ async function analyzeImageWithVision(base64Image) {
     }
     currentMetrics.apiCalls.push({
         endpoint: 'chat/completions (vision)',
-        model: 'gpt-5.2',
+        model: GPT_52_MODEL,
         tokens: data.usage?.total_tokens || 0
     });
 
@@ -1169,7 +1238,7 @@ async function startAnalysis() {
         state.exportMeta.processing.analysis = {
             ...state.exportMeta.processing.analysis,
             ...analysisMeta,
-            model: 'gpt-5.2',
+            model: GPT_52_MODEL,
             completedAt: new Date().toISOString(),
             durationMs: Math.round(performance.now() - analysisStartMs)
         };
@@ -1296,7 +1365,7 @@ async function transcribeAudio(file) {
         formData.append('file', file);
         formData.append('model', 'whisper-1');
 
-        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        const response = await fetchOpenAI('audio/transcriptions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${state.apiKey}`
@@ -1337,14 +1406,14 @@ async function callChatAPI(systemPrompt, userContent, callName = 'API Call', use
     }
 
     const result = await callAPIWithRetry(async () => {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        const response = await fetchOpenAI('chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${state.apiKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'gpt-5.2',
+                model: GPT_52_MODEL,
                 temperature: 0,
                 messages: [
                     { role: 'system', content: systemPrompt },
@@ -1368,7 +1437,7 @@ async function callChatAPI(systemPrompt, userContent, callName = 'API Call', use
             currentMetrics.gptOutputTokens += data.usage.completion_tokens || 0;
             currentMetrics.apiCalls.push({
                 name: callName,
-                model: 'gpt-5.2',
+                model: GPT_52_MODEL,
                 inputTokens: data.usage.prompt_tokens || 0,
                 outputTokens: data.usage.completion_tokens || 0
             });
@@ -1477,8 +1546,8 @@ async function analyzeSentiment(text) {
 // ============================================
 function calculateMetrics() {
     const whisperCost = currentMetrics.whisperMinutes * PRICING['whisper-1'].perMinute;
-    const gptInputCost = (currentMetrics.gptInputTokens / 1000000) * PRICING['gpt-5.2'].input;
-    const gptOutputCost = (currentMetrics.gptOutputTokens / 1000000) * PRICING['gpt-5.2'].output;
+    const gptInputCost = (currentMetrics.gptInputTokens / 1000000) * PRICING[GPT_52_MODEL].input;
+    const gptOutputCost = (currentMetrics.gptOutputTokens / 1000000) * PRICING[GPT_52_MODEL].output;
     const ttsCost = (currentMetrics.ttsCharacters / 1000) * PRICING['gpt-4o-mini-tts'].perKChars;
     const imageInputCost = (currentMetrics.imageInputTokens / 1000000) * PRICING['gpt-image-1.5'].input;
     const imageOutputCost = (currentMetrics.imageOutputTokens / 1000000) * PRICING['gpt-image-1.5'].output;
@@ -2939,7 +3008,7 @@ Sentiment: ${state.results.sentiment}`;
 }
 
 async function textToSpeech(text, voice = 'nova') {
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+    const response = await fetchOpenAI('audio/speech', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${state.apiKey}`,
@@ -3055,7 +3124,7 @@ CRITICAL DESIGN REQUIREMENTS:
 }
 
 async function generateImage(prompt) {
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
+    const response = await fetchOpenAI('images/generations', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${state.apiKey}`,
@@ -3317,7 +3386,7 @@ async function sendChatMessage() {
         state.chatHistory.push({
             role: 'assistant',
             content: response,
-            model: 'gpt-5.2',
+            model: GPT_52_MODEL,
             timestamp: new Date().toISOString()
         });
         
@@ -3376,14 +3445,14 @@ async function chatWithData(context, history) {
         })) // Keep last 10 messages to avoid token limits
     ];
     
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetchOpenAI('chat/completions', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${state.apiKey}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: 'gpt-5.2',
+            model: GPT_52_MODEL,
             messages: messages,
             max_completion_tokens: 1000,
             temperature: 0.7
@@ -3403,7 +3472,7 @@ async function chatWithData(context, history) {
     currentMetrics.gptOutputTokens += usage.completion_tokens || 0;
     currentMetrics.apiCalls.push({
         name: 'Chat Query',
-        model: 'gpt-5.2',
+        model: GPT_52_MODEL,
         inputTokens: usage.prompt_tokens || 0,
         outputTokens: usage.completion_tokens || 0
     });
@@ -3790,7 +3859,7 @@ function buildExportPayload(agentName, now, readableDate) {
             actionItems: results.actionItems || '',
             sentiment: results.sentiment || '',
             transcript,
-            model: 'gpt-5.2'
+            model: GPT_52_MODEL
         },
         kpis: {
             wordsAnalyzed: wordCount,

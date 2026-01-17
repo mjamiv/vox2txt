@@ -77,7 +77,14 @@
                                 Save
                             </button>
                         </div>
-                        <p class="hint">Your key is stored locally and sent directly to OpenAI. <a href="https://platform.openai.com/api-keys" target="_blank">Get an API key</a></p>
+                        <label for="api-base-url">
+                            <span class="label-icon">&#127760;</span>
+                            API Base URL (Proxy)
+                        </label>
+                        <div class="input-group">
+                            <input type="text" id="api-base-url" placeholder="https://api.openai.com/v1" autocomplete="off">
+                        </div>
+                        <p class="hint">Your key is stored locally and sent directly to OpenAI. If you are hosting on GitHub Pages, set a proxy URL here to avoid CORS blocking. <a href="https://platform.openai.com/api-keys" target="_blank">Get an API key</a></p>
                     </div>
                 </section>
 
