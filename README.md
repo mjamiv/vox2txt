@@ -219,6 +219,44 @@ RLM now separates *execution focus* from *diagnostic context*:
 - **Shadow prompt stream** mirrors retrieval slices and guardrail metadata in a parallel prompt used solely for logging and evaluation, so production responses stay stable while prompt quality is measured.
 - **Telemetry-ready outputs** expose focus stats and shadow previews in the Orchestrator to support tuning, regression reviews, and token-budget governance.
 
+```mermaid
+flowchart TB
+    subgraph Inputs["🧑‍💬 QUERY + RUNTIME SIGNALS"]
+        Q[User query]
+        G[Prompt budget + guardrails]
+        M[Tool/Sub-LM counters]
+    end
+
+    subgraph Live["⚡ LIVE PROMPT PATH"]
+        L1[Build SWM context<br/>state block + working window + retrieved slices]
+        L2[Compose live prompt]
+        L3[LLM response]
+    end
+
+    subgraph Focus["🎯 FOCUS TRACKER"]
+        F1[Track turns + tool calls + recursion]
+        F2[Trigger focus reason<br/>budget pressure · tool calls · recursive depth]
+        F3[Generate focus summary]
+        F4[(Persist episode?)<br/>shadow-only or stored]
+    end
+
+    subgraph Shadow["🌓 SHADOW PROMPT DIAGNOSTICS"]
+        S1[Build shadow prompt<br/>same retrieval slices]
+        S2[Token estimate + breakdown]
+        S3[Retrieval diff + guardrail telemetry]
+        S4[Orchestrator diagnostics panel]
+    end
+
+    Q --> L1 --> L2 --> L3
+    Q -.-> S1
+    L1 -.-> S1
+    G --> L2
+    G --> S2
+    M --> F1
+    L3 --> F1 --> F2 --> F3 --> F4
+    S1 --> S2 --> S3 --> S4
+```
+
 ### Complete RLM Architecture
 
 ```mermaid
@@ -426,9 +464,15 @@ flowchart TB
         H3[Retrieved memory slices<br/>tag + recency scoring]
     end
 
-    subgraph RLMCall["🧠 RLM SUBQUERY PROMPT"]
-        R1[System prompt + signal history]
+    subgraph LivePrompt["🧠 LIVE RLM PROMPT"]
+        R1[System prompt + SWM context]
         R2[Subquery execution]
+    end
+
+    subgraph ShadowPrompt["🌓 SHADOW PROMPT (DIAGNOSTICS)"]
+        S1[Shadow prompt builder<br/>same SWM context]
+        S2[Token estimate + retrieval stats]
+        S3[Telemetry surfaced in UI]
     end
 
     Q1 --> Q2
@@ -440,11 +484,16 @@ flowchart TB
     H2 --> R1
     H3 --> R1
     R1 --> R2
+    H1 -.-> S1
+    H2 -.-> S1
+    H3 -.-> S1
+    S1 --> S2 --> S3
 
     style Input fill:#1a1f2e,stroke:#60a5fa,color:#fff
     style Capture fill:#2a2a1a,stroke:#fbbf24,color:#fff
     style History fill:#1a2a3a,stroke:#a855f7,color:#fff
-    style RLMCall fill:#2a1a2a,stroke:#d4a853,color:#fff
+    style LivePrompt fill:#2a1a2a,stroke:#d4a853,color:#fff
+    style ShadowPrompt fill:#1a2a2a,stroke:#22d3ee,color:#fff
 ```
 
 ### Enhanced Train of Thought
