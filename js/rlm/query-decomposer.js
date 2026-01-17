@@ -121,12 +121,18 @@ export class QueryDecomposer {
         // Detect if query targets specific meetings
         const mentionsMeeting = /meeting|session|call|discussion|sync/i.test(query);
         const mentionsTimeframe = /last|recent|this week|yesterday|today/i.test(query);
+        const formatConstraints = this._detectFormatConstraints(query);
+        const dataPreference = this._inferDataPreference(query);
+        const intentTags = this._inferIntentTags(query);
 
         return {
             intent,
             complexity,
             mentionsMeeting,
             mentionsTimeframe,
+            dataPreference,
+            formatConstraints,
+            intentTags,
             estimatedScope: this._estimateScope(complexity)
         };
     }
@@ -148,6 +154,50 @@ export class QueryDecomposer {
             default:
                 return { min: 1, max: 3 };
         }
+    }
+
+    _detectFormatConstraints(query) {
+        const constraints = {};
+        const bulletMatch = query.match(/(\d+)\s+bullets?\s+(?:per|each)\s+(topic|section|meeting)/i);
+        if (bulletMatch) {
+            constraints.bulletsPerSection = Number.parseInt(bulletMatch[1], 10);
+            constraints.sectionType = bulletMatch[2].toLowerCase();
+        }
+        if (/\btable|matrix|spreadsheet\b/i.test(query)) {
+            constraints.preferredFormat = 'table';
+        }
+        if (/\bcsv\b/i.test(query)) {
+            constraints.preferredFormat = 'csv';
+        }
+        if (/\bexactly\b/i.test(query) || /\bstrict\b/i.test(query)) {
+            constraints.strict = true;
+        }
+        return constraints;
+    }
+
+    _inferDataPreference(query) {
+        if (/\b(metrics?|kpis?|numbers?|percent|percentage|budget|revenue|cost|forecast|quota|pipeline)\b/i.test(query)) {
+            return 'structured';
+        }
+        if (/\b(transcript|verbatim|exact wording|who said|quote)\b/i.test(query)) {
+            return 'transcript';
+        }
+        if (/\b(summary|overview|highlights)\b/i.test(query)) {
+            return 'hybrid';
+        }
+        return 'hybrid';
+    }
+
+    _inferIntentTags(query) {
+        const tags = [];
+        if (/\bdecision(s)?\b/i.test(query)) tags.push('decision');
+        if (/\baction(s| items?)\b/i.test(query)) tags.push('action');
+        if (/\brisk(s)?\b|\bblocker(s)?\b/i.test(query)) tags.push('risk');
+        if (/\bconstraint(s)?\b|\blimit(s)?\b/i.test(query)) tags.push('constraint');
+        if (/\bentity|stakeholder|partner|customer|vendor\b/i.test(query)) tags.push('entity');
+        if (/\bopen question(s)?\b|\bunknowns?\b/i.test(query)) tags.push('open_question');
+        if (/\bsummary|overview\b/i.test(query)) tags.push('episode');
+        return [...new Set(tags)];
     }
 
     /**

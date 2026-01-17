@@ -31,6 +31,7 @@ import { CodeGenerator, createCodeGenerator, generateCodePrompt, parseCodeOutput
 import { QueryCache, getQueryCache, resetQueryCache, CACHE_CONFIG } from './query-cache.js';
 import { MemoryStore, getMemoryStore, resetMemoryStore } from './memory-store.js';
 import { buildShadowPrompt, buildRetrievalPromptSections } from './prompt-builder.js';
+import { EVAL_RUBRIC, scoreEvaluation, buildEvalReport } from './eval-harness.js';
 
 /**
  * RLM Configuration
@@ -52,6 +53,9 @@ export const RLM_CONFIG = {
     maxFinalLength: 4000,
     enableLLMSynthesis: true,
     deduplicationThreshold: 0.7,
+    aggregationEarlyStopEnabled: true,
+    aggregationEarlyStopMaxResults: 2,
+    aggregationEarlyStopSimilarity: 0.85,
 
     // REPL settings
     enableREPL: true,          // Enable REPL-based code execution
@@ -85,6 +89,31 @@ export const RLM_CONFIG = {
     enablePromptBudgeting: true,
     promptTokenBudget: 12000,
     promptTokenReserve: 2000,
+
+    // Routing + intent signals (Reviewer plan)
+    enableRouting: true,
+    intentTagBoost: 1.25,
+    routingPresets: {
+        structured: { maxResults: 4, maxPerTag: 1, maxPerAgent: 1 },
+        hybrid: { maxResults: 6, maxPerTag: 2, maxPerAgent: 2 },
+        broad: { maxResults: 8, maxPerTag: 3, maxPerAgent: 2 }
+    },
+
+    // Early-stop heuristics
+    enableEarlyStop: true,
+    earlyStopMaxSlices: 2,
+    earlyStopMaxAgents: 2,
+    earlyStopAllowedIntents: [QueryIntent.FACTUAL, QueryIntent.COMPARATIVE],
+
+    // Model tiering
+    enableModelTiering: false,
+    modelTiering: {
+        subQuery: null,
+        aggregate: null,
+        direct: null,
+        replCode: null,
+        replSubLm: null
+    },
 
     // Milestone 3: Focus episodes (shadow mode, gated)
     enableFocusShadow: true,
@@ -122,7 +151,10 @@ export class RLMPipeline {
         this.aggregator = createAggregator({
             maxFinalLength: this.config.maxFinalLength,
             enableLLMSynthesis: this.config.enableLLMSynthesis,
-            deduplicationThreshold: this.config.deduplicationThreshold
+            deduplicationThreshold: this.config.deduplicationThreshold,
+            enableEarlyStop: this.config.aggregationEarlyStopEnabled,
+            earlyStopMaxResults: this.config.aggregationEarlyStopMaxResults,
+            earlyStopSimilarity: this.config.aggregationEarlyStopSimilarity
         });
 
         // REPL components (initialized lazily)
@@ -162,6 +194,9 @@ export class RLMPipeline {
 
         // Shadow prompt storage (Milestone 2)
         this.shadowPrompt = null;
+
+        // Routing plan (Reviewer suggestions)
+        this.lastRoutingPlan = null;
 
         // Focus tracking (Milestone 3)
         this.focusTracker = {
@@ -422,15 +457,56 @@ If the information is not available in the provided context, say so briefly.`;
                 `Decomposition strategy: ${decomposition.strategy.type} with ${decomposition.subQueries.length} sub-queries.`,
                 { step: 'decompose' }
             );
+            const routingPlan = this._buildRoutingPlan(decomposition);
+            this.lastRoutingPlan = routingPlan;
+            if (routingPlan) {
+                this._emitProgress(`Routing preset: ${routingPlan.dataPreference}`, 'route', {
+                    routing: routingPlan
+                });
+            }
+
+            const earlyStopCheck = this._evaluateEarlyStop(query, decomposition, routingPlan);
+            if (earlyStopCheck.shouldStop) {
+                this._appendFocusEvent(
+                    `Early-stop triggered (retrieval ${earlyStopCheck.selectedCount}/${this.config.earlyStopMaxSlices}).`,
+                    { step: 'route', mode: 'rlm' }
+                );
+                this._emitProgress('Early-stop: using direct retrieval synthesis', 'info', {
+                    routing: routingPlan,
+                    earlyStop: earlyStopCheck
+                });
+                const earlyResult = await this._processDirectRetrieval(query, llmCall, context, routingPlan);
+                const result = {
+                    ...earlyResult,
+                    metadata: {
+                        ...earlyResult.metadata,
+                        strategy: 'direct-retrieval',
+                        routingPlan,
+                        pipelineTime: Date.now() - startTime
+                    }
+                };
+                this._captureMemory(query, result);
+                const focusSummary = this._buildFocusSummary(result.response);
+                if (focusSummary) {
+                    this._appendFocusEvent(`Final response summary: ${focusSummary}`, { step: 'summary', mode: 'rlm' });
+                }
+                this._queueFocusReason('phase_complete');
+                this._completeFocusIfReady();
+                this._storeInCache(query, result, 'rlm');
+                return result;
+            }
 
             // Step 2: Execute sub-queries
             console.log('[RLM] Step 2: Executing sub-queries...');
             this._emitProgress(`Executing ${decomposition.subQueries.length} sub-queries in parallel`, 'execute');
-            const guardedSubQueryCall = this._wrapLLMCall(llmCall);
+            const guardedSubQueryCall = this._wrapLLMCall(llmCall, routingPlan);
             const executionResult = await this.executor.execute(
                 decomposition,
                 guardedSubQueryCall,
-                context
+                {
+                    ...context,
+                    routing: routingPlan
+                }
             );
 
             if (!executionResult.success) {
@@ -453,7 +529,7 @@ If the information is not available in the provided context, say so briefly.`;
                 llmCall,
                 systemPrompt,
                 userPrompt,
-                callContext,
+                this._buildCallContext(callContext, this._resolveModelTier(routingPlan, 'aggregate')),
                 'aggregate'
             );
             const aggregation = await this.aggregator.aggregate(
@@ -479,6 +555,7 @@ If the information is not available in the provided context, say so briefly.`;
                 metadata: {
                     ...aggregation.metadata,
                     rlmEnabled: true,
+                    routingPlan,
                     pipelineTime: Date.now() - startTime
                 }
             };
@@ -530,6 +607,70 @@ If the information is not available in the provided context, say so briefly.`;
         return { budget, reserve, maxInputTokens };
     }
 
+    _buildRoutingPlan(decomposition) {
+        if (!this.config.enableRouting) {
+            return null;
+        }
+        const classification = decomposition?.classification || {};
+        const dataPreference = classification.dataPreference || 'hybrid';
+        const formatConstraints = classification.formatConstraints || {};
+        const intentTags = Array.isArray(classification.intentTags) ? classification.intentTags : [];
+        const preset = this._selectRetrievalPreset(classification, dataPreference, formatConstraints);
+        const modelTiers = this.config.enableModelTiering ? { ...this.config.modelTiering } : {};
+
+        return {
+            intent: classification.intent || null,
+            complexity: classification.complexity || null,
+            dataPreference,
+            formatConstraints,
+            intentTags,
+            intentBoost: this.config.intentTagBoost,
+            intentFilter: intentTags.length > 0 && !classification.mentionsMeeting,
+            retrieval: preset,
+            modelTiers
+        };
+    }
+
+    _selectRetrievalPreset(classification, dataPreference, formatConstraints) {
+        const presets = this.config.routingPresets || {};
+        if (dataPreference === 'structured') {
+            return presets.structured || {};
+        }
+        if (formatConstraints?.preferredFormat || formatConstraints?.bulletsPerSection) {
+            return presets.structured || presets.hybrid || {};
+        }
+        if ([QueryIntent.AGGREGATIVE, QueryIntent.ANALYTICAL, QueryIntent.TEMPORAL].includes(classification.intent)) {
+            return presets.broad || presets.hybrid || {};
+        }
+        return presets.hybrid || {};
+    }
+
+    _resolveModelTier(routingPlan, phase) {
+        if (!this.config.enableModelTiering) {
+            return null;
+        }
+        const tiers = routingPlan?.modelTiers || this.config.modelTiering || {};
+        const key = {
+            subQuery: 'subQuery',
+            aggregate: 'aggregate',
+            direct: 'direct',
+            replCode: 'replCode',
+            replSubLm: 'replSubLm'
+        }[phase];
+        return key ? tiers[key] || null : null;
+    }
+
+    _buildCallContext(context, modelOverride, effortOverride) {
+        if (!modelOverride && !effortOverride) {
+            return context;
+        }
+        return {
+            ...context,
+            modelOverride: modelOverride || context?.modelOverride,
+            effortOverride: effortOverride || context?.effortOverride
+        };
+    }
+
     _getSubQueryText(subQuery) {
         if (typeof subQuery === 'string') {
             return subQuery;
@@ -554,6 +695,99 @@ Question: ${queryText}
 Provide a focused answer based only on the context above.`;
 
         return { systemPrompt, userPrompt };
+    }
+
+    _evaluateEarlyStop(query, decomposition, routingPlan) {
+        if (!this.config.enableEarlyStop || !this.memoryStore || !this.config.enableRetrievalPrompt) {
+            return { shouldStop: false };
+        }
+        if (decomposition?.strategy?.type === 'direct') {
+            return { shouldStop: false };
+        }
+
+        const allowedIntents = this.config.earlyStopAllowedIntents || [];
+        if (allowedIntents.length > 0 && !allowedIntents.includes(decomposition?.classification?.intent)) {
+            return { shouldStop: false };
+        }
+
+        const relevantAgents = decomposition?.relevantAgents?.length || 0;
+        if (this.config.earlyStopMaxAgents && relevantAgents > this.config.earlyStopMaxAgents) {
+            return { shouldStop: false };
+        }
+
+        const recencyWindowMs = this.config.shadowPromptRecencyWindowDays
+            ? this.config.shadowPromptRecencyWindowDays * 24 * 60 * 60 * 1000
+            : null;
+        const retrieval = this.memoryStore.retrieveSlices(query, {
+            maxResults: this.config.earlyStopMaxSlices,
+            maxPerTag: routingPlan?.retrieval?.maxPerTag ?? this.config.shadowPromptMaxPerTag,
+            maxPerAgent: routingPlan?.retrieval?.maxPerAgent ?? this.config.shadowPromptMaxPerAgent,
+            intentTags: routingPlan?.intentTags || [],
+            intentBoost: routingPlan?.intentBoost ?? this.config.intentTagBoost,
+            intentFilter: routingPlan?.intentFilter ?? false,
+            recencyWindowMs,
+            updateStats: false
+        });
+
+        if (retrieval.slices.length === 0) {
+            return { shouldStop: false, retrievalStats: retrieval.stats };
+        }
+
+        return {
+            shouldStop: retrieval.slices.length <= this.config.earlyStopMaxSlices,
+            retrievalStats: retrieval.stats,
+            selectedCount: retrieval.slices.length
+        };
+    }
+
+    async _processDirectRetrieval(query, llmCall, context, routingPlan) {
+        const guardrail = this._getPromptBudget();
+        const basePrompts = this._buildLegacyPrompts(query, '');
+        const baseTokens = this._estimateTokens(basePrompts.systemPrompt)
+            + this._estimateTokens(basePrompts.userPrompt);
+        const availableForContext = Math.max(0, guardrail.maxInputTokens - baseTokens);
+
+        const retrievalData = this._buildRetrievalPromptContext(query, context?.localContext || '', {
+            maxInputTokens: availableForContext,
+            maxResults: routingPlan?.retrieval?.maxResults,
+            maxPerTag: routingPlan?.retrieval?.maxPerTag,
+            maxPerAgent: routingPlan?.retrieval?.maxPerAgent,
+            intentTags: routingPlan?.intentTags || [],
+            intentBoost: routingPlan?.intentBoost ?? this.config.intentTagBoost,
+            intentFilter: routingPlan?.intentFilter ?? false
+        });
+
+        if (!retrievalData.contextText) {
+            return this._legacyProcess(query, llmCall, context);
+        }
+
+        const { systemPrompt } = basePrompts;
+        const { userPrompt } = this._buildLegacyPrompts(query, retrievalData.contextText);
+        const callContext = this._buildCallContext(
+            context,
+            this._resolveModelTier(routingPlan, 'direct')
+        );
+
+        const response = await this._callWithPromptGuardrails(
+            llmCall,
+            systemPrompt,
+            userPrompt,
+            callContext,
+            'direct-retrieval',
+            {
+                retrievalStats: retrievalData.retrievalStats
+            }
+        );
+
+        return {
+            success: true,
+            response,
+            metadata: {
+                rlmEnabled: true,
+                directRetrieval: true,
+                retrievalStats: retrievalData.retrievalStats
+            }
+        };
     }
 
     _buildLegacyPrompts(query, contextText) {
@@ -641,13 +875,22 @@ Use the following meeting data to answer questions accurately and comprehensivel
             };
         }
 
-        const recencyWindowMs = this.config.shadowPromptRecencyWindowDays
+        const recencyWindowMs = options.recencyWindowMs ?? (this.config.shadowPromptRecencyWindowDays
             ? this.config.shadowPromptRecencyWindowDays * 24 * 60 * 60 * 1000
-            : null;
+            : null);
+        const maxResults = options.maxResults ?? this.config.shadowPromptMaxSlices;
+        const maxPerTag = options.maxPerTag ?? this.config.shadowPromptMaxPerTag;
+        const maxPerAgent = options.maxPerAgent ?? this.config.shadowPromptMaxPerAgent;
+        const intentTags = options.intentTags || [];
+        const intentBoost = options.intentBoost ?? this.config.intentTagBoost;
+        const intentFilter = options.intentFilter ?? false;
         const retrieval = this.memoryStore.retrieveSlices(query, {
-            maxResults: this.config.shadowPromptMaxSlices,
-            maxPerTag: this.config.shadowPromptMaxPerTag,
-            maxPerAgent: this.config.shadowPromptMaxPerAgent,
+            maxResults,
+            maxPerTag,
+            maxPerAgent,
+            intentTags,
+            intentBoost,
+            intentFilter,
             recencyWindowMs,
             updateStats: true
         });
@@ -740,7 +983,7 @@ Use the following meeting data to answer questions accurately and comprehensivel
      * Wrap LLM call function for sub-queries
      * @private
      */
-    _wrapLLMCall(llmCall) {
+    _wrapLLMCall(llmCall, routingPlan = null) {
         return async (subQuery, agentContext, context) => {
             const queryText = this._getSubQueryText(subQuery);
             const { systemPrompt } = this._buildSubQueryPrompts(queryText, '');
@@ -753,11 +996,20 @@ Use the following meeting data to answer questions accurately and comprehensivel
             let fallbackUsed = false;
             let finalContext = agentContext;
             let retrievalStats = null;
+            const activeRouting = routingPlan || context?.routing || null;
+            const retrievalOverrides = activeRouting?.retrieval || {};
+            const intentTags = activeRouting?.intentTags || retrievalOverrides.intentTags || [];
+            const intentBoost = activeRouting?.intentBoost ?? retrievalOverrides.intentBoost;
+            const intentFilter = activeRouting?.intentFilter ?? retrievalOverrides.intentFilter;
 
             if (this.config.enableRetrievalPrompt && this.memoryStore) {
                 const availableForContext = Math.max(0, guardrail.maxInputTokens - baseTokens);
                 const retrievalData = this._buildRetrievalPromptContext(subQuery, agentContext, {
-                    maxInputTokens: availableForContext
+                    maxInputTokens: availableForContext,
+                    ...retrievalOverrides,
+                    intentTags,
+                    intentBoost,
+                    intentFilter
                 });
                 finalContext = retrievalData.contextText;
                 retrievalStats = retrievalData.retrievalStats;
@@ -797,6 +1049,10 @@ Use the following meeting data to answer questions accurately and comprehensivel
             }
 
             userPrompt = this._buildSubQueryPrompts(queryText, finalContext).userPrompt;
+            const callContext = this._buildCallContext(
+                context,
+                this._resolveModelTier(activeRouting, 'subQuery')
+            );
 
             const promptEstimate = this._estimateTokens(systemPrompt) + this._estimateTokens(userPrompt);
             this._recordGuardrail(
@@ -813,7 +1069,7 @@ Use the following meeting data to answer questions accurately and comprehensivel
                 }
             );
 
-            return llmCall(systemPrompt, userPrompt, context);
+            return llmCall(systemPrompt, userPrompt, callContext);
         };
     }
 
@@ -874,7 +1130,7 @@ Use the following meeting data to answer questions accurately and comprehensivel
             llmCall,
             systemPrompt,
             userPrompt,
-            context,
+            this._buildCallContext(context, this._resolveModelTier(null, 'direct')),
             'legacy',
             {
                 swmFallbackUsed,
@@ -970,11 +1226,12 @@ Use the following meeting data to answer questions accurately and comprehensivel
             // Step 2: Call LLM to generate code (with retry support)
             console.log('[RLM:REPL] Generating Python code...');
             this._emitProgress('Calling GPT to generate Python analysis code', 'code');
+            const replCodeContext = this._buildCallContext(context, this._resolveModelTier(null, 'replCode'));
             const guardedCodeCall = (systemPrompt, userPrompt, callContext) => this._callWithPromptGuardrails(
                 llmCall,
                 systemPrompt,
                 userPrompt,
-                callContext,
+                this._buildCallContext(callContext || replCodeContext, this._resolveModelTier(null, 'replCode')),
                 'repl-code'
             );
             const codeResult = await this.codeGenerator.generateWithRetry(
@@ -1141,7 +1398,7 @@ Be concise and focus only on information relevant to the question.`;
                     llmCall,
                     systemPrompt,
                     userPrompt,
-                    context,
+                    this._buildCallContext(context, this._resolveModelTier(null, 'replSubLm')),
                     'sub-lm'
                 );
                 results.push({
@@ -1675,6 +1932,7 @@ Be concise and focus only on information relevant to the question.`;
             contextStore: this.contextStore.getStats(),
             memoryStore: this.memoryStore.getStats(),
             shadowPrompt: this.shadowPrompt,
+            routing: this.lastRoutingPlan,
             guardrails: this.guardrails,
             repl: replStats,
             cache: cacheStats,
@@ -1875,5 +2133,9 @@ export {
     // Memory Store (Milestone 1)
     MemoryStore,
     getMemoryStore,
-    resetMemoryStore
+    resetMemoryStore,
+    // Evaluation Harness (Reviewer plan)
+    EVAL_RUBRIC,
+    scoreEvaluation,
+    buildEvalReport
 };
