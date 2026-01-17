@@ -18,6 +18,7 @@ northstar.LM consists of two main applications:
 - GitHub Pages deploy now copies optional asset folders when present (e.g., `images/`, `flowcharts/`, `static/`) to avoid build failures.
 - RLM now builds **signal-weighted chat history** (state block + working window + retrieved memory slices) to keep recursive prompts focused and within token budgets.
 - Hybrid focus + shadow prompting adds structured diagnostics: a compact focus window drives live reasoning while a parallel shadow prompt logs retrieval slices and guardrail telemetry without affecting user-facing outputs.
+- Orchestrator modes now let you choose between Direct chat, RLM with signal-weighted memory, or RLM with hybrid focus + shadow diagnostics.
 
 ## Application Workflow
 
@@ -189,6 +190,22 @@ flowchart TB
     style Chat fill:#1a2a3a,stroke:#a855f7,color:#fff
     style Insights fill:#2a2a1a,stroke:#fbbf24,color:#fff
 ```
+
+## Orchestrator Processing Modes
+
+Choose how the Orchestrator answers cross-meeting questions:
+
+1. **Direct Chat (LLM only)**  
+   - Single-model call using the combined meeting context.
+   - No RLM decomposition or memory retrieval.
+
+2. **RLM + Signal-Weighted Memory**  
+   - Forces RLM routing with live SWM context (state block + working window + retrieved slices).
+   - Focused retrieval prompt replaces the legacy full-context window.
+
+3. **RLM + Hybrid Focus + Shadow Prompting**  
+   - Uses RLM with live SWM context plus shadow prompts for diagnostics.
+   - Focus tracking summarizes and logs high-signal episodes while keeping user outputs stable.
 
 ## RLM: Recursive Language Model
 

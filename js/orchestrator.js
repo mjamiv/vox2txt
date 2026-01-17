@@ -42,14 +42,41 @@ const state = {
     settings: {
         model: 'gpt-5.2',      // 'gpt-5.2', 'gpt-5-mini', or 'gpt-5-nano'
         effort: 'none',        // 'none', 'low', 'medium', 'high' (only for gpt-5.2) - default 'none' for compatibility
+        processingMode: 'rlm-hybrid', // 'direct', 'rlm-swm', 'rlm-hybrid'
         useRLM: true,          // Enable/disable RLM processing
-        rlmAuto: true,         // Auto-route RLM only for ambiguous prompts
-        enableShadowPrompt: RLM_CONFIG.enableShadowPrompt,
-        enableRetrievalPrompt: RLM_CONFIG.enableRetrievalPrompt,
-        enableFocusShadow: RLM_CONFIG.enableFocusShadow,
+        rlmAuto: false,        // Auto-route RLM only for ambiguous prompts
+        enableShadowPrompt: true,
+        enableRetrievalPrompt: true,
+        enableFocusShadow: true,
         enableFocusEpisodes: RLM_CONFIG.enableFocusEpisodes,
         enablePromptBudgeting: RLM_CONFIG.enablePromptBudgeting,
         showMemoryDebug: false
+    }
+};
+
+const PROCESSING_MODE_CONFIG = {
+    direct: {
+        useRLM: false,
+        rlmAuto: false,
+        enableShadowPrompt: false,
+        enableRetrievalPrompt: false,
+        enableFocusShadow: false,
+        enableFocusEpisodes: false
+    },
+    'rlm-swm': {
+        useRLM: true,
+        rlmAuto: false,
+        enableShadowPrompt: false,
+        enableRetrievalPrompt: true,
+        enableFocusShadow: false,
+        enableFocusEpisodes: false
+    },
+    'rlm-hybrid': {
+        useRLM: true,
+        rlmAuto: false,
+        enableShadowPrompt: true,
+        enableRetrievalPrompt: true,
+        enableFocusShadow: true
     }
 };
 
@@ -102,6 +129,49 @@ const DEFAULT_TEST_PROMPTS = [
     'Highlight any commitments made to external stakeholders since Q2.',
     'Summarize this conversation with 6 bullets per topic.'
 ];
+
+function deriveProcessingMode(settings) {
+    if (!settings.useRLM) {
+        return 'direct';
+    }
+    if (settings.enableShadowPrompt || settings.enableFocusShadow) {
+        return 'rlm-hybrid';
+    }
+    return 'rlm-swm';
+}
+
+function applyProcessingMode(mode, { persist = true, syncUI = true, updatePipeline = true } = {}) {
+    const config = PROCESSING_MODE_CONFIG[mode] || PROCESSING_MODE_CONFIG['rlm-hybrid'];
+    state.settings.processingMode = mode;
+    state.settings.useRLM = config.useRLM;
+    state.settings.rlmAuto = config.rlmAuto;
+    state.settings.enableShadowPrompt = config.enableShadowPrompt;
+    state.settings.enableRetrievalPrompt = config.enableRetrievalPrompt;
+    state.settings.enableFocusShadow = config.enableFocusShadow;
+
+    if (typeof config.enableFocusEpisodes === 'boolean') {
+        state.settings.enableFocusEpisodes = config.enableFocusEpisodes;
+    } else if (!state.settings.enableFocusShadow) {
+        state.settings.enableFocusEpisodes = false;
+    }
+
+    if (persist) {
+        saveSettings();
+    }
+    if (syncUI) {
+        updateSettingsUI();
+    }
+    if (updatePipeline) {
+        applyRlmFeatureFlags();
+    }
+}
+
+function syncProcessingModeFromSettings() {
+    const derivedMode = deriveProcessingMode(state.settings);
+    if (state.settings.processingMode !== derivedMode) {
+        state.settings.processingMode = derivedMode;
+    }
+}
 
 // Metrics tracking for current session - ENHANCED per-prompt logging
 let currentMetrics = {
@@ -602,6 +672,7 @@ function initElements() {
         modelSelect: document.getElementById('model-select'),
         effortGroup: document.getElementById('effort-group'),
         effortSelect: document.getElementById('effort-select'),
+        processingModeSelect: document.getElementById('processing-mode-select'),
         rlmToggle: document.getElementById('rlm-toggle'),
         rlmAutoToggle: document.getElementById('rlm-auto-toggle'),
         shadowPromptToggle: document.getElementById('shadow-prompt-toggle'),
@@ -789,6 +860,10 @@ function loadSettings() {
         if (savedSettings) {
             const parsed = JSON.parse(savedSettings);
             state.settings = { ...state.settings, ...parsed };
+            if (!state.settings.processingMode) {
+                state.settings.processingMode = deriveProcessingMode(state.settings);
+            }
+            applyProcessingMode(state.settings.processingMode, { persist: false, syncUI: false, updatePipeline: false });
 
             // Migration: Reset effort to 'none' if it was the old default 'medium'
             // This prevents the fictional 'reasoning' parameter from being sent
@@ -832,12 +907,14 @@ function updateSettingsUI() {
     if (elements.effortSelect) {
         elements.effortSelect.value = state.settings.effort;
     }
+    if (elements.processingModeSelect) {
+        elements.processingModeSelect.value = state.settings.processingMode;
+    }
     if (elements.rlmToggle) {
         elements.rlmToggle.checked = state.settings.useRLM;
     }
     if (elements.rlmAutoToggle) {
         elements.rlmAutoToggle.checked = state.settings.rlmAuto;
-        elements.rlmAutoToggle.disabled = !state.settings.useRLM;
     }
     if (elements.shadowPromptToggle) {
         elements.shadowPromptToggle.checked = state.settings.enableShadowPrompt;
@@ -850,7 +927,6 @@ function updateSettingsUI() {
     }
     if (elements.focusEpisodesToggle) {
         elements.focusEpisodesToggle.checked = state.settings.enableFocusEpisodes;
-        elements.focusEpisodesToggle.disabled = !state.settings.enableFocusShadow;
     }
     if (elements.promptBudgetToggle) {
         elements.promptBudgetToggle.checked = state.settings.enablePromptBudgeting;
@@ -858,9 +934,34 @@ function updateSettingsUI() {
     if (elements.memoryDebugToggle) {
         elements.memoryDebugToggle.checked = state.settings.showMemoryDebug;
     }
+    updateModeControlState();
     // Show/hide effort dropdown based on model
     updateEffortVisibility();
     updateMemoryDebugPanel();
+}
+
+function updateModeControlState() {
+    const mode = state.settings.processingMode;
+    const isHybrid = mode === 'rlm-hybrid';
+
+    if (elements.rlmToggle) {
+        elements.rlmToggle.disabled = true;
+    }
+    if (elements.rlmAutoToggle) {
+        elements.rlmAutoToggle.disabled = true;
+    }
+    if (elements.shadowPromptToggle) {
+        elements.shadowPromptToggle.disabled = true;
+    }
+    if (elements.retrievalPromptToggle) {
+        elements.retrievalPromptToggle.disabled = true;
+    }
+    if (elements.focusShadowToggle) {
+        elements.focusShadowToggle.disabled = true;
+    }
+    if (elements.focusEpisodesToggle) {
+        elements.focusEpisodesToggle.disabled = !(isHybrid && state.settings.enableFocusShadow);
+    }
 }
 
 function applyRlmFeatureFlags() {
@@ -1102,6 +1203,9 @@ function setupEventListeners() {
     if (elements.effortSelect) {
         elements.effortSelect.addEventListener('change', handleEffortChange);
     }
+    if (elements.processingModeSelect) {
+        elements.processingModeSelect.addEventListener('change', handleProcessingModeChange);
+    }
     if (elements.rlmToggle) {
         elements.rlmToggle.addEventListener('change', handleRLMToggle);
     }
@@ -1153,10 +1257,21 @@ function handleEffortChange(e) {
 }
 
 /**
+ * Handle processing mode change
+ */
+function handleProcessingModeChange(e) {
+    const nextMode = e.target.value;
+    applyProcessingMode(nextMode);
+    updateContextGauge();
+    console.log('[Settings] Processing mode changed to:', nextMode);
+}
+
+/**
  * Handle RLM toggle change
  */
 function handleRLMToggle(e) {
     state.settings.useRLM = e.target.checked;
+    syncProcessingModeFromSettings();
     saveSettings();
     console.log('[Settings] RLM toggled:', state.settings.useRLM ? 'enabled' : 'disabled');
     updateSettingsUI();
@@ -1175,12 +1290,14 @@ function handleRLMAutoToggle(e) {
 
 function handleShadowPromptToggle(e) {
     state.settings.enableShadowPrompt = e.target.checked;
+    syncProcessingModeFromSettings();
     saveSettings();
     applyRlmFeatureFlags();
 }
 
 function handleRetrievalPromptToggle(e) {
     state.settings.enableRetrievalPrompt = e.target.checked;
+    syncProcessingModeFromSettings();
     saveSettings();
     applyRlmFeatureFlags();
 }
@@ -1190,6 +1307,7 @@ function handleFocusShadowToggle(e) {
     if (!state.settings.enableFocusShadow) {
         state.settings.enableFocusEpisodes = false;
     }
+    syncProcessingModeFromSettings();
     saveSettings();
     updateSettingsUI();
     applyRlmFeatureFlags();
@@ -2036,6 +2154,7 @@ function applyTestSettings(settings) {
             state.settings[key] = normalized[key];
         }
     });
+    state.settings.processingMode = deriveProcessingMode(state.settings);
     updateSettingsUI();
     applyRlmFeatureFlags();
 }
