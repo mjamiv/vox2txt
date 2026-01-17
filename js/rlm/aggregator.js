@@ -14,6 +14,9 @@ export class ResponseAggregator {
             maxFinalLength: options.maxFinalLength || 4000,
             enableLLMSynthesis: options.enableLLMSynthesis !== false,
             deduplicationThreshold: options.deduplicationThreshold || 0.7,
+            enableEarlyStop: options.enableEarlyStop ?? true,
+            earlyStopMaxResults: options.earlyStopMaxResults || 2,
+            earlyStopSimilarity: options.earlyStopSimilarity || 0.85,
             ...options
         };
     }
@@ -73,6 +76,14 @@ export class ResponseAggregator {
 
         // Multiple results - need aggregation
         if (this.options.enableLLMSynthesis && llmCall) {
+            if (this._shouldSkipSynthesis(successfulResults)) {
+                return this._simpleAggregate(
+                    successfulResults,
+                    originalQuery,
+                    executionResult,
+                    decomposition
+                );
+            }
             return await this._llmAggregate(
                 successfulResults,
                 originalQuery,
@@ -90,6 +101,27 @@ export class ResponseAggregator {
                 decomposition
             );
         }
+    }
+
+    _shouldSkipSynthesis(results) {
+        if (!this.options.enableEarlyStop) {
+            return false;
+        }
+        if (results.length <= this.options.earlyStopMaxResults) {
+            return true;
+        }
+        const reference = results[0]?.response || '';
+        if (!reference) {
+            return false;
+        }
+        const similarities = results.slice(1).map(result => (
+            this._calculateSimilarity(reference, result.response || '')
+        ));
+        if (similarities.length === 0) {
+            return false;
+        }
+        const average = similarities.reduce((sum, value) => sum + value, 0) / similarities.length;
+        return average >= this.options.earlyStopSimilarity;
     }
 
     /**

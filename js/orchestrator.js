@@ -3717,7 +3717,9 @@ async function chatWithREPL(userMessage, thinkingId = null) {
         }
 
         return callGPTWithMessages(messages, `REPL: ${userMessage.substring(0, 20)}...`, {
-            maxTokens: RLM_CONFIG.maxOutputTokens
+            maxTokens: RLM_CONFIG.maxOutputTokens,
+            modelOverride: context?.modelOverride,
+            effortOverride: context?.effortOverride
         });
     };
 
@@ -3796,7 +3798,9 @@ async function chatWithRLM(userMessage, thinkingId = null) {
         }
 
         return callGPTWithMessages(messages, `RLM: ${userMessage.substring(0, 20)}...`, {
-            maxTokens: RLM_CONFIG.maxOutputTokens
+            maxTokens: RLM_CONFIG.maxOutputTokens,
+            modelOverride: context?.modelOverride,
+            effortOverride: context?.effortOverride
         });
     };
 
@@ -4299,8 +4303,8 @@ async function callAPIWithRetry(fn, maxRetries = 3, operation = 'API call') {
  * - IMPORTANT: temperature is NOT supported when reasoning_effort is enabled
  * - GPT-5-mini and GPT-5-nano do not support reasoning_effort or custom temperature
  */
-function buildAPIRequestBody(messages, maxTokens = null) {
-    const model = state.settings.model;
+function buildAPIRequestBody(messages, maxTokens = null, overrides = {}) {
+    const model = overrides.model || state.settings.model;
     // Use model-specific limit if maxTokens not provided, otherwise use provided value
     const tokenLimit = maxTokens !== null ? maxTokens : (MODEL_TOKEN_LIMITS[model] || 4000);
     
@@ -4314,7 +4318,7 @@ function buildAPIRequestBody(messages, maxTokens = null) {
     // IMPORTANT: logprobs only work when effort is 'none' (not supported with reasoning_effort)
     // Other models (gpt-5-mini, gpt-5-nano) may not support this parameter
     if (isGpt52Model(model)) {
-        const effort = state.settings.effort || 'none';
+        const effort = overrides.effort ?? state.settings.effort || 'none';
 
         if (effort !== 'none') {
             // When using reasoning, temperature is NOT supported
@@ -4511,8 +4515,8 @@ async function callGPT(systemPrompt, userContent, callName = 'API Call') {
 }
 
 async function callGPTWithMessages(messages, callName = 'Chat Query', options = {}) {
-    const model = state.settings.model;
-    const effort = state.settings.effort;
+    const model = options.modelOverride || state.settings.model;
+    const effort = options.effortOverride ?? state.settings.effort;
     const { maxTokens = null } = options;
     
     let lastError = null;
@@ -4530,7 +4534,7 @@ async function callGPTWithMessages(messages, callName = 'Chat Query', options = 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${state.apiKey}`
                 },
-                body: JSON.stringify(buildAPIRequestBody(messages, maxTokens))
+                body: JSON.stringify(buildAPIRequestBody(messages, maxTokens, { model, effort }))
             });
 
             // Calculate response time
@@ -4629,8 +4633,8 @@ async function callGPTWithMessages(messages, callName = 'Chat Query', options = 
 }
 
 async function callGPTWithMessagesStream(messages, callName = 'Chat Query', streamHandlers = {}, options = {}) {
-    const model = state.settings.model;
-    const effort = state.settings.effort;
+    const model = options.modelOverride || state.settings.model;
+    const effort = options.effortOverride ?? state.settings.effort;
     const { onStart, onToken, onComplete } = streamHandlers || {};
     const { maxTokens = null } = options;
     let lastError = null;
@@ -4640,7 +4644,7 @@ async function callGPTWithMessagesStream(messages, callName = 'Chat Query', stre
     while (retryAttempt < maxRetries) {
         try {
             const startTime = performance.now();
-            const requestBody = buildAPIRequestBody(messages, maxTokens);
+            const requestBody = buildAPIRequestBody(messages, maxTokens, { model, effort });
             requestBody.stream = true;
             requestBody.stream_options = { include_usage: true };
 

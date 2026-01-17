@@ -231,6 +231,9 @@ export class MemoryStore {
             maxResults = 6,
             tags,
             entities,
+            intentTags = [],
+            intentBoost = 1,
+            intentFilter = false,
             recencyWindowMs = null,
             maxPerTag = 2,
             maxPerAgent = 2,
@@ -242,6 +245,9 @@ export class MemoryStore {
 
         const normalizedQuery = (query || '').toLowerCase();
         const queryTags = tags || this._inferTagsFromQuery(normalizedQuery);
+        const normalizedIntentTags = Array.isArray(intentTags)
+            ? intentTags.filter(Boolean)
+            : [];
         const queryEntities = entities || this._extractEntities(query || '');
         const queryKeywords = this._extractKeywords(normalizedQuery);
 
@@ -262,6 +268,9 @@ export class MemoryStore {
             if (queryTags.length > 0) {
                 const tagMatches = (slice.tags || []).some(tag => queryTags.includes(tag));
                 if (!tagMatches) return false;
+            } else if (intentFilter && normalizedIntentTags.length > 0) {
+                const intentMatches = (slice.tags || []).some(tag => normalizedIntentTags.includes(tag));
+                if (!intentMatches) return false;
             }
 
             if (queryEntities.length > 0) {
@@ -278,6 +287,9 @@ export class MemoryStore {
             : 'retrieval_count';
         const scored = candidates.map(slice => {
             const tagScore = (slice.tags || []).filter(tag => queryTags.includes(tag)).length * 2;
+            const intentScore = normalizedIntentTags.length > 0
+                ? (slice.tags || []).filter(tag => normalizedIntentTags.includes(tag)).length * intentBoost
+                : 0;
             const entityScore = (slice.entities || []).filter(entity => queryEntities.includes(entity)).length * 2;
             const recencyScore = this._scoreRecency(slice.timestamp) * 1.5;
             const importanceScore = (slice.importance_score || 0) * 1.2;
@@ -286,7 +298,7 @@ export class MemoryStore {
 
             return {
                 ...slice,
-                _score: tagScore + entityScore + recencyScore + importanceScore + keywordScore - redundancyPenalty,
+                _score: tagScore + intentScore + entityScore + recencyScore + importanceScore + keywordScore - redundancyPenalty,
                 _redundancyPenalty: redundancyPenalty
             };
         });
@@ -352,6 +364,9 @@ export class MemoryStore {
                 candidateCount: candidates.length,
                 selectedCount: selected.length,
                 requestedK: maxResults,
+                intentTags: normalizedIntentTags,
+                intentBoost,
+                intentFilter,
                 recencyWindowMs,
                 redundancyCountSource,
                 latencyMs: Math.max(0, finishedAt - startedAt)
