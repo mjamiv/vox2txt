@@ -389,3 +389,110 @@ Per prompt:
    - ✅ Log guardrail actions, trim deltas, and SWM fallback metadata.
 
 **Exit criteria:** zero prompt overflows; stable latency in telemetry.
+
+---
+
+## 13) Reviewer Suggestions Plan (Routing, Latency, Eval, Intent Retrieval)
+
+### A) Routing Rules by Query Type (Biggest Win)
+**Goal:** Route queries to the most effective retrieval + execution strategy.
+
+1) **Add query-type routing taxonomy**
+   - Metrics/KPI lookup → prefer structured payloads (metrics/state) over transcript slices.
+   - Selective extraction across meetings (decisions/risks/blockers/teaming) → default to RLM + SWM.
+   - Format-constrained summarization (e.g., “6 bullets per topic”) → direct with strict template or RLM with capped scope + paging.
+
+2) **Implement routing layer in decomposer**
+   - Extend query classifier to emit `intent`, `format_constraints`, and `data_preference`.
+   - Map classifier outputs to retrieval presets (structured vs slices vs hybrid).
+
+3) **Prompt builder alignment**
+   - Enforce template budgets for strict formatting requests.
+   - Add paging for long multi-topic summaries.
+
+**Exit criteria:** query routing decisions are visible in telemetry and influence retrieval strategy.
+
+### B) Latency Wins Without Losing RLM
+**Goal:** Reduce p50/p95 latency while retaining RLM strengths.
+
+1) **Parallelize sub-executors**
+   - Increase map-step concurrency where safe.
+   - Add configurable concurrency cap per query type.
+
+2) **Model tiering**
+   - Use smaller models for decomposer/subtasks.
+   - Reserve GPT-5.2 for aggregation/synthesis.
+
+3) **Early-stop heuristics**
+   - If retrieval returns ≤ N slices, skip full multi-call pipeline.
+   - Short-circuit to direct synthesis on low-variance answers.
+
+**Exit criteria:** lower latency telemetry without quality regressions on eval set.
+
+### C) Evaluation Harness Beyond Logprob
+**Goal:** Add lightweight evaluation to measure correctness and compliance.
+
+1) **Define per-test rubric**
+   - Coverage, correctness, formatting compliance, citations to meeting sources.
+
+2) **Add eval runner**
+   - Manual scoring option + automated judge pass for regression checks.
+
+3) **Track key metrics**
+   - Format compliance rates.
+   - Meeting coverage across relevant agents.
+
+**Exit criteria:** eval reports include rubric scores and regression diffs per run.
+
+### D) Intent-Tuned Retrieval Prompts (SWM)
+**Goal:** Align SWM retrieval with intent-based tags.
+
+1) **Intent → Tag mapping**
+   - Sentiment → KPI/metrics tags first.
+   - Risks → risk/constraint tags first.
+   - Teaming → partners/contacts/pursuits tags first.
+
+2) **Update SWM retrieval prompts**
+   - Include intent tags in Stage A filter.
+   - Score boosts for matched intent tags in Stage B.
+
+**Exit criteria:** retrieval outputs show intent-tag alignment in telemetry.
+
+---
+
+## 14) Implementation Agent (Owner + Operating Protocol)
+
+**Agent Name:** `RLM-Optimization-Driver`  
+**Mission:** Implement the reviewer suggestions end-to-end, keeping routing, latency, eval, and intent-tuned retrieval aligned with telemetry and feature flags.
+
+### Primary Responsibilities
+1) **Routing & Intent**
+   - Maintain classifier taxonomy.
+   - Ensure routing → retrieval presets → prompt templates are consistent.
+
+2) **Latency**
+   - Own concurrency settings, model tiering, and early-stop heuristics.
+   - Validate against latency telemetry.
+
+3) **Evaluation**
+   - Keep eval harness up to date with rubric + regression checks.
+   - Track compliance and coverage metrics.
+
+4) **Retrieval Quality**
+   - Ensure SWM intent tags drive Stage A/B ranking.
+   - Monitor tag drift and adjust weights.
+
+### Operating Protocol
+- **Before change:** update the “Session Update” section with planned changes.
+- **After change (end of session):** record what shipped, telemetry deltas, and next actions.
+- **Guardrail:** avoid shipping changes without telemetry visibility.
+
+---
+
+## 15) Session Update (End-of-Session Required)
+
+**Planned Updates (Next Session):**
+- Implement intent-based query routing with structured payload preferences.
+- Add early-stop heuristics and model tiering controls in RLM pipeline.
+- Draft eval harness rubric and scoring scaffold.
+- Update SWM retrieval Stage A/B with intent tag boosts.
