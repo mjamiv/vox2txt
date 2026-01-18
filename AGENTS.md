@@ -21,7 +21,9 @@ Use 4-space indentation in HTML/CSS/JS and keep semicolons in JavaScript. Prefer
 No automated test framework is configured. Validate changes manually:
 - Load the UI, upload agents, and run a few prompts.
 - For RLM changes, check the metrics panel and memory debug output.
-- For latency work, verify hybrid mode responds before diagnostics and confirm model tiering in metrics.
+- For latency work, verify hybrid mode responds before diagnostics, confirm model tiering in metrics, and review stage timing breakdowns in the metrics panel/CSV.
+- For retrieval changes, verify retrieval cache hit rate in the memory debug panel.
+- For test runs, confirm the prompt set label appears in the test analytics summary and HTML export.
 - For UI changes, verify both `index.html` and `orchestrator.html` layouts.
 
 ## Commit & Pull Request Guidelines

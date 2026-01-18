@@ -39,6 +39,7 @@ import { EVAL_RUBRIC, scoreEvaluation, buildEvalReport } from './eval-harness.js
 export const RLM_CONFIG = {
     // Decomposition settings
     maxSubQueries: 5,
+    summaryMaxSubQueries: 4,
     minRelevanceScore: 2,
 
     // Execution settings
@@ -104,7 +105,8 @@ export const RLM_CONFIG = {
     routingPresets: {
         structured: { maxResults: 4, maxPerTag: 1, maxPerAgent: 1 },
         hybrid: { maxResults: 6, maxPerTag: 2, maxPerAgent: 2 },
-        broad: { maxResults: 8, maxPerTag: 3, maxPerAgent: 2 }
+        broad: { maxResults: 8, maxPerTag: 3, maxPerAgent: 2 },
+        summary: { maxResults: 4, maxPerTag: 1, maxPerAgent: 1 }
     },
 
     // Early-stop heuristics
@@ -144,6 +146,7 @@ export class RLMPipeline {
         this.memoryStore = getMemoryStore();
         this.decomposer = createDecomposer({
             maxSubQueries: this.config.maxSubQueries,
+            summaryMaxSubQueries: this.config.summaryMaxSubQueries,
             minRelevanceScore: this.config.minRelevanceScore
         });
         this.executor = createExecutor({
@@ -441,6 +444,8 @@ If the information is not available in the provided context, say so briefly.`;
      */
     async process(query, llmCall, context = {}) {
         const startTime = Date.now();
+        const timingStart = this._nowMs();
+        const timings = this._initTimings();
 
         if (!this.config.enableRLM) {
             console.log('[RLM] RLM disabled, using legacy processing');
@@ -452,12 +457,14 @@ If the information is not available in the provided context, say so briefly.`;
         if (cachedResult) {
             this.stats.cacheHits++;
             this._emitProgress('Cache hit - returning cached result', 'success');
+            this._finalizeTimings(timings, timingStart, query);
             return {
                 ...cachedResult,
                 metadata: {
                     ...cachedResult.metadata,
                     cached: true,
-                    cacheTime: Date.now() - startTime
+                    cacheTime: Date.now() - startTime,
+                    timings
                 }
             };
         }
@@ -473,7 +480,9 @@ If the information is not available in the provided context, say so briefly.`;
             // Step 1: Decompose the query
             console.log('[RLM] Step 1: Decomposing query...');
             this._emitProgress('Analyzing query structure and intent', 'decompose');
+            const decomposeStart = this._nowMs();
             const decomposition = await this.decomposer.decompose(query, context);
+            timings.decomposeMs = Math.round(this._nowMs() - decomposeStart);
             console.log(`[RLM] Decomposed into ${decomposition.subQueries.length} sub-queries using ${decomposition.strategy.type} strategy`);
             this._emitProgress(`Strategy: ${decomposition.strategy.type} (${decomposition.subQueries.length} sub-queries)`, 'decompose');
             this._appendFocusEvent(
@@ -498,14 +507,16 @@ If the information is not available in the provided context, say so briefly.`;
                     routing: routingPlan,
                     earlyStop: earlyStopCheck
                 });
-                const earlyResult = await this._processDirectRetrieval(query, llmCall, context, routingPlan);
+                const earlyResult = await this._processDirectRetrieval(query, llmCall, context, routingPlan, timings);
+                this._finalizeTimings(timings, timingStart, query);
                 const result = {
                     ...earlyResult,
                     metadata: {
                         ...earlyResult.metadata,
                         strategy: 'direct-retrieval',
                         routingPlan,
-                        pipelineTime: Date.now() - startTime
+                        pipelineTime: Date.now() - startTime,
+                        timings
                     }
                 };
                 this._captureMemory(query, result);
@@ -522,7 +533,8 @@ If the information is not available in the provided context, say so briefly.`;
             // Step 2: Execute sub-queries
             console.log('[RLM] Step 2: Executing sub-queries...');
             this._emitProgress(`Executing ${decomposition.subQueries.length} sub-queries in parallel`, 'execute');
-            const guardedSubQueryCall = this._wrapLLMCall(llmCall, routingPlan);
+            const guardedSubQueryCall = this._wrapLLMCall(llmCall, routingPlan, timings);
+            const executeStart = this._nowMs();
             const executionResult = await this.executor.execute(
                 decomposition,
                 guardedSubQueryCall,
@@ -531,6 +543,7 @@ If the information is not available in the provided context, say so briefly.`;
                     routing: routingPlan
                 }
             );
+            timings.executeMs = Math.round(this._nowMs() - executeStart);
 
             if (!executionResult.success) {
                 throw new Error(executionResult.error || 'Execution failed');
@@ -555,12 +568,14 @@ If the information is not available in the provided context, say so briefly.`;
                 this._buildCallContext(callContext, this._resolveModelTier(routingPlan, 'aggregate')),
                 'aggregate'
             );
+            const aggregateStart = this._nowMs();
             const aggregation = await this.aggregator.aggregate(
                 executionResult,
                 decomposition,
                 guardedAggregationCall,
                 context
             );
+            timings.aggregateMs = Math.round(this._nowMs() - aggregateStart);
             this._appendFocusEvent('Aggregated sub-query results into final response.', { step: 'aggregate' });
             this._queueFocusReason('phase_complete');
 
@@ -572,6 +587,7 @@ If the information is not available in the provided context, say so briefly.`;
 
             console.log(`[RLM] Pipeline complete in ${Date.now() - startTime}ms`);
 
+            this._finalizeTimings(timings, timingStart, query);
             const result = {
                 success: true,
                 response: finalResponse,
@@ -579,7 +595,8 @@ If the information is not available in the provided context, say so briefly.`;
                     ...aggregation.metadata,
                     rlmEnabled: true,
                     routingPlan,
-                    pipelineTime: Date.now() - startTime
+                    pipelineTime: Date.now() - startTime,
+                    timings
                 }
             };
 
@@ -612,10 +629,41 @@ If the information is not available in the provided context, say so briefly.`;
                 metadata: {
                     rlmEnabled: true,
                     error: error.message,
-                    pipelineTime: Date.now() - startTime
+                    pipelineTime: Date.now() - startTime,
+                    timings: this._finalizeTimings(timings, timingStart, query)
                 }
             };
         }
+    }
+
+    _nowMs() {
+        if (typeof performance !== 'undefined' && performance.now) {
+            return performance.now();
+        }
+        return Date.now();
+    }
+
+    _initTimings() {
+        return {
+            decomposeMs: 0,
+            executeMs: 0,
+            aggregateMs: 0,
+            retrievalMs: 0,
+            retrievalCalls: 0,
+            retrievalCacheHits: 0,
+            shadowPromptMs: null,
+            pipelineMs: 0
+        };
+    }
+
+    _finalizeTimings(timings, timingStart, query) {
+        if (!timings) return null;
+        timings.pipelineMs = Math.round(this._nowMs() - timingStart);
+        const shadowPrompt = this.shadowPrompt;
+        if (shadowPrompt?.query === query && Number.isFinite(shadowPrompt.totalLatencyMs)) {
+            timings.shadowPromptMs = Math.round(shadowPrompt.totalLatencyMs);
+        }
+        return timings;
     }
 
     _estimateTokens(text) {
@@ -641,6 +689,13 @@ If the information is not available in the provided context, say so briefly.`;
             : String(contextStats?.lastUpdated || '');
         const memoryStamp = String(memoryStats?.lastCapturedAt || '');
         return `${contextStamp}|${memoryStamp}`;
+    }
+
+    _getCorpusStamp() {
+        const contextStats = this.contextStore?.getStats ? this.contextStore.getStats() : {};
+        return contextStats?.lastUpdated instanceof Date
+            ? contextStats.lastUpdated.toISOString()
+            : String(contextStats?.lastUpdated || '');
     }
 
     _buildPromptCacheKey(type, query, contextText, extra = '') {
@@ -671,6 +726,8 @@ If the information is not available in the provided context, say so briefly.`;
         return {
             intent: classification.intent || null,
             complexity: classification.complexity || null,
+            summaryScope: classification.summaryScope || null,
+            summaryRequest: Boolean(classification.summaryRequest),
             dataPreference,
             formatConstraints,
             intentTags,
@@ -683,6 +740,9 @@ If the information is not available in the provided context, say so briefly.`;
 
     _selectRetrievalPreset(classification, dataPreference, formatConstraints) {
         const presets = this.config.routingPresets || {};
+        if (classification?.summaryScope === 'full') {
+            return presets.summary || presets.hybrid || {};
+        }
         if (dataPreference === 'structured') {
             return presets.structured || {};
         }
@@ -800,7 +860,7 @@ Provide a focused answer based only on the context above.`;
         };
     }
 
-    async _processDirectRetrieval(query, llmCall, context, routingPlan) {
+    async _processDirectRetrieval(query, llmCall, context, routingPlan, timings = null) {
         const guardrail = this._getPromptBudget();
         const basePrompts = this._buildLegacyPrompts(query, '');
         const baseTokens = this._estimateTokens(basePrompts.systemPrompt)
@@ -814,7 +874,8 @@ Provide a focused answer based only on the context above.`;
             maxPerAgent: routingPlan?.retrieval?.maxPerAgent,
             intentTags: routingPlan?.intentTags || [],
             intentBoost: routingPlan?.intentBoost ?? this.config.intentTagBoost,
-            intentFilter: routingPlan?.intentFilter ?? false
+            intentFilter: routingPlan?.intentFilter ?? false,
+            timing: timings
         });
 
         if (!retrievalData.contextText) {
@@ -944,6 +1005,7 @@ Use the following meeting data to answer questions accurately and comprehensivel
             };
         }
 
+        const timing = options.timing || null;
         const recencyWindowMs = options.recencyWindowMs ?? (this.config.shadowPromptRecencyWindowDays
             ? this.config.shadowPromptRecencyWindowDays * 24 * 60 * 60 * 1000
             : null);
@@ -1028,6 +1090,16 @@ Use the following meeting data to answer questions accurately and comprehensivel
             retrievedSlices,
             reduction
         };
+        if (timing && retrievalStats) {
+            const latencyMs = retrievalStats.latencyMs;
+            if (Number.isFinite(latencyMs)) {
+                timing.retrievalMs = (timing.retrievalMs || 0) + latencyMs;
+                timing.retrievalCalls = (timing.retrievalCalls || 0) + 1;
+                if (retrievalStats.fromCache) {
+                    timing.retrievalCacheHits = (timing.retrievalCacheHits || 0) + 1;
+                }
+            }
+        }
         if (promptCacheKey) {
             this.promptCache.set(promptCacheKey, result, this.config.promptCacheTTL);
         }
@@ -1069,7 +1141,7 @@ Use the following meeting data to answer questions accurately and comprehensivel
      * Wrap LLM call function for sub-queries
      * @private
      */
-    _wrapLLMCall(llmCall, routingPlan = null) {
+    _wrapLLMCall(llmCall, routingPlan = null, timings = null) {
         return async (subQuery, agentContext, context) => {
             const queryText = this._getSubQueryText(subQuery);
             const { systemPrompt } = this._buildSubQueryPrompts(queryText, '');
@@ -1095,7 +1167,8 @@ Use the following meeting data to answer questions accurately and comprehensivel
                     ...retrievalOverrides,
                     intentTags,
                     intentBoost,
-                    intentFilter
+                    intentFilter,
+                    timing: timings
                 });
                 finalContext = retrievalData.contextText;
                 retrievalStats = retrievalData.retrievalStats;
@@ -1259,6 +1332,13 @@ Use the following meeting data to answer questions accurately and comprehensivel
      */
     async processWithREPL(query, llmCall, context = {}) {
         const startTime = Date.now();
+        const timingStart = this._nowMs();
+        const timings = {
+            codeGenMs: 0,
+            execMs: 0,
+            parseMs: 0,
+            pipelineMs: 0
+        };
         let focusSubResults = [];
 
         // Phase 3.1: Check cache for existing result
@@ -1266,12 +1346,14 @@ Use the following meeting data to answer questions accurately and comprehensivel
         if (cachedResult) {
             this.stats.cacheHits++;
             this._emitProgress('Cache hit - returning cached result', 'success');
+            timings.pipelineMs = Math.round(this._nowMs() - timingStart);
             return {
                 ...cachedResult,
                 metadata: {
                     ...cachedResult.metadata,
                     cached: true,
-                    cacheTime: Date.now() - startTime
+                    cacheTime: Date.now() - startTime,
+                    timings
                 }
             };
         }
@@ -1320,11 +1402,13 @@ Use the following meeting data to answer questions accurately and comprehensivel
                 this._buildCallContext(callContext || replCodeContext, this._resolveModelTier(null, 'replCode')),
                 'repl-code'
             );
+            const codeGenStart = this._nowMs();
             const codeResult = await this.codeGenerator.generateWithRetry(
                 query,
                 { activeAgents: stats.activeAgents, agentNames },
                 guardedCodeCall
             );
+            timings.codeGenMs = Math.round(this._nowMs() - codeGenStart);
 
             if (!codeResult.success) {
                 console.warn('[RLM:REPL] Code generation failed after retries:', codeResult.error);
@@ -1339,7 +1423,9 @@ Use the following meeting data to answer questions accurately and comprehensivel
 
             // Step 3: Execute the code in REPL
             this._emitProgress('Executing Python in Pyodide sandbox', 'execute');
+            const execStart = this._nowMs();
             const execResult = await this.repl.execute(codeResult.code, this.config.replTimeout);
+            timings.execMs = Math.round(this._nowMs() - execStart);
 
             if (!execResult.success) {
                 console.warn('[RLM:REPL] Code execution failed:', execResult.error);
@@ -1354,7 +1440,9 @@ Use the following meeting data to answer questions accurately and comprehensivel
 
             // Step 4: Parse the final answer
             this._emitProgress('Extracting FINAL answer from output', 'aggregate');
+            const parseStart = this._nowMs();
             const finalAnswer = parseFinalAnswer(execResult);
+            timings.parseMs = Math.round(this._nowMs() - parseStart);
 
             this.stats.replExecutions++;
 
@@ -1405,6 +1493,7 @@ Use the following meeting data to answer questions accurately and comprehensivel
                 this._checkFocusTriggerCounts();
             }
 
+            timings.pipelineMs = Math.round(this._nowMs() - timingStart);
             const result = {
                 success: true,
                 response: finalAnswer.answer || 'No result from code execution',
@@ -1417,7 +1506,8 @@ Use the following meeting data to answer questions accurately and comprehensivel
                     subLmCalls: subLmStats.totalCalls,
                     pipelineTime: Date.now() - startTime,
                     stdout: finalAnswer.stdout,
-                    stderr: finalAnswer.stderr
+                    stderr: finalAnswer.stderr,
+                    timings
                 }
             };
 
@@ -1454,7 +1544,11 @@ Use the following meeting data to answer questions accurately and comprehensivel
                     rlmEnabled: true,
                     replUsed: true,
                     error: error.message,
-                    pipelineTime: Date.now() - startTime
+                    pipelineTime: Date.now() - startTime,
+                    timings: {
+                        ...timings,
+                        pipelineMs: Math.round(this._nowMs() - timingStart)
+                    }
                 }
             };
         } finally {
@@ -1904,16 +1998,17 @@ Be concise and focus only on information relevant to the question.`;
         // Get active agent IDs for cache key
         const activeAgents = this.contextStore.getActiveAgents();
         const agentIds = activeAgents.map(a => a.id);
+        const contextStamp = this._hashText(this._getCorpusStamp());
 
         // Generate cache key
-        const cacheKey = this.cache.generateKey(query, agentIds, mode);
+        const cacheKey = this.cache.generateKey(query, agentIds, mode, contextStamp);
 
         // Try exact match first
         let cached = this.cache.get(cacheKey);
 
         // Try fuzzy match if enabled and no exact match
         if (!cached && this.config.enableFuzzyCache) {
-            cached = this.cache.getFuzzy(query, agentIds, mode);
+            cached = this.cache.getFuzzy(query, agentIds, mode, contextStamp);
         }
 
         if (cached) {
@@ -1943,9 +2038,10 @@ Be concise and focus only on information relevant to the question.`;
         // Get active agent IDs for cache key
         const activeAgents = this.contextStore.getActiveAgents();
         const agentIds = activeAgents.map(a => a.id);
+        const contextStamp = this._hashText(this._getCorpusStamp());
 
         // Generate cache key and store
-        const cacheKey = this.cache.generateKey(query, agentIds, mode);
+        const cacheKey = this.cache.generateKey(query, agentIds, mode, contextStamp);
         this.cache.set(cacheKey, result, this.config.cacheTTL);
 
         console.log(`[RLM:Cache] Stored result for query: ${query.substring(0, 40)}...`);
@@ -2063,6 +2159,12 @@ Be concise and focus only on information relevant to the question.`;
                 promptTokenReserve: this.config.promptTokenReserve,
                 promptTokensForSubQuery: (subQuery) => this._estimateSubQueryBaseTokens(subQuery)
             });
+        }
+
+        if (this.decomposer?.options) {
+            this.decomposer.options.maxSubQueries = this.config.maxSubQueries;
+            this.decomposer.options.summaryMaxSubQueries = this.config.summaryMaxSubQueries;
+            this.decomposer.options.minRelevanceScore = this.config.minRelevanceScore;
         }
 
         if (this.repl) {

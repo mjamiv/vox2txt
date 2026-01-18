@@ -137,6 +137,11 @@ const DEFAULT_TEST_PROMPTS = [
     'Highlight any commitments made to external stakeholders since Q2.',
     'Summarize this conversation with 6 bullets per topic.'
 ];
+const CANONICAL_TEST_PROMPT_SET = {
+    id: 'northstar-rlm-core-7',
+    version: '2026-01-18',
+    prompts: DEFAULT_TEST_PROMPTS
+};
 
 function deriveProcessingMode(settings) {
     if (!settings.useRLM) {
@@ -536,6 +541,12 @@ function attachShadowPromptTelemetry(userMessage) {
         tokenEstimate: shadowPrompt.tokenEstimate,
         tokenBreakdown: shadowPrompt.tokenBreakdown
     };
+    if (Number.isFinite(shadowPrompt.totalLatencyMs)) {
+        if (!activePromptGroup.timings) {
+            activePromptGroup.timings = {};
+        }
+        activePromptGroup.timings.shadowPromptMs = Math.round(shadowPrompt.totalLatencyMs);
+    }
 }
 
 function attachRetrievalPromptTelemetry(userMessage) {
@@ -2333,6 +2344,31 @@ function getSelectedTestPrompts() {
         }));
 }
 
+function resolvePromptSetMeta(prompts) {
+    const promptTexts = prompts.map(prompt => (prompt.text || '').trim());
+    const canonical = CANONICAL_TEST_PROMPT_SET.prompts.map(text => text.trim());
+    const isCanonical = promptTexts.length === canonical.length
+        && promptTexts.every((text, index) => text === canonical[index]);
+
+    if (isCanonical) {
+        return {
+            id: CANONICAL_TEST_PROMPT_SET.id,
+            version: CANONICAL_TEST_PROMPT_SET.version,
+            label: `Canonical (${CANONICAL_TEST_PROMPT_SET.id})`,
+            isCanonical: true,
+            promptCount: promptTexts.length
+        };
+    }
+
+    return {
+        id: 'custom',
+        version: null,
+        label: 'Custom selection',
+        isCanonical: false,
+        promptCount: promptTexts.length
+    };
+}
+
 function applyTestSettings(settings) {
     const normalized = normalizeTestSettings(settings);
     TEST_SETTINGS_KEYS.forEach((key) => {
@@ -2544,6 +2580,7 @@ async function runTestSequence(prompts, testSettings) {
         startedAt: new Date(),
         settings: normalizedTestSettings,
         prompts,
+        promptSet: resolvePromptSetMeta(prompts),
         startIndex: currentMetrics.promptLogs.length,
         results: []
     };
@@ -2612,6 +2649,10 @@ function renderTestAnalytics() {
     const totalPrompts = testPromptState.run.prompts.length;
     const avgResponse = totalPrompts > 0 ? Math.round(totals.totalTime / totalPrompts) : 0;
     const settingsSummary = formatTestSettingsSummary(testPromptState.run.settings);
+    const promptSet = testPromptState.run.promptSet || null;
+    const promptSetLabel = promptSet?.isCanonical
+        ? `${promptSet.id} (v${promptSet.version})`
+        : (promptSet?.label || 'Custom selection');
 
     if (elements.testAnalyticsSummary) {
         elements.testAnalyticsSummary.innerHTML = `
@@ -2630,6 +2671,10 @@ function renderTestAnalytics() {
             <div class="test-summary-card">
                 <h4>Avg Response</h4>
                 <p>${formatTime(avgResponse)}</p>
+            </div>
+            <div class="test-summary-card">
+                <h4>Prompt Set</h4>
+                <p>${escapeHtml(promptSetLabel)}</p>
             </div>
             <div class="test-summary-card test-summary-card-wide">
                 <h4>Test Settings</h4>
@@ -2710,6 +2755,10 @@ function buildTestReportHtml() {
     const avgResponse = totalPrompts > 0 ? Math.round(totals.totalTime / totalPrompts) : 0;
     const timestamp = testPromptState.run.startedAt.toLocaleString();
     const settingsSummary = formatTestSettingsSummary(testPromptState.run.settings);
+    const promptSet = testPromptState.run.promptSet || null;
+    const promptSetLabel = promptSet?.isCanonical
+        ? `${promptSet.id} (v${promptSet.version})`
+        : (promptSet?.label || 'Custom selection');
 
     const promptRows = testPromptState.run.results.map((result, index) => {
         const log = result.log;
@@ -2753,6 +2802,7 @@ function buildTestReportHtml() {
             <h1>northstar.LM Test Prompting Report</h1>
             <p>Generated ${escapeHtml(timestamp)}</p>
             <p><strong>Settings:</strong> ${escapeHtml(settingsSummary)}</p>
+            <p><strong>Prompt set:</strong> ${escapeHtml(promptSetLabel)}</p>
             <p>This report documents a batch test run of orchestrator prompts for meeting-minute analysis.</p>
             <div class="summary">
                 <div class="summary-card">
@@ -2770,6 +2820,10 @@ function buildTestReportHtml() {
                 <div class="summary-card">
                     <strong>Avg Response</strong>
                     <div>${formatTime(avgResponse)}</div>
+                </div>
+                <div class="summary-card">
+                    <strong>Prompt Set</strong>
+                    <div>${escapeHtml(promptSetLabel)}</div>
                 </div>
                 <div class="summary-card">
                     <strong>Settings</strong>
@@ -3952,6 +4006,9 @@ async function chatWithREPL(userMessage, thinkingId = null) {
         if (result.metadata.cached) {
             activePromptGroup.cached = true;
         }
+        if (result.metadata.timings) {
+            activePromptGroup.timings = result.metadata.timings;
+        }
         if (result.metadata.replUsed) {
             activePromptGroup.mode = 'repl';
             activePromptGroup.usesRLM = true;
@@ -4032,6 +4089,9 @@ async function chatWithRLM(userMessage, thinkingId = null) {
     if (activePromptGroup && result?.metadata) {
         if (result.metadata.cached) {
             activePromptGroup.cached = true;
+        }
+        if (result.metadata.timings) {
+            activePromptGroup.timings = result.metadata.timings;
         }
         if (result.metadata.rlmEnabled === false || result.metadata.legacy) {
             activePromptGroup.mode = 'direct';
@@ -5283,6 +5343,7 @@ function buildMemoryDebugHtml() {
     const workingWindow = memoryStore?.getWorkingWindow?.();
     const shadowPrompt = stats.shadowPrompt;
     const focus = stats.memoryStore?.focus || {};
+    const retrievalCache = stats.memoryStore?.retrievalCache || null;
     const guardrails = stats.guardrails || {};
     const liveRetrievalStats = guardrails.lastRetrievalStats || null;
     const liveRetrievalReduction = liveRetrievalStats?.reduction || null;
@@ -5375,6 +5436,7 @@ function buildMemoryDebugHtml() {
                 <div class="debug-row"><span>Enabled</span><span>${stats?.config?.enableRetrievalPrompt ? 'Yes' : 'No'}</span></div>
                 <div class="debug-row"><span>Retrieved</span><span>${liveRetrievalStats ? `${liveRetrievalStats.selectedCount ?? 0} / ${liveRetrievalStats.requestedK ?? 0}` : 'N/A'}</span></div>
                 <div class="debug-row"><span>Trim</span><span>${liveRetrievalReduction ? `${liveRetrievalReduction.dropped} dropped` : 'None'}</span></div>
+                <div class="debug-row"><span>Cache Hits</span><span>${retrievalCache ? `${retrievalCache.hits} (${retrievalCache.hitRate ?? 0}%)` : 'N/A'}</span></div>
             </div>
         </div>
 
@@ -5624,6 +5686,7 @@ function buildPromptLogsHtml(promptLogs) {
             : (Number.isFinite(evaluation?.scoring?.percentage) ? `${evaluation.scoring.percentage}%` : 'N/A');
         const evalSummary = evaluation ? escapeHtml(formatEvalSummary(evaluation)) : '';
         const evalNotes = evaluation?.notes ? escapeHtml(evaluation.notes) : '';
+        const timingSummary = formatStageTimings(log.timings);
         
         return `
         <details class="prompt-log-entry ${log.usesRLM ? 'uses-rlm' : ''}" id="${log.id || 'unknown'}">
@@ -5689,6 +5752,11 @@ function buildPromptLogsHtml(promptLogs) {
                     <span class="log-label">⏱️ Response:</span>
                     <span class="log-value">${formatTime(log.responseTime || 0)}</span>
                 </div>
+                ${timingSummary ? `
+                <div class="prompt-log-row">
+                    <span class="log-label">⏳ Stages:</span>
+                    <span class="log-value">${timingSummary}</span>
+                </div>` : ''}
                 <div class="prompt-log-row">
                     <span class="log-label">💰 Cost:</span>
                     <span class="log-value cost-highlight">${formatCost(cost.total)}</span>
@@ -5815,6 +5883,33 @@ function buildConfidenceHtml(confidence, logFinishReason = null) {
             <span class="log-label">🎯 Confidence:</span>
             <span class="log-value">Completed</span>
         </div>`;
+}
+
+function formatStageTimings(timings) {
+    if (!timings || typeof timings !== 'object') return '';
+    const parts = [];
+    const add = (label, value) => {
+        if (!Number.isFinite(value) || value <= 0) return;
+        parts.push(`${label} ${formatTime(value)}`);
+    };
+
+    const retrievalMs = Number.isFinite(timings.retrievalMs) ? timings.retrievalMs : 0;
+    const retrievalCalls = Number.isFinite(timings.retrievalCalls) ? timings.retrievalCalls : 0;
+    if (retrievalCalls > 0 || retrievalMs > 0) {
+        const cached = timings.retrievalCacheHits || 0;
+        const cacheText = cached > 0 ? `, ${cached} cached` : '';
+        parts.push(`retrieve ${formatTime(retrievalMs)} (${retrievalCalls}${cacheText})`);
+    }
+    add('decompose', timings.decomposeMs);
+    add('subcalls', timings.executeMs);
+    add('synth', timings.aggregateMs);
+    add('code', timings.codeGenMs);
+    add('exec', timings.execMs);
+    add('parse', timings.parseMs);
+    add('shadow', timings.shadowPromptMs);
+    add('total', timings.pipelineMs);
+
+    return parts.join(' | ');
 }
 
 /**
@@ -5963,6 +6058,17 @@ function downloadMetricsCSV() {
         'Output Cost ($)',
         'Total Cost ($)',
         'Response Time (ms)',
+        'Stage Decompose (ms)',
+        'Stage Retrieve (ms)',
+        'Retrieve Calls',
+        'Retrieve Cache Hits',
+        'Stage Subcalls (ms)',
+        'Stage Aggregate (ms)',
+        'Stage Shadow (ms)',
+        'Stage Pipeline (ms)',
+        'Stage Codegen (ms)',
+        'Stage Exec (ms)',
+        'Stage Parse (ms)',
         'Confidence Available',
         'Avg Logprob',
         'Quality Score (%)',
@@ -6007,6 +6113,7 @@ function downloadMetricsCSV() {
 
     metrics.promptLogs.forEach((log, index) => {
         // For grouped calls, use the group-level data
+        const timings = log.timings || {};
         const row = [
             escapeCSV(log.timestamp || ''),
             escapeCSV(log.name || ''),
@@ -6022,6 +6129,17 @@ function downloadMetricsCSV() {
             escapeCSV((log.cost?.output || 0).toFixed(6)),
             escapeCSV((log.cost?.total || 0).toFixed(6)),
             escapeCSV(log.responseTime || 0),
+            escapeCSV(Number.isFinite(timings.decomposeMs) ? timings.decomposeMs : ''),
+            escapeCSV(Number.isFinite(timings.retrievalMs) ? timings.retrievalMs : ''),
+            escapeCSV(Number.isFinite(timings.retrievalCalls) ? timings.retrievalCalls : ''),
+            escapeCSV(Number.isFinite(timings.retrievalCacheHits) ? timings.retrievalCacheHits : ''),
+            escapeCSV(Number.isFinite(timings.executeMs) ? timings.executeMs : ''),
+            escapeCSV(Number.isFinite(timings.aggregateMs) ? timings.aggregateMs : ''),
+            escapeCSV(Number.isFinite(timings.shadowPromptMs) ? timings.shadowPromptMs : ''),
+            escapeCSV(Number.isFinite(timings.pipelineMs) ? timings.pipelineMs : ''),
+            escapeCSV(Number.isFinite(timings.codeGenMs) ? timings.codeGenMs : ''),
+            escapeCSV(Number.isFinite(timings.execMs) ? timings.execMs : ''),
+            escapeCSV(Number.isFinite(timings.parseMs) ? timings.parseMs : ''),
             escapeCSV(log.confidence?.available ? 'Yes' : 'No'),
             escapeCSV(log.confidence?.avgLogprob != null ? (log.confidence.avgLogprob * 100).toFixed(2) + '%' : ''),
             escapeCSV(Number.isFinite(log.evaluation?.qualityScore)

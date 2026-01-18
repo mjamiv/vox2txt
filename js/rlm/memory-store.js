@@ -107,6 +107,18 @@ export class MemoryStore {
     }
 
     getStats() {
+        const retrievalCacheStats = this.retrievalCache?.getStats ? this.retrievalCache.getStats() : null;
+        const retrievalTotal = retrievalCacheStats
+            ? (retrievalCacheStats.hits + retrievalCacheStats.misses)
+            : 0;
+        const retrievalCache = retrievalCacheStats
+            ? {
+                ...retrievalCacheStats,
+                hitRate: retrievalTotal > 0 ? Math.round((retrievalCacheStats.hits / retrievalTotal) * 100) : 0,
+                epoch: this.retrievalCacheEpoch
+            }
+            : null;
+
         return {
             ...this.stats,
             stateBlockSize: Object.values(this.stateBlock).reduce((sum, items) => sum + items.length, 0),
@@ -114,7 +126,8 @@ export class MemoryStore {
                 ...this.focus.stats,
                 active: Boolean(this.focus.current),
                 currentLabel: this.focus.current?.label || null
-            }
+            },
+            retrievalCache
         };
     }
 

@@ -68,9 +68,10 @@ export class QueryCache {
      * @param {string} query - The user query
      * @param {Array} activeAgentIds - IDs of active agents
      * @param {string} mode - Processing mode ('rlm' or 'repl')
+     * @param {string} contextStamp - Optional version stamp for corpus/cache invalidation
      * @returns {string} Cache key
      */
-    generateKey(query, activeAgentIds = [], mode = 'rlm') {
+    generateKey(query, activeAgentIds = [], mode = 'rlm', contextStamp = '') {
         // Normalize the query if enabled
         const normalizedQuery = this.config.normalizeQueries
             ? this._normalizeQuery(query)
@@ -79,8 +80,10 @@ export class QueryCache {
         // Sort agent IDs for consistent key generation
         const sortedAgentIds = [...activeAgentIds].sort().join(',');
 
+        const stampPart = contextStamp ? `:${contextStamp}` : '';
+
         // Create composite key
-        return `${mode}:${sortedAgentIds}:${normalizedQuery}`;
+        return `${mode}:${sortedAgentIds}${stampPart}:${normalizedQuery}`;
     }
 
     /**
@@ -134,16 +137,18 @@ export class QueryCache {
      * @param {string} query - Original query
      * @param {Array} activeAgentIds - Active agent IDs
      * @param {string} mode - Processing mode
+     * @param {string} contextStamp - Optional version stamp for corpus/cache invalidation
      * @returns {Object|null} Best matching cached result or null
      */
-    getFuzzy(query, activeAgentIds = [], mode = 'rlm') {
+    getFuzzy(query, activeAgentIds = [], mode = 'rlm', contextStamp = '') {
         if (!this.config.enableFuzzyMatch) {
             return null;
         }
 
         const normalizedQuery = this._normalizeQuery(query);
         const sortedAgentIds = [...activeAgentIds].sort().join(',');
-        const prefix = `${mode}:${sortedAgentIds}:`;
+        const stampPart = contextStamp ? `:${contextStamp}` : '';
+        const prefix = `${mode}:${sortedAgentIds}${stampPart}:`;
 
         let bestMatch = null;
         let bestSimilarity = 0;
