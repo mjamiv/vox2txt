@@ -226,8 +226,6 @@ Choose how the Orchestrator answers cross-meeting questions:
 
 ## RLM Evaluation Report
 
-[Download the PDF report](sandbox:/mnt/data/RLM_Evaluation_Report.pdf)
-
 ### 1. Executive Summary & Recommendations
 
 #### What the data says (63 runs total)
@@ -339,10 +337,6 @@ Based on how the system is designed and what the metrics show:
 * **Cross-meeting synthesis / trend detection / action-item rollups** (high-context tasks) — best match for RLM + SWM.
 * **Large-scale meeting corpora (dozens of meetings)** where direct prompting becomes cost-prohibitive — aligns with the scalability intent in the README.
 * **Diagnostics / governance / regression testing** — use Hybrid Focus + Shadow.
-
----
-
-If you want, I can also produce a “mode selection rubric” (a one-pager decision tree: *when to use Direct vs SWM vs Hybrid*) based on latency/cost thresholds and query type.
 
 ## RLM: Recursive Language Model
 
