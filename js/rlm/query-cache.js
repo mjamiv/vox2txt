@@ -20,7 +20,8 @@ export const CACHE_CONFIG = {
     defaultTTL: 5 * 60 * 1000, // 5 minutes in milliseconds
     enableFuzzyMatch: false,   // Enable similarity-based cache hits
     fuzzyThreshold: 0.85,      // Similarity threshold (0-1) for fuzzy matching
-    normalizeQueries: true     // Normalize queries before caching
+    normalizeQueries: true,    // Normalize queries before caching
+    logEnabled: true           // Enable cache logging
 };
 
 /**
@@ -121,7 +122,9 @@ export class QueryCache {
         entry.touch();
         this.stats.hits++;
 
-        console.log(`[Cache] HIT for key: ${key.substring(0, 50)}...`);
+        if (this.config.logEnabled) {
+            console.log(`[Cache] HIT for key: ${key.substring(0, 50)}...`);
+        }
 
         return entry.value;
     }
@@ -165,7 +168,9 @@ export class QueryCache {
             bestMatch.touch();
             this.stats.hits++;
             this.stats.fuzzyHits++;
-            console.log(`[Cache] FUZZY HIT (${(bestSimilarity * 100).toFixed(1)}% similarity)`);
+            if (this.config.logEnabled) {
+                console.log(`[Cache] FUZZY HIT (${(bestSimilarity * 100).toFixed(1)}% similarity)`);
+            }
             return bestMatch.value;
         }
 
@@ -223,7 +228,9 @@ export class QueryCache {
         const entry = new CacheEntry(key, value, ttl);
         this.cache.set(key, entry);
 
-        console.log(`[Cache] SET key: ${key.substring(0, 50)}... (TTL: ${ttl / 1000}s)`);
+        if (this.config.logEnabled) {
+            console.log(`[Cache] SET key: ${key.substring(0, 50)}... (TTL: ${ttl / 1000}s)`);
+        }
     }
 
     /**
@@ -244,7 +251,9 @@ export class QueryCache {
         if (oldestKey) {
             this.cache.delete(oldestKey);
             this.stats.evictions++;
-            console.log(`[Cache] EVICT LRU entry: ${oldestKey.substring(0, 50)}...`);
+            if (this.config.logEnabled) {
+                console.log(`[Cache] EVICT LRU entry: ${oldestKey.substring(0, 50)}...`);
+            }
         }
     }
 
@@ -254,7 +263,9 @@ export class QueryCache {
     clear() {
         const size = this.cache.size;
         this.cache.clear();
-        console.log(`[Cache] CLEARED ${size} entries`);
+        if (this.config.logEnabled) {
+            console.log(`[Cache] CLEARED ${size} entries`);
+        }
     }
 
     /**
@@ -270,7 +281,9 @@ export class QueryCache {
             }
         }
         if (cleared > 0) {
-            console.log(`[Cache] Cleared ${cleared} expired entries`);
+            if (this.config.logEnabled) {
+                console.log(`[Cache] Cleared ${cleared} expired entries`);
+            }
         }
         return cleared;
     }

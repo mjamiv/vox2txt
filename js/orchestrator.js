@@ -1090,13 +1090,43 @@ function applyRlmFeatureFlags() {
     if (!rlmPipeline?.updateConfig) {
         return;
     }
+    const tiering = buildModelTieringConfig();
     rlmPipeline.updateConfig({
         enableShadowPrompt: state.settings.enableShadowPrompt,
         enableRetrievalPrompt: state.settings.enableRetrievalPrompt,
         enableFocusShadow: state.settings.enableFocusShadow,
         enableFocusEpisodes: state.settings.enableFocusEpisodes,
-        enablePromptBudgeting: state.settings.enablePromptBudgeting
+        enablePromptBudgeting: state.settings.enablePromptBudgeting,
+        ...tiering
     });
+}
+
+function buildModelTieringConfig() {
+    const baseModel = state.settings.model;
+    if (!isGpt52Model(baseModel)) {
+        return {
+            enableModelTiering: false,
+            modelTiering: {
+                subQuery: null,
+                aggregate: null,
+                direct: null,
+                replCode: null,
+                replSubLm: null
+            }
+        };
+    }
+
+    const fastModel = 'gpt-5-mini';
+    return {
+        enableModelTiering: true,
+        modelTiering: {
+            subQuery: fastModel,
+            aggregate: baseModel,
+            direct: baseModel,
+            replCode: baseModel,
+            replSubLm: fastModel
+        }
+    };
 }
 
 /**
@@ -1381,6 +1411,7 @@ function setupEventListeners() {
 function handleModelChange(e) {
     state.settings.model = e.target.value;
     updateEffortVisibility();
+    applyRlmFeatureFlags();
     saveSettings();
     updateContextGauge();
     console.log('[Settings] Model changed to:', state.settings.model);

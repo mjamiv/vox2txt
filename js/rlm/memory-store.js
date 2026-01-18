@@ -5,6 +5,8 @@
  * Milestone 1: Capture memory without affecting prompt assembly.
  */
 
+import { QueryCache } from './query-cache.js';
+
 const MEMORY_TYPES = [
     'decision',
     'action',
@@ -14,6 +16,14 @@ const MEMORY_TYPES = [
     'open_question',
     'episode'
 ];
+
+const RETRIEVAL_CACHE_CONFIG = {
+    maxEntries: 120,
+    defaultTTL: 30 * 1000,
+    enableFuzzyMatch: false,
+    normalizeQueries: false,
+    logEnabled: false
+};
 
 export class MemoryStore {
     constructor() {
@@ -51,6 +61,8 @@ export class MemoryStore {
             }
         };
         this._idCounter = 0;
+        this.retrievalCacheEpoch = 0;
+        this.retrievalCache = new QueryCache(RETRIEVAL_CACHE_CONFIG);
     }
 
     /**
@@ -77,6 +89,9 @@ export class MemoryStore {
 
         this.stats.totalSlices = this.slices.length;
         this.stats.lastCapturedAt = timestamp;
+        if (extracted.length > 0) {
+            this._bumpRetrievalEpoch();
+        }
     }
 
     getStateBlock() {
@@ -207,6 +222,7 @@ export class MemoryStore {
 
             this.focus.episodes.push(episodePayload);
             this.stats.totalSlices = this.slices.length;
+            this._bumpRetrievalEpoch();
         }
 
         this.focus.stats.totalEpisodes = this.focus.episodes.length;
@@ -240,7 +256,8 @@ export class MemoryStore {
             allowedAgentIds = null,
             updateStats = false,
             updateShadowStats = false,
-            shadowMode = false
+            shadowMode = false,
+            useCache = true
         } = options;
 
         const normalizedQuery = (query || '').toLowerCase();
@@ -250,6 +267,39 @@ export class MemoryStore {
             : [];
         const queryEntities = entities || this._extractEntities(query || '');
         const queryKeywords = this._extractKeywords(normalizedQuery);
+
+        const cacheKey = useCache
+            ? this._buildRetrievalCacheKey(normalizedQuery, {
+                queryTags,
+                queryEntities,
+                intentTags: normalizedIntentTags,
+                intentBoost,
+                intentFilter,
+                recencyWindowMs,
+                maxResults,
+                maxPerTag,
+                maxPerAgent,
+                allowedAgentIds,
+                updateStats,
+                shadowMode
+            })
+            : null;
+
+        if (cacheKey) {
+            const cached = this.retrievalCache.get(cacheKey);
+            if (cached) {
+                this._applyRetrievalStats(cached.slices, updateStats, updateShadowStats);
+                return {
+                    slices: cached.slices,
+                    stats: {
+                        ...cached.stats,
+                        redundancyCountSource: (shadowMode || !updateStats) ? 'shadow' : 'live',
+                        fromCache: true,
+                        latencyMs: 0
+                    }
+                };
+            }
+        }
 
         const now = Date.now();
         const candidates = this.slices.filter(slice => {
@@ -336,26 +386,14 @@ export class MemoryStore {
         });
 
         if (updateStats || updateShadowStats) {
-            const retrievedAt = new Date().toISOString();
-            selected.forEach(slice => {
-                const target = this.slices.find(entry => entry.id === slice.id);
-                if (!target) return;
-                if (updateStats) {
-                    target.retrieval_count += 1;
-                    target.last_retrieved_at = retrievedAt;
-                }
-                if (updateShadowStats) {
-                    target.retrieval_count_shadow = (target.retrieval_count_shadow || 0) + 1;
-                    target.last_retrieved_shadow_at = retrievedAt;
-                }
-            });
+            this._applyRetrievalStats(selected, updateStats, updateShadowStats);
         }
 
         const finishedAt = (typeof performance !== 'undefined' && performance.now)
             ? performance.now()
             : Date.now();
 
-        return {
+        const result = {
             slices: selected,
             stats: {
                 queryTags,
@@ -372,6 +410,12 @@ export class MemoryStore {
                 latencyMs: Math.max(0, finishedAt - startedAt)
             }
         };
+
+        if (cacheKey) {
+            this.retrievalCache.set(cacheKey, result);
+        }
+
+        return result;
     }
 
     _buildSliceEntry(slice, metadata, timestamp) {
@@ -395,6 +439,59 @@ export class MemoryStore {
             confidence: slice.confidence,
             source_hash: this._hashText(slice.text)
         };
+    }
+
+    _buildRetrievalCacheKey(query, options = {}) {
+        const normalizeArray = (values) => {
+            if (!Array.isArray(values)) return [];
+            return [...new Set(values.filter(Boolean))].sort();
+        };
+
+        const payload = {
+            q: query || '',
+            tags: normalizeArray(options.queryTags),
+            entities: normalizeArray(options.queryEntities),
+            intentTags: normalizeArray(options.intentTags),
+            intentBoost: options.intentBoost,
+            intentFilter: Boolean(options.intentFilter),
+            recencyWindowMs: options.recencyWindowMs,
+            maxResults: options.maxResults,
+            maxPerTag: options.maxPerTag,
+            maxPerAgent: options.maxPerAgent,
+            allowedAgentIds: normalizeArray(options.allowedAgentIds),
+            updateStats: Boolean(options.updateStats),
+            shadowMode: Boolean(options.shadowMode),
+            epoch: this.retrievalCacheEpoch
+        };
+
+        return `retrieval:${JSON.stringify(payload)}`;
+    }
+
+    _applyRetrievalStats(selected, updateStats, updateShadowStats) {
+        if (!updateStats && !updateShadowStats) {
+            return;
+        }
+
+        const retrievedAt = new Date().toISOString();
+        selected.forEach(slice => {
+            const target = this.slices.find(entry => entry.id === slice.id);
+            if (!target) return;
+            if (updateStats) {
+                target.retrieval_count += 1;
+                target.last_retrieved_at = retrievedAt;
+            }
+            if (updateShadowStats) {
+                target.retrieval_count_shadow = (target.retrieval_count_shadow || 0) + 1;
+                target.last_retrieved_shadow_at = retrievedAt;
+            }
+        });
+    }
+
+    _bumpRetrievalEpoch() {
+        this.retrievalCacheEpoch += 1;
+        if (this.retrievalCache) {
+            this.retrievalCache.clear();
+        }
     }
 
     _groupSlicesByType(slices) {

@@ -12,6 +12,8 @@
 export class ContextStore {
     constructor() {
         this.agents = new Map();
+        this.contextCache = new Map();
+        this.combinedContextCache = new Map();
         this.metadata = {
             totalAgents: 0,
             activeAgents: 0,
@@ -25,6 +27,8 @@ export class ContextStore {
      */
     loadAgents(agents) {
         this.agents.clear();
+        this.contextCache.clear();
+        this.combinedContextCache.clear();
 
         agents.forEach((agent, index) => {
             const id = agent.id || `agent-${index}`;
@@ -191,29 +195,45 @@ export class ContextStore {
         const agent = this.agents.get(agentId);
         if (!agent) return '';
 
-        const header = `Meeting: ${agent.displayName || agent.title} (${agent.date || 'No date'})`;
+        const resolvedLevel = ['summary', 'standard', 'full'].includes(level) ? level : 'standard';
+        const cacheKey = `${agentId}:${resolvedLevel}`;
+        const cached = this.contextCache.get(cacheKey);
+        if (cached) return cached;
 
-        switch (level) {
+        const header = `Meeting: ${agent.displayName || agent.title} (${agent.date || 'No date'})`;
+        let context = '';
+
+        switch (resolvedLevel) {
             case 'summary':
-                return `${header}\nSummary: ${agent.summary || 'N/A'}`;
+                context = `${header}\nSummary: ${agent.summary || 'N/A'}`;
+                break;
 
             case 'standard':
-                return `${header}
+                context = `${header}
 Summary: ${agent.summary || 'N/A'}
 Key Points: ${agent.keyPoints || 'N/A'}
 Action Items: ${agent.actionItems || 'N/A'}`;
+                break;
 
             case 'full':
-                return `${header}
+                context = `${header}
 Summary: ${agent.summary || 'N/A'}
 Key Points: ${agent.keyPoints || 'N/A'}
 Action Items: ${agent.actionItems || 'N/A'}
 Sentiment: ${agent.sentiment || 'N/A'}
 ${agent.transcript ? `Transcript: ${agent.transcript}` : ''}${agent.extendedContext ? `\nExtended Context:\n${agent.extendedContext}` : ''}`;
+                break;
 
             default:
-                return this.getContextSlice(agentId, 'standard');
+                context = `${header}
+Summary: ${agent.summary || 'N/A'}
+Key Points: ${agent.keyPoints || 'N/A'}
+Action Items: ${agent.actionItems || 'N/A'}`;
+                break;
         }
+
+        this.contextCache.set(cacheKey, context);
+        return context;
     }
 
     /**
@@ -223,10 +243,18 @@ ${agent.transcript ? `Transcript: ${agent.transcript}` : ''}${agent.extendedCont
      * @returns {string} Combined context string
      */
     getCombinedContext(agentIds, level = 'standard') {
-        return agentIds
+        const ids = Array.isArray(agentIds) ? agentIds : [];
+        const cacheKey = `${level}:${ids.join(',')}`;
+        const cached = this.combinedContextCache.get(cacheKey);
+        if (cached) return cached;
+
+        const context = ids
             .map(id => this.getContextSlice(id, level))
             .filter(ctx => ctx.length > 0)
             .join('\n\n---\n\n');
+
+        this.combinedContextCache.set(cacheKey, context);
+        return context;
     }
 
     /**
