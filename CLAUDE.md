@@ -27,9 +27,14 @@ Features include multi-meeting orchestration, agent export/import, image OCR wit
   - Eval harness scaffold added for quality benchmarking (`js/rlm/eval-harness.js`)
   - Stage B retrieval scoring applies redundancy penalty to down-rank frequently retrieved slices
   - Retrieval slices, prompt templates, and context slices are cached to reduce repeated work
+  - Query cache keys include a corpus stamp to avoid stale hits after agent changes
   - Parallel/map-reduce sub-queries run via a worker pool (max concurrency bumped to 4)
   - Shadow prompt diagnostics run asynchronously so hybrid mode doesn't block responses
   - Model tiering uses GPT-5-mini for sub-queries and REPL sub_lm calls when GPT-5.2 is selected
+  - Summary prompts cap sub-query fan-out and use a lighter retrieval preset to reduce tail latency
+  - Per-stage timing telemetry (decompose/retrieve/execute/aggregate/shadow) appears in metrics and CSV export
+  - Memory debug shows retrieval cache hit rate for cache discipline checks
+  - Test runs capture canonical prompt-set metadata in analytics and HTML exports
 
 - **Core Features:**
   - Agent export embeds a full JSON payload (processing metadata, prompts, metrics, chat history, artifacts, attachments) with a stable agent ID
@@ -467,8 +472,9 @@ flowchart TB
 ```javascript
 const RLM_CONFIG = {
     maxSubQueries: 5,        // Max sub-queries per decomposition
+    summaryMaxSubQueries: 4, // Cap fan-out for full-scope summaries
     maxConcurrent: 4,        // Parallel execution limit
-    maxDepth: 3,             // Max recursion depth for sub_lm calls
+    maxDepth: 2,             // Max recursion depth for sub_lm calls
     tokensPerSubQuery: 800,  // Token budget per sub-query
     enableLLMSynthesis: true,// Use LLM to synthesize results
     enableREPL: true,        // Enable REPL-based code execution
@@ -538,7 +544,7 @@ sequenceDiagram
 
 **Key Features:**
 - **SharedArrayBuffer Sync**: Uses `Atomics.wait()` for true blocking in Web Worker
-- **Depth Tracking**: MAX_DEPTH = 3 prevents infinite recursion
+- **Depth Tracking**: MAX_DEPTH = 2 prevents infinite recursion
 - **Unified Service Worker**: `sw.js` injects COOP/COEP headers for SharedArrayBuffer on GitHub Pages
 - **Async Fallback**: Graceful degradation when SharedArrayBuffer unavailable
 
@@ -615,9 +621,11 @@ Completed optimizations:
 - ✅ Progress indicators during query processing (train of thought display)
 - ✅ Intent-based routing with data preference classification
 - ✅ Early-stop heuristics for low-slice retrievals
+- ✅ Summary fan-out caps and lighter retrieval presets for full-scope summaries
 - ✅ Parallel sub-query worker pool (max concurrency 4)
 - ✅ Async shadow prompt diagnostics to avoid blocking hybrid responses
 - ✅ Model tiering for sub-queries and REPL sub_lm (GPT-5-mini with GPT-5.2)
+- ✅ Stage timing telemetry in metrics/CSV and retrieval cache hit-rate visibility
 
 Remaining items:
 - Eval harness rubric scoring and regression reports
@@ -769,6 +777,7 @@ const state = {
   - Per-prompt detailed logging with response storage
   - Confidence tracking via logprobs (GPT-5.2 with effort='none' only)
   - CSV export functionality for offline analysis
+  - Stage timing telemetry (decompose/retrieve/execute/aggregate/shadow) in prompt logs and CSV
   - Auto-collapse with pin option
 - Key RLM functions:
   - `chatWithRLM()` - Process queries through RLM pipeline
@@ -810,6 +819,7 @@ currentMetrics.gptOutputTokens += usage.completion_tokens || 0;
 **Enhanced Metrics System (Orchestrator):**
 - Per-prompt logging with full response storage
 - Grouped metrics for RLM/REPL queries (aggregates sub-calls)
+- Stage timing telemetry (decompose/retrieve/execute/aggregate/shadow) in prompt logs and CSV
 - Confidence metrics via logprobs (when available)
 - CSV export with all prompt data including responses
 - Metrics card with auto-collapse and pin functionality

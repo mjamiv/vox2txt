@@ -29,9 +29,14 @@ northstar.LM consists of two main applications:
   - Added eval harness scaffold for quality benchmarking (`js/rlm/eval-harness.js`)
   - Stage B scoring now applies redundancy penalty to down-rank frequently retrieved slices
   - Cached retrieval slices, prompt templates, and context slices to reduce repeated work
+  - Query cache keys now include a corpus stamp to avoid stale hits after agent changes
   - Parallel/map-reduce sub-queries now run via a worker pool with higher concurrency
   - Shadow prompt diagnostics run asynchronously so hybrid mode doesn't block the response
   - Model tiering uses GPT-5-mini for sub-queries and REPL sub_lm calls when GPT-5.2 is selected
+  - Summary prompts cap sub-query fan-out and use a lighter retrieval preset to reduce tail latency
+  - Per-stage timing telemetry (decompose/retrieve/execute/aggregate/shadow) now lands in metrics and CSV export
+  - Memory debug shows retrieval cache hit rate for cache discipline checks
+  - Test runs store canonical prompt-set metadata in analytics and HTML exports
 
 - **Core Features:**
   - Agent export embeds a full JSON payload (processing metadata, prompts, metrics, chat history, artifacts, attachments) alongside the markdown summary
@@ -231,6 +236,16 @@ Choose how the Orchestrator answers cross-meeting questions:
 ## RLM Evaluation Report
 
 [Download the PDF report](sandbox:/mnt/data/RLM_Evaluation_Report.pdf)
+
+### January 18, 2026 Update (full-bigger-newer run)
+
+7 prompts × 3 modes (21 runs). RLM modes delivered large cost/token savings with higher latency:
+
+- **Avg cost / prompt**: $0.126 (Direct) → $0.028 (RLM + SWM / Hybrid)
+- **Avg tokens / prompt**: 68,158 (Direct) → ~19k (RLM modes, ~-72%)
+- **Avg latency**: 12.8s (Direct) → 44.4s (SWM) / 47.2s (Hybrid) (~+247–269%)
+
+**Recommendations:** Default to **RLM + SWM** for cost-sensitive cross-meeting synthesis. Use **Direct Chat** for time-critical responses. Reserve **Hybrid** for diagnostics/regression evaluation. Prioritize tail-latency controls (fan-out caps, retrieval depth budgets, and per-stage timing guardrails).
 
 ### 1. Executive Summary & Recommendations
 
@@ -794,9 +809,10 @@ Enhanced metrics tracking in the Agent Orchestrator with detailed per-prompt log
   - Processing mode (Direct, RLM, or REPL)
   - Token usage and costs (input/output breakdown)
   - Response time and confidence metrics
+  - Stage timing breakdowns (decompose, retrieve, execute, aggregate, shadow)
   - Full response text stored for analysis
 - **Confidence Tracking** - Logprobs-based confidence scores (GPT-5.2 with effort='none' only)
-- **CSV Export** - Download complete metrics data including all responses for offline analysis
+- **CSV Export** - Download complete metrics data including responses and stage timings for offline analysis
 - **Auto-collapse** - Metrics card auto-collapses after 10 seconds (can be pinned open)
 
 ## Technology Stack

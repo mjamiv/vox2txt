@@ -35,6 +35,7 @@ export class QueryDecomposer {
     constructor(options = {}) {
         this.options = {
             maxSubQueries: options.maxSubQueries || 5,
+            summaryMaxSubQueries: options.summaryMaxSubQueries || 4,
             minRelevanceScore: options.minRelevanceScore || 2,
             enableLLMDecomposition: options.enableLLMDecomposition !== false,
             ...options
@@ -55,8 +56,9 @@ export class QueryDecomposer {
         const classification = this._classifyQuery(query);
 
         // Get relevant agents
+        const maxResults = this._resolveMaxResults(classification);
         const relevantAgents = store.queryAgents(query, {
-            maxResults: this.options.maxSubQueries,
+            maxResults,
             minScore: this.options.minRelevanceScore
         });
 
@@ -93,6 +95,8 @@ export class QueryDecomposer {
      */
     _classifyQuery(query) {
         const lowerQuery = query.toLowerCase();
+        const summaryRequest = /\b(summary|summarize|overview|highlights?)\b/i.test(query);
+        const summaryFullScope = summaryRequest && /\b(all|across|overall|entire|conversation|meetings?)\b/i.test(query);
 
         // Detect intent
         let intent = QueryIntent.FACTUAL;
@@ -106,6 +110,9 @@ export class QueryDecomposer {
         } else if (/over time|evolution|change|progress|history/i.test(query)) {
             intent = QueryIntent.TEMPORAL;
         }
+        if (summaryRequest && intent === QueryIntent.FACTUAL) {
+            intent = QueryIntent.AGGREGATIVE;
+        }
 
         // Detect complexity
         let complexity = QueryComplexity.SIMPLE;
@@ -117,6 +124,9 @@ export class QueryDecomposer {
         } else if (/\?.*\?|and also|additionally|furthermore/i.test(query)) {
             complexity = QueryComplexity.EXPLORATORY;
         }
+        if (summaryRequest && complexity === QueryComplexity.SIMPLE) {
+            complexity = QueryComplexity.AGGREGATE;
+        }
 
         // Detect if query targets specific meetings
         const mentionsMeeting = /meeting|session|call|discussion|sync/i.test(query);
@@ -124,6 +134,9 @@ export class QueryDecomposer {
         const formatConstraints = this._detectFormatConstraints(query);
         const dataPreference = this._inferDataPreference(query);
         const intentTags = this._inferIntentTags(query);
+        const summaryScope = summaryRequest
+            ? (summaryFullScope || !mentionsMeeting ? 'full' : 'scoped')
+            : null;
 
         return {
             intent,
@@ -133,7 +146,9 @@ export class QueryDecomposer {
             dataPreference,
             formatConstraints,
             intentTags,
-            estimatedScope: this._estimateScope(complexity)
+            estimatedScope: this._estimateScope(complexity),
+            summaryRequest,
+            summaryScope
         };
     }
 
@@ -154,6 +169,13 @@ export class QueryDecomposer {
             default:
                 return { min: 1, max: 3 };
         }
+    }
+
+    _resolveMaxResults(classification) {
+        if (classification?.summaryScope === 'full') {
+            return Math.min(this.options.summaryMaxSubQueries, this.options.maxSubQueries);
+        }
+        return this.options.maxSubQueries;
     }
 
     _detectFormatConstraints(query) {
