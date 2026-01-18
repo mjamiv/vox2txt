@@ -42,7 +42,7 @@ export const RLM_CONFIG = {
     minRelevanceScore: 2,
 
     // Execution settings
-    maxConcurrent: 3,
+    maxConcurrent: 4,
     maxDepth: 2,              // Max recursion depth for sub_lm calls
     maxSubLmCalls: 2,         // Max internal sub_lm expansions per prompt
     maxOutputTokens: 2000,    // Max output tokens per LLM call
@@ -75,8 +75,16 @@ export const RLM_CONFIG = {
     cacheTTL: 5 * 60 * 1000,   // Cache TTL (5 minutes)
     enableFuzzyCache: false,   // Enable fuzzy matching for similar queries
 
+    // Prompt + retrieval cache (latency reduction)
+    enablePromptCache: true,
+    promptCacheMaxEntries: 200,
+    promptCacheTTL: 60 * 1000,
+    enableRetrievalCache: true,
+
     // Milestone 2: Shadow prompt builder (no behavior change)
     enableShadowPrompt: true,
+    shadowPromptAsync: true,
+    shadowPromptAsyncTimeoutMs: 2000,
     shadowPromptMaxSlices: 6,
     shadowPromptMaxPerTag: 2,
     shadowPromptMaxPerAgent: 2,
@@ -174,6 +182,14 @@ export class RLMPipeline {
             maxEntries: this.config.cacheMaxEntries,
             defaultTTL: this.config.cacheTTL,
             enableFuzzyMatch: this.config.enableFuzzyCache
+        }) : null;
+
+        this.promptCache = this.config.enablePromptCache ? new QueryCache({
+            maxEntries: this.config.promptCacheMaxEntries,
+            defaultTTL: this.config.promptCacheTTL,
+            enableFuzzyMatch: false,
+            normalizeQueries: false,
+            logEnabled: false
         }) : null;
 
         this.stats = {
@@ -365,7 +381,10 @@ If the information is not available in the provided context, say so briefly.`;
                 this._currentLlmCall,
                 systemPrompt,
                 userPrompt,
-                this._currentContext,
+                this._buildCallContext(
+                    this._currentContext,
+                    this._resolveModelTier(null, 'replSubLm')
+                ),
                 'sub-lm'
             );
             return response;
@@ -398,6 +417,10 @@ If the information is not available in the provided context, say so briefly.`;
         if (this.cache) {
             this.cache.clear();
             console.log('[RLM] Cache invalidated due to agent change');
+        }
+        if (this.promptCache) {
+            this.promptCache.clear();
+            this.promptCache.resetStats();
         }
 
         // Sync to REPL if initialized
@@ -600,6 +623,33 @@ If the information is not available in the provided context, say so briefly.`;
         return Math.ceil(text.length / 4);
     }
 
+    _hashText(text) {
+        if (!text) return 'h0';
+        let hash = 0;
+        for (let i = 0; i < text.length; i += 1) {
+            hash = ((hash << 5) - hash) + text.charCodeAt(i);
+            hash |= 0;
+        }
+        return `h${Math.abs(hash)}`;
+    }
+
+    _getCacheStamp() {
+        const contextStats = this.contextStore?.getStats ? this.contextStore.getStats() : {};
+        const memoryStats = this.memoryStore?.getStats ? this.memoryStore.getStats() : {};
+        const contextStamp = contextStats?.lastUpdated instanceof Date
+            ? contextStats.lastUpdated.toISOString()
+            : String(contextStats?.lastUpdated || '');
+        const memoryStamp = String(memoryStats?.lastCapturedAt || '');
+        return `${contextStamp}|${memoryStamp}`;
+    }
+
+    _buildPromptCacheKey(type, query, contextText, extra = '') {
+        if (!this.promptCache) return null;
+        const stamp = this._getCacheStamp();
+        const extraHash = extra ? this._hashText(String(extra)) : 'h0';
+        return `${type}:${stamp}:${this._hashText(String(query || ''))}:${this._hashText(String(contextText || ''))}:${extraHash}`;
+    }
+
     _getPromptBudget() {
         const budget = this.config.promptTokenBudget || 0;
         const reserve = this.config.promptTokenReserve || this.config.maxOutputTokens || 0;
@@ -683,6 +733,11 @@ If the information is not available in the provided context, say so briefly.`;
 
     _buildSubQueryPrompts(subQuery, contextText) {
         const queryText = this._getSubQueryText(subQuery);
+        const cacheKey = this._buildPromptCacheKey('subquery', queryText, contextText);
+        if (cacheKey) {
+            const cached = this.promptCache.get(cacheKey);
+            if (cached) return cached;
+        }
         const systemPrompt = `You are analyzing meeting data to answer a specific question.
 Be concise and focus only on information relevant to the question.
 If the information is not available in the provided context, say so briefly.`;
@@ -694,7 +749,11 @@ Question: ${queryText}
 
 Provide a focused answer based only on the context above.`;
 
-        return { systemPrompt, userPrompt };
+        const prompts = { systemPrompt, userPrompt };
+        if (cacheKey) {
+            this.promptCache.set(cacheKey, prompts, this.config.promptCacheTTL);
+        }
+        return prompts;
     }
 
     _evaluateEarlyStop(query, decomposition, routingPlan) {
@@ -726,7 +785,8 @@ Provide a focused answer based only on the context above.`;
             intentBoost: routingPlan?.intentBoost ?? this.config.intentTagBoost,
             intentFilter: routingPlan?.intentFilter ?? false,
             recencyWindowMs,
-            updateStats: false
+            updateStats: false,
+            useCache: this.config.enableRetrievalCache
         });
 
         if (retrieval.slices.length === 0) {
@@ -791,11 +851,20 @@ Provide a focused answer based only on the context above.`;
     }
 
     _buildLegacyPrompts(query, contextText) {
+        const cacheKey = this._buildPromptCacheKey('legacy', query, contextText);
+        if (cacheKey) {
+            const cached = this.promptCache.get(cacheKey);
+            if (cached) return cached;
+        }
         const systemPrompt = `You are a helpful meeting assistant with access to data from multiple meetings.
 Use the following meeting data to answer questions accurately and comprehensively.`;
 
         const userPrompt = `${contextText}\n\nQuestion: ${query}`.trim();
-        return { systemPrompt, userPrompt };
+        const prompts = { systemPrompt, userPrompt };
+        if (cacheKey) {
+            this.promptCache.set(cacheKey, prompts, this.config.promptCacheTTL);
+        }
+        return prompts;
     }
 
     _formatStateBlock(stateBlock) {
@@ -884,6 +953,8 @@ Use the following meeting data to answer questions accurately and comprehensivel
         const intentTags = options.intentTags || [];
         const intentBoost = options.intentBoost ?? this.config.intentTagBoost;
         const intentFilter = options.intentFilter ?? false;
+        const stateBlock = this.memoryStore.getStateBlock();
+        const workingWindow = this.memoryStore.getWorkingWindow();
         const retrieval = this.memoryStore.retrieveSlices(query, {
             maxResults,
             maxPerTag,
@@ -892,19 +963,30 @@ Use the following meeting data to answer questions accurately and comprehensivel
             intentBoost,
             intentFilter,
             recencyWindowMs,
-            updateStats: true
+            updateStats: true,
+            useCache: this.config.enableRetrievalCache
         });
 
         let retrievedSlices = retrieval.slices;
+        const guardrail = this._getPromptBudget();
+        const maxInputTokens = options.maxInputTokens ?? guardrail.maxInputTokens;
+        const promptCacheKey = this._buildPromptCacheKey(
+            'retrieval',
+            query,
+            localContext,
+            `${this._hashText(JSON.stringify(stateBlock))}:${this._hashText(JSON.stringify(workingWindow))}:${retrievedSlices.map(slice => slice.id).join(',')}:${maxInputTokens}:${intentTags.join(',')}:${intentBoost}:${intentFilter}:${maxResults}:${maxPerTag}:${maxPerAgent}`
+        );
+        if (promptCacheKey) {
+            const cached = this.promptCache.get(promptCacheKey);
+            if (cached) return cached;
+        }
         let promptData = buildRetrievalPromptSections({
-            stateBlock: this.memoryStore.getStateBlock(),
-            workingWindow: this.memoryStore.getWorkingWindow(),
+            stateBlock,
+            workingWindow,
             retrievedSlices,
             localContext
         });
 
-        const guardrail = this._getPromptBudget();
-        const maxInputTokens = options.maxInputTokens ?? guardrail.maxInputTokens;
         let reduction = null;
 
         if (this.config.enablePromptBudgeting && maxInputTokens > 0 && promptData.tokenEstimate > maxInputTokens) {
@@ -938,7 +1020,7 @@ Use the following meeting data to answer questions accurately and comprehensivel
             reduction
         };
 
-        return {
+        const result = {
             contextText: promptData.prompt || localContext || '',
             retrievalStats,
             tokenEstimate: promptData.tokenEstimate,
@@ -946,6 +1028,10 @@ Use the following meeting data to answer questions accurately and comprehensivel
             retrievedSlices,
             reduction
         };
+        if (promptCacheKey) {
+            this.promptCache.set(promptCacheKey, result, this.config.promptCacheTTL);
+        }
+        return result;
     }
 
     async _callWithPromptGuardrails(llmCall, systemPrompt, userPrompt, context, mode = 'generic', metadata = {}) {
@@ -1447,150 +1533,169 @@ Be concise and focus only on information relevant to the question.`;
             return;
         }
 
-        const startedAt = (typeof performance !== 'undefined' && performance.now)
-            ? performance.now()
-            : Date.now();
-        const recencyWindowMs = this.config.shadowPromptRecencyWindowDays
-            ? this.config.shadowPromptRecencyWindowDays * 24 * 60 * 60 * 1000
-            : null;
+        const build = () => {
+            try {
+                const startedAt = (typeof performance !== 'undefined' && performance.now)
+                    ? performance.now()
+                    : Date.now();
+                const recencyWindowMs = this.config.shadowPromptRecencyWindowDays
+                    ? this.config.shadowPromptRecencyWindowDays * 24 * 60 * 60 * 1000
+                    : null;
 
-        const retrieval = this.memoryStore.retrieveSlices(query, {
-            maxResults: this.config.shadowPromptMaxSlices,
-            maxPerTag: this.config.shadowPromptMaxPerTag,
-            maxPerAgent: this.config.shadowPromptMaxPerAgent,
-            recencyWindowMs,
-            updateStats: false,
-            updateShadowStats: true,
-            shadowMode: true
-        });
-
-        const retrievalFinishedAt = (typeof performance !== 'undefined' && performance.now)
-            ? performance.now()
-            : Date.now();
-
-        const basePromptInput = {
-            query,
-            stateBlock: this.memoryStore.getStateBlock(),
-            workingWindow: this.memoryStore.getWorkingWindow(),
-            localContext: context?.localContext || ''
-        };
-
-        let retrievedSlices = retrieval.slices;
-        let promptData = buildShadowPrompt({
-            ...basePromptInput,
-            retrievedSlices
-        });
-        const guardrail = this._getPromptBudget();
-        let reduction = null;
-
-        if (this.config.enablePromptBudgeting && guardrail.maxInputTokens > 0 && promptData.tokenEstimate > guardrail.maxInputTokens) {
-            const originalCount = retrievedSlices.length;
-            let trimmed = [...retrievedSlices];
-            while (trimmed.length > 0 && promptData.tokenEstimate > guardrail.maxInputTokens) {
-                trimmed.pop();
-                promptData = buildShadowPrompt({
-                    ...basePromptInput,
-                    retrievedSlices: trimmed
+                const retrieval = this.memoryStore.retrieveSlices(query, {
+                    maxResults: this.config.shadowPromptMaxSlices,
+                    maxPerTag: this.config.shadowPromptMaxPerTag,
+                    maxPerAgent: this.config.shadowPromptMaxPerAgent,
+                    recencyWindowMs,
+                    updateStats: false,
+                    updateShadowStats: true,
+                    shadowMode: true,
+                    useCache: this.config.enableRetrievalCache
                 });
+
+                const retrievalFinishedAt = (typeof performance !== 'undefined' && performance.now)
+                    ? performance.now()
+                    : Date.now();
+
+                const basePromptInput = {
+                    query,
+                    stateBlock: this.memoryStore.getStateBlock(),
+                    workingWindow: this.memoryStore.getWorkingWindow(),
+                    localContext: context?.localContext || ''
+                };
+
+                let retrievedSlices = retrieval.slices;
+                let promptData = buildShadowPrompt({
+                    ...basePromptInput,
+                    retrievedSlices
+                });
+                const guardrail = this._getPromptBudget();
+                let reduction = null;
+
+                if (this.config.enablePromptBudgeting && guardrail.maxInputTokens > 0 && promptData.tokenEstimate > guardrail.maxInputTokens) {
+                    const originalCount = retrievedSlices.length;
+                    let trimmed = [...retrievedSlices];
+                    while (trimmed.length > 0 && promptData.tokenEstimate > guardrail.maxInputTokens) {
+                        trimmed.pop();
+                        promptData = buildShadowPrompt({
+                            ...basePromptInput,
+                            retrievedSlices: trimmed
+                        });
+                    }
+                    retrievedSlices = trimmed;
+                    reduction = {
+                        originalCount,
+                        finalCount: trimmed.length,
+                        dropped: Math.max(0, originalCount - trimmed.length),
+                        budget: guardrail.maxInputTokens,
+                        finalTokens: promptData.tokenEstimate
+                    };
+                }
+
+                const promptFinishedAt = (typeof performance !== 'undefined' && performance.now)
+                    ? performance.now()
+                    : Date.now();
+
+                const previousIds = new Set(this.shadowPrompt?.retrievalStats?.selectedIds || []);
+                const currentIds = retrievedSlices.map(slice => slice.id);
+                const addedIds = currentIds.filter(id => !previousIds.has(id));
+                const removedIds = [...previousIds].filter(id => !currentIds.includes(id));
+
+                const summarizeByType = (slices) => slices.reduce((acc, slice) => {
+                    acc[slice.type] = (acc[slice.type] || 0) + 1;
+                    return acc;
+                }, {});
+                const currentTypeCounts = summarizeByType(retrievedSlices);
+                const previousTypeCounts = summarizeByType(this.shadowPrompt?.retrievalSlices || []);
+
+                this.shadowPrompt = {
+                    mode,
+                    query,
+                    createdAt: new Date().toISOString(),
+                    retrievalStats: {
+                        ...retrieval.stats,
+                        selectedCount: retrievedSlices.length,
+                        selectedIds: currentIds,
+                        reduction,
+                        diff: {
+                            addedCount: addedIds.length,
+                            removedCount: removedIds.length,
+                            addedIds,
+                            removedIds,
+                            typeCounts: currentTypeCounts,
+                            previousTypeCounts
+                        },
+                        latencyMs: retrieval.stats.latencyMs ?? Math.max(0, retrievalFinishedAt - startedAt)
+                    },
+                    retrievalSlices: retrievedSlices,
+                    promptPreview: promptData.prompt,
+                    tokenEstimate: promptData.tokenEstimate,
+                    tokenBreakdown: promptData.tokenBreakdown,
+                    promptLatencyMs: Math.max(0, promptFinishedAt - retrievalFinishedAt),
+                    totalLatencyMs: Math.max(0, promptFinishedAt - startedAt)
+                };
+                this._checkFocusBudgetTrigger(promptData.tokenEstimate);
+
+                console.log('[RLM:ShadowPrompt] Built prompt in shadow mode', {
+                    mode,
+                    retrieved: retrieval.stats.selectedCount,
+                    candidates: retrieval.stats.candidateCount,
+                    redundancyCountSource: retrieval.stats.redundancyCountSource,
+                    tokenEstimate: promptData.tokenEstimate,
+                    retrievalLatencyMs: this.shadowPrompt.retrievalStats.latencyMs,
+                    promptLatencyMs: this.shadowPrompt.promptLatencyMs,
+                    totalLatencyMs: this.shadowPrompt.totalLatencyMs
+                });
+                console.log('[RLM:ShadowPrompt] Shadow-only telemetry snapshot', {
+                    promptPreview: promptData.prompt,
+                    retrievalStats: this.shadowPrompt.retrievalStats,
+                    tokenEstimate: promptData.tokenEstimate,
+                    tokenBreakdown: promptData.tokenBreakdown
+                });
+                if (addedIds.length || removedIds.length) {
+                    console.log('[RLM:ShadowPrompt] Retrieval diff (shadow only)', {
+                        addedIds,
+                        removedIds,
+                        currentTypeCounts,
+                        previousTypeCounts
+                    });
+                }
+                this._emitProgress('Shadow prompt built (shadow-only)', 'info', {
+                    shadowOnly: true,
+                    promptPreview: promptData.prompt,
+                    retrievalStats: this.shadowPrompt.retrievalStats,
+                    tokenEstimate: promptData.tokenEstimate,
+                    tokenBreakdown: promptData.tokenBreakdown,
+                    promptLatencyMs: this.shadowPrompt.promptLatencyMs,
+                    totalLatencyMs: this.shadowPrompt.totalLatencyMs
+                });
+
+                if (retrievedSlices.length > 0) {
+                    console.log('[RLM:ShadowPrompt] Retrieved slices (shadow only)', retrievedSlices.map(slice => ({
+                        id: slice.id,
+                        type: slice.type,
+                        score: slice._score,
+                        text: slice.text
+                    })));
+                } else {
+                    console.log('[RLM:ShadowPrompt] No slices retrieved for shadow prompt');
+                }
+            } catch (error) {
+                console.warn('[RLM:ShadowPrompt] Build failed:', error);
             }
-            retrievedSlices = trimmed;
-            reduction = {
-                originalCount,
-                finalCount: trimmed.length,
-                dropped: Math.max(0, originalCount - trimmed.length),
-                budget: guardrail.maxInputTokens,
-                finalTokens: promptData.tokenEstimate
-            };
-        }
-
-        const promptFinishedAt = (typeof performance !== 'undefined' && performance.now)
-            ? performance.now()
-            : Date.now();
-
-        const previousIds = new Set(this.shadowPrompt?.retrievalStats?.selectedIds || []);
-        const currentIds = retrievedSlices.map(slice => slice.id);
-        const addedIds = currentIds.filter(id => !previousIds.has(id));
-        const removedIds = [...previousIds].filter(id => !currentIds.includes(id));
-
-        const summarizeByType = (slices) => slices.reduce((acc, slice) => {
-            acc[slice.type] = (acc[slice.type] || 0) + 1;
-            return acc;
-        }, {});
-        const currentTypeCounts = summarizeByType(retrievedSlices);
-        const previousTypeCounts = summarizeByType(this.shadowPrompt?.retrievalSlices || []);
-
-        this.shadowPrompt = {
-            mode,
-            query,
-            createdAt: new Date().toISOString(),
-            retrievalStats: {
-                ...retrieval.stats,
-                selectedCount: retrievedSlices.length,
-                selectedIds: currentIds,
-                reduction,
-                diff: {
-                    addedCount: addedIds.length,
-                    removedCount: removedIds.length,
-                    addedIds,
-                    removedIds,
-                    typeCounts: currentTypeCounts,
-                    previousTypeCounts
-                },
-                latencyMs: retrieval.stats.latencyMs ?? Math.max(0, retrievalFinishedAt - startedAt)
-            },
-            retrievalSlices: retrievedSlices,
-            promptPreview: promptData.prompt,
-            tokenEstimate: promptData.tokenEstimate,
-            tokenBreakdown: promptData.tokenBreakdown,
-            promptLatencyMs: Math.max(0, promptFinishedAt - retrievalFinishedAt),
-            totalLatencyMs: Math.max(0, promptFinishedAt - startedAt)
         };
-        this._checkFocusBudgetTrigger(promptData.tokenEstimate);
 
-        console.log('[RLM:ShadowPrompt] Built prompt in shadow mode', {
-            mode,
-            retrieved: retrieval.stats.selectedCount,
-            candidates: retrieval.stats.candidateCount,
-            redundancyCountSource: retrieval.stats.redundancyCountSource,
-            tokenEstimate: promptData.tokenEstimate,
-            retrievalLatencyMs: this.shadowPrompt.retrievalStats.latencyMs,
-            promptLatencyMs: this.shadowPrompt.promptLatencyMs,
-            totalLatencyMs: this.shadowPrompt.totalLatencyMs
-        });
-        console.log('[RLM:ShadowPrompt] Shadow-only telemetry snapshot', {
-            promptPreview: promptData.prompt,
-            retrievalStats: this.shadowPrompt.retrievalStats,
-            tokenEstimate: promptData.tokenEstimate,
-            tokenBreakdown: promptData.tokenBreakdown
-        });
-        if (addedIds.length || removedIds.length) {
-            console.log('[RLM:ShadowPrompt] Retrieval diff (shadow only)', {
-                addedIds,
-                removedIds,
-                currentTypeCounts,
-                previousTypeCounts
-            });
+        if (!this.config.shadowPromptAsync) {
+            build();
+            return;
         }
-        this._emitProgress('Shadow prompt built (shadow-only)', 'info', {
-            shadowOnly: true,
-            promptPreview: promptData.prompt,
-            retrievalStats: this.shadowPrompt.retrievalStats,
-            tokenEstimate: promptData.tokenEstimate,
-            tokenBreakdown: promptData.tokenBreakdown,
-            promptLatencyMs: this.shadowPrompt.promptLatencyMs,
-            totalLatencyMs: this.shadowPrompt.totalLatencyMs
-        });
 
-        if (retrievedSlices.length > 0) {
-            console.log('[RLM:ShadowPrompt] Retrieved slices (shadow only)', retrievedSlices.map(slice => ({
-                id: slice.id,
-                type: slice.type,
-                score: slice._score,
-                text: slice.text
-            })));
-        } else {
-            console.log('[RLM:ShadowPrompt] No slices retrieved for shadow prompt');
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(build, { timeout: this.config.shadowPromptAsyncTimeoutMs || 2000 });
+            return;
         }
+
+        setTimeout(build, 0);
     }
 
     _startFocusIfEnabled(label, query) {
@@ -1964,6 +2069,19 @@ Be concise and focus only on information relevant to the question.`;
             this.repl.config.maxRecursionDepth = this.config.maxDepth;
             this.repl.config.subLmTimeout = this.config.subLmTimeout;
         }
+
+        if (this.config.enablePromptCache && !this.promptCache) {
+            this.promptCache = new QueryCache({
+                maxEntries: this.config.promptCacheMaxEntries,
+                defaultTTL: this.config.promptCacheTTL,
+                enableFuzzyMatch: false,
+                normalizeQueries: false,
+                logEnabled: false
+            });
+        } else if (!this.config.enablePromptCache && this.promptCache) {
+            this.promptCache.clear();
+            this.promptCache = null;
+        }
     }
 
     /**
@@ -2031,6 +2149,10 @@ Be concise and focus only on information relevant to the question.`;
         if (this.cache) {
             this.cache.clear();
             this.cache.resetStats();
+        }
+        if (this.promptCache) {
+            this.promptCache.clear();
+            this.promptCache.resetStats();
         }
 
         this.stats = {

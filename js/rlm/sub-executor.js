@@ -153,53 +153,62 @@ export class SubExecutor {
             sq.type !== 'reduce' && sq.type !== 'followup' && !sq.dynamic
         );
 
-        // Process in batches based on maxConcurrent
-        for (let i = 0; i < parallelQueries.length; i += this.options.maxConcurrent) {
-            const batch = parallelQueries.slice(i, i + this.options.maxConcurrent);
-
-            this._log('parallel', `batch-${i}`, `started (${batch.length} queries)`);
-
-            const batchResults = await Promise.all(
-                batch.map(async (query) => {
-                    try {
-                        const { agentContext, budgetInfo } = this._resolveContext(store, query);
-
-                        this._log('parallel', query.id, 'executing');
-                        if (budgetInfo) {
-                            this._log('parallel', query.id, budgetInfo);
-                        }
-
-                        const response = await this._executeWithRetry(
-                            () => llmCall(query.query, agentContext, context),
-                            query.id
-                        );
-
-                        return {
-                            queryId: query.id,
-                            type: query.type,
-                            response,
-                            targetAgents: query.targetAgents,
-                            agentName: query.agentName,
-                            success: true
-                        };
-                    } catch (error) {
-                        this._log('parallel', query.id, `failed: ${error.message}`);
-                        return {
-                            queryId: query.id,
-                            type: query.type,
-                            response: null,
-                            error: error.message,
-                            targetAgents: query.targetAgents,
-                            agentName: query.agentName,
-                            success: false
-                        };
-                    }
-                })
-            );
-
-            results.push(...batchResults);
-            this._log('parallel', `batch-${i}`, 'completed');
+        if (parallelQueries.length === 0) {
+            return results;
         }
+
+        const maxConcurrent = Math.max(1, Math.min(this.options.maxConcurrent, parallelQueries.length));
+        let cursor = 0;
+
+        const runQuery = async (query) => {
+            try {
+                const { agentContext, budgetInfo } = this._resolveContext(store, query);
+
+                this._log('parallel', query.id, 'executing');
+                if (budgetInfo) {
+                    this._log('parallel', query.id, budgetInfo);
+                }
+
+                const response = await this._executeWithRetry(
+                    () => llmCall(query.query, agentContext, context),
+                    query.id
+                );
+
+                return {
+                    queryId: query.id,
+                    type: query.type,
+                    response,
+                    targetAgents: query.targetAgents,
+                    agentName: query.agentName,
+                    success: true
+                };
+            } catch (error) {
+                this._log('parallel', query.id, `failed: ${error.message}`);
+                return {
+                    queryId: query.id,
+                    type: query.type,
+                    response: null,
+                    error: error.message,
+                    targetAgents: query.targetAgents,
+                    agentName: query.agentName,
+                    success: false
+                };
+            }
+        };
+
+        const worker = async () => {
+            while (cursor < parallelQueries.length) {
+                const query = parallelQueries[cursor];
+                cursor += 1;
+                const result = await runQuery(query);
+                results.push(result);
+            }
+        };
+
+        this._log('parallel', 'pool', `started (${parallelQueries.length} queries, max ${maxConcurrent})`);
+        const workers = Array.from({ length: maxConcurrent }, () => worker());
+        await Promise.all(workers);
+        this._log('parallel', 'pool', 'completed');
 
         return results;
     }
