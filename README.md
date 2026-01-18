@@ -19,9 +19,10 @@ northstar.LM consists of two main applications:
 ### January 2026
 - **Bug Fixes:**
   - Fixed orchestrator file upload button double-trigger issue (dialog opening and immediately closing)
-  - Fixed JavaScript syntax error with nullish coalescing operator (`??`) mixed with logical OR (`||`)
-  - Added fallback handlers for orchestrator controls when module loading is delayed
-  - Improved accessibility with ARIA labels and keyboard navigation for upload zone
+- Fixed JavaScript syntax error with nullish coalescing operator (`??`) mixed with logical OR (`||`)
+- Added fallback handlers for orchestrator controls when module loading is delayed
+- Improved accessibility with ARIA labels and keyboard navigation for upload zone
+- Normalized GPT-5 fallback logging so versioned responses (e.g., `gpt-5-mini-2025-08-07`) inherit the same family name and no longer trigger redundant warnings or metrics entries.
 
 - **RLM Optimizations:**
   - Added intent-based query routing with data preference and format constraint classification
@@ -36,6 +37,9 @@ northstar.LM consists of two main applications:
   - Summary prompts cap sub-query fan-out and use a lighter retrieval preset to reduce tail latency
   - Per-stage timing telemetry (decompose/retrieve/execute/aggregate/shadow) now lands in metrics and CSV export
   - Memory debug shows retrieval cache hit rate for cache discipline checks
+  - Shadow retrieval now mirrors routing presets (intent tags + max slice caps), with optional config diff logging
+  - Focus episode slices are tagged internal and excluded from retrieval by default to avoid prompt contamination
+  - Metrics now separate unique sub-calls from retries in the UI and CSV exports
   - Test runs store canonical prompt-set metadata in analytics and HTML exports
 
 - **Core Features:**
@@ -805,6 +809,7 @@ Enhanced metrics tracking in the Agent Orchestrator with detailed per-prompt log
   - Processing mode (Direct, RLM, or REPL)
   - Token usage and costs (input/output breakdown)
   - Response time and confidence metrics
+  - Unique sub-calls vs retry counts (to keep retry noise visible)
   - Stage timing breakdowns (decompose, retrieve, execute, aggregate, shadow)
   - Full response text stored for analysis
 - **Confidence Tracking** - Logprobs-based confidence scores (GPT-5.2 with effort='none' only)
