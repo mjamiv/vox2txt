@@ -5746,7 +5746,7 @@ function downloadMetricsCSV() {
         'Name',
         'Model',
         'Effort',
-        'Mode',
+        'Method',
         'Uses RLM',
         'Cached',
         'Input Tokens',
@@ -5779,6 +5779,16 @@ function downloadMetricsCSV() {
         return str;
     }
 
+    // Helper function to format processing method for display
+    function formatMethod(mode) {
+        const methodLabels = {
+            'direct': 'Direct Chat',
+            'rlm': 'RLM',
+            'repl': 'REPL'
+        };
+        return methodLabels[mode] || mode || 'Direct Chat';
+    }
+
     // Build CSV rows
     const rows = [headers.map(escapeCSV).join(',')];
 
@@ -5789,7 +5799,7 @@ function downloadMetricsCSV() {
             escapeCSV(log.name || ''),
             escapeCSV(log.model || ''),
             escapeCSV(log.effort || 'N/A'),
-            escapeCSV(log.mode || 'direct'),
+            escapeCSV(formatMethod(log.mode)),
             escapeCSV(log.usesRLM ? 'Yes' : 'No'),
             escapeCSV(log.cached ? 'Yes' : 'No'),
             escapeCSV(log.tokens?.input || 0),
