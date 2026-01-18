@@ -4,6 +4,9 @@
 
 **Live Demo:** https://mjamiv.github.io/vox2txt/
 
+## Contents
+- [RLM Evaluation Report](#rlm-evaluation-report)
+
 ## Overview
 
 northstar.LM consists of two main applications:
@@ -220,6 +223,126 @@ Choose how the Orchestrator answers cross-meeting questions:
 3. **RLM + Hybrid Focus + Shadow Prompting**  
    - Uses RLM with live SWM context plus shadow prompts for diagnostics.
    - Focus tracking summarizes and logs high-signal episodes while keeping user outputs stable.
+
+## RLM Evaluation Report
+
+[Download the PDF report](sandbox:/mnt/data/RLM_Evaluation_Report.pdf)
+
+### 1. Executive Summary & Recommendations
+
+#### What the data says (63 runs total)
+
+Across all 3 test sets (small/med/large context), **RLM modes materially reduce token spend and cost**, but **increase latency**—primarily because they execute multiple sub-calls.
+
+| Mode         | Avg input tokens | Avg total tokens | Avg cost / prompt | Avg latency | Avg sub-calls | Cost Δ vs Direct | Latency Δ vs Direct |
+| ------------ | ---------------: | ---------------: | ----------------: | ----------: | ------------: | ---------------: | ------------------: |
+| Direct Chat  |           68,428 |           69,031 |            $0.128 |       13.4s |           1.0 |                — |                   — |
+| RLM + SWM    |           13,194 |           15,445 |            $0.055 |       27.9s |           6.0 |       **-57.4%** |           **+108%** |
+| RLM + Hybrid |           13,321 |           15,495 |            $0.054 |       33.6s |          ~6.0 |       **-58.1%** |           **+150%** |
+
+#### Recommendation (practical default)
+
+* **Default**: **RLM + Signal-Weighted Memory** for most cross-meeting analysis (best value; lower latency than Hybrid).
+* **Use Direct Chat** when response time matters more than cost (time-sensitive “chatty” interactions).
+* **Use RLM + Hybrid Focus + Shadow** for **diagnostics, tuning, and regression evaluation**, not as the everyday default, because it carries the highest latency overhead.
+
+### 2. Overview of Application
+
+northstar.LM is built around two core apps: an **Agent Builder** (creates portable agents from meeting materials) and an **Agent Orchestrator** (runs cross-meeting analysis and Q&A).
+
+The Orchestrator supports multiple query execution strategies—**direct**, **parallel**, **map-reduce**, **iterative**, and **REPL**—which is how it scales beyond single-context prompting.
+
+Your test harness is already instrumented for analysis-quality telemetry (response time, token usage, cost, etc.) and exports results to CSV—exactly what the dataset reflects.
+
+### 3. Test Evaluation & Results
+
+#### What was tested
+
+The README defines three processing modes (matching your Method 1/2/3 runs): **Direct Chat**, **RLM + Signal-Weighted Memory**, and **RLM + Hybrid Focus + Shadow**.
+
+#### Token efficiency (biggest quantitative win)
+
+The README claims token efficiency on the order of **~50–60% reduction** vs sending full context.
+**Your measured results are stronger than that**:
+
+* **~80% input token reduction** (68k → ~13k)
+* **~77–79% total token reduction** (69k → ~15.5k)
+
+This is the clearest “value of RLM” in the dataset: it dramatically compresses the prompt footprint while still producing richer outputs (output tokens increase ~3–4×).
+
+#### Cost (directly tied to tokens)
+
+Even with higher output length in RLM modes, the **input token collapse dominates**, yielding **~52–64% lower cost depending on test set**.
+
+Per test set (avg cost / prompt):
+
+* **Small context**: $0.135 → $0.054 (RLM+SWM), $0.049 (Hybrid)
+* **Med context**: $0.123 → $0.059 (RLM+SWM), $0.058 (Hybrid)
+* **Large context**: $0.126 → $0.051 (RLM+SWM), $0.054 (Hybrid)
+
+#### Latency (main setback)
+
+Latency increases primarily because RLM runs **~6 sub-calls per prompt** (vs 1 call for Direct). Your p95 latency spikes are also materially higher in RLM modes (notably in med/large context Hybrid, where p95 approaches ~80s).
+
+This aligns with the architecture: SWM/HYBRID are doing orchestration work, not just “one big completion.”
+
+#### Stability / runtime quality
+
+No truncation, retries, or empty responses were observed in the captured dataset, which is good operationally (the system is stable under test load).
+
+### 4. “Wow” Factor Analysis
+
+#### 1) The “compression miracle”
+
+The Orchestrator’s **Signal-Weighted Memory** structure (state block + short working window + retrieved memory slices) is doing real work: it’s precisely the kind of mechanism that explains why input tokens fall so hard in the RLM runs.
+
+#### 2) Savings exceed the README headline
+
+The README’s “50–60%” token efficiency claim is already compelling, but your measured test results are closer to **~77–81% reductions**, meaning RLM isn’t just marginally better—it’s a step change.
+
+#### 3) Hybrid mode’s real value is *observability*
+
+Hybrid Focus + Shadow is designed to add a tight “focus window” for live reasoning and a “shadow” channel for diagnostics/telemetry without affecting user-visible output. That’s not a user-facing wow; it’s a developer/operator wow (tuning, debugging, governance).
+
+### 5. Recommendations to Enhance Tool (especially latency)
+
+#### A. Latency reduction (highest ROI)
+
+1. **Parallelize sub-calls by default where safe**
+
+   * The Orchestrator already supports “parallel” and “map-reduce” strategies. If subcalls are being executed sequentially in practice, the fastest win is concurrency.
+2. **Make Hybrid diagnostics asynchronous (or user-toggle)**
+
+   * Hybrid is valuable, but it shouldn’t block the primary response path unless explicitly requested.
+3. **Add caching (none was used in the dataset)**
+
+   * Cache retrieval slices, agent summaries, and repeated prompt templates.
+4. **Tune / expand early-stop behavior**
+
+   * The README mentions **early-stop heuristics** and other SWM optimizations; push these further so RLM can short-circuit back toward “Direct-like” latency when retrieval is light.
+5. **Model-mix for orchestration**
+
+   * Run retrieval and intermediate subcalls on smaller/faster models; reserve the top model for final synthesis.
+
+#### B. Control output cost (secondary but real)
+
+RLM modes shift cost from input → output. Add response-length targets by query type:
+
+* “Exec summary” (short)
+* “Operational detail” (medium)
+* “Deep audit” (long)
+
+#### C. Recommended use cases (where RLM clearly wins)
+
+Based on how the system is designed and what the metrics show:
+
+* **Cross-meeting synthesis / trend detection / action-item rollups** (high-context tasks) — best match for RLM + SWM.
+* **Large-scale meeting corpora (dozens of meetings)** where direct prompting becomes cost-prohibitive — aligns with the scalability intent in the README.
+* **Diagnostics / governance / regression testing** — use Hybrid Focus + Shadow.
+
+---
+
+If you want, I can also produce a “mode selection rubric” (a one-pager decision tree: *when to use Direct vs SWM vs Hybrid*) based on latency/cost thresholds and query type.
 
 ## RLM: Recursive Language Model
 
