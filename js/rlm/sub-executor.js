@@ -17,6 +17,7 @@ export class SubExecutor {
             maxDepth: options.maxDepth || 2,
             tokensPerSubQuery: options.tokensPerSubQuery || 800,
             timeout: options.timeout || 30000,
+            reduceTimeout: options.reduceTimeout || 45000,
             retryAttempts: options.retryAttempts || 2,
             enforcePromptBudget: options.enforcePromptBudget || false,
             promptTokenBudget: options.promptTokenBudget || 0,
@@ -247,7 +248,8 @@ export class SubExecutor {
 
             const reduceResult = await this._executeWithRetry(
                 () => llmCall(reduceQuery.query, mapContext, context),
-                reduceQuery.id
+                reduceQuery.id,
+                { timeout: this.options.reduceTimeout }
             );
 
             this._log('map-reduce', 'reduce-phase', 'completed');
@@ -416,15 +418,20 @@ Please provide more details and check all meetings for related information.`;
     /**
      * Execute with retry logic
      * @private
+     * @param {Function} fn - Function to execute
+     * @param {string} queryId - Query identifier for logging
+     * @param {Object} execOptions - Execution options
+     * @param {number} execOptions.timeout - Override timeout for this execution
      */
-    async _executeWithRetry(fn, queryId) {
+    async _executeWithRetry(fn, queryId, execOptions = {}) {
+        const timeout = execOptions.timeout || this.options.timeout;
         let lastError;
 
         for (let attempt = 0; attempt <= this.options.retryAttempts; attempt++) {
             try {
                 return await Promise.race([
                     fn(),
-                    this._timeout(this.options.timeout, queryId)
+                    this._timeout(timeout, queryId)
                 ]);
             } catch (error) {
                 lastError = error;

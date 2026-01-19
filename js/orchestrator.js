@@ -4905,7 +4905,24 @@ async function callGPTWithMessages(messages, callName = 'Chat Query', options = 
             if (validationResult.content && typeof validationResult.content === 'string' && validationResult.content.trim().length > 0) {
                 return validationResult.content;
             }
-            
+
+            // Try higher token limit before model fallback when response was truncated
+            const higherTokenRetryEligible = validationResult.shouldRetryWithHigherTokens
+                && !options._attemptedHigherTokens
+                && isGpt5MiniModel(actualModel || model);
+
+            if (higherTokenRetryEligible) {
+                const currentLimit = maxTokens || 4000;
+                const modelLimit = MODEL_TOKEN_LIMITS[normalizeModelFamily(model)] || 128000;
+                const higherLimit = Math.min(currentLimit * 2, modelLimit);
+                console.warn(`[API] ${formatModelName(actualModel || model)} hit token limit; retrying with 2x max_completion_tokens (${currentLimit} → ${higherLimit}).`);
+                return callGPTWithMessages(messages, callName, {
+                    ...options,
+                    maxTokens: higherLimit,
+                    _attemptedHigherTokens: true
+                });
+            }
+
             const fallbackEligible = canFallbackToBase
                 && !usedFallbackModel
                 && validationResult.shouldRetry
@@ -5255,7 +5272,8 @@ function validateAndExtractResponse(data, model) {
                 content: null,
                 finishReason: finishReason,
                 error: errorMsg,
-                shouldRetry: shouldRetry
+                shouldRetry: shouldRetry,
+                shouldRetryWithHigherTokens: finishReason === 'length'
             };
         }
 
@@ -5277,7 +5295,8 @@ function validateAndExtractResponse(data, model) {
                 content: '',
                 finishReason: finishReason,
                 error: `${model} returned empty string content (finish_reason: ${finishReason})${isGpt5NanoModel(model) ? '. GPT-5-nano may not support this query type - try GPT-5-mini or GPT-5.2.' : ''}`,
-                shouldRetry: shouldRetry
+                shouldRetry: shouldRetry,
+                shouldRetryWithHigherTokens: false
             };
         }
 
@@ -5286,7 +5305,8 @@ function validateAndExtractResponse(data, model) {
             content: content,
             finishReason: finishReason,
             error: null,
-            shouldRetry: false
+            shouldRetry: false,
+            shouldRetryWithHigherTokens: false
         };
 
     } catch (error) {
@@ -5295,7 +5315,8 @@ function validateAndExtractResponse(data, model) {
             content: null,
             finishReason: 'error',
             error: `Error validating response: ${error.message}`,
-            shouldRetry: true
+            shouldRetry: true,
+            shouldRetryWithHigherTokens: false
         };
     }
 }
