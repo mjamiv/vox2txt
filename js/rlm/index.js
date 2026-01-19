@@ -38,7 +38,9 @@ import { EVAL_RUBRIC, scoreEvaluation, buildEvalReport } from './eval-harness.js
  */
 export const RLM_CONFIG = {
     // Decomposition settings
-    maxSubQueries: 25,  // Dynamic: capped by active agent count
+    maxSubQueries: 25,  // Absolute ceiling
+    defaultSubQueryDepth: 5,  // Starting depth (cost-effective default)
+    depthIncrement: 5,  // How many to add per "Go Deeper"
     summaryMaxSubQueries: 4,
     minRelevanceScore: 2,
 
@@ -156,6 +158,8 @@ export class RLMPipeline {
         this.memoryStore = getMemoryStore();
         this.decomposer = createDecomposer({
             maxSubQueries: this.config.maxSubQueries,
+            defaultSubQueryDepth: this.config.defaultSubQueryDepth,
+            depthIncrement: this.config.depthIncrement,
             summaryMaxSubQueries: this.config.summaryMaxSubQueries,
             minRelevanceScore: this.config.minRelevanceScore
         });
@@ -531,6 +535,7 @@ If the information is not available in the provided context, say so briefly.`;
                         ...earlyResult.metadata,
                         strategy: 'direct-retrieval',
                         routingPlan,
+                        depthInfo: decomposition.depthInfo,
                         pipelineTime: Date.now() - startTime,
                         timings
                     }
@@ -611,6 +616,7 @@ If the information is not available in the provided context, say so briefly.`;
                     ...aggregation.metadata,
                     rlmEnabled: true,
                     routingPlan,
+                    depthInfo: decomposition.depthInfo,
                     pipelineTime: Date.now() - startTime,
                     timings
                 }
