@@ -49,6 +49,7 @@ export const RLM_CONFIG = {
     maxOutputTokens: 2000,    // Max output tokens per LLM call
     tokensPerSubQuery: 800,
     timeout: 30000,
+    reduceTimeout: 45000,          // Longer timeout for reduce phase aggregation
 
     // Aggregation settings
     maxFinalLength: 4000,
@@ -155,6 +156,7 @@ export class RLMPipeline {
             maxDepth: this.config.maxDepth,
             tokensPerSubQuery: this.config.tokensPerSubQuery,
             timeout: this.config.timeout,
+            reduceTimeout: this.config.reduceTimeout,
             enforcePromptBudget: this.config.enablePromptBudgeting,
             promptTokenBudget: this.config.promptTokenBudget,
             promptTokenReserve: this.config.promptTokenReserve,
@@ -1664,11 +1666,43 @@ Be concise and focus only on information relevant to the question.`;
     }
 
     /**
+     * Check if memory store has data within recency window
+     * @private
+     * @returns {boolean} True if there is relevant data to process
+     */
+    _hasRecentMemoryData() {
+        if (!this.memoryStore) return false;
+
+        const slices = this.memoryStore.getSlices();
+        if (!slices || slices.length === 0) return false;
+
+        // If no recency window configured, any data is valid
+        if (!this.config.shadowPromptRecencyWindowDays) return true;
+
+        const now = Date.now();
+        const windowMs = this.config.shadowPromptRecencyWindowDays * 24 * 60 * 60 * 1000;
+
+        return slices.some(slice => {
+            // If no timestamp, consider it valid (be conservative)
+            if (!slice.timestamp) return true;
+            const ageMs = now - Date.parse(slice.timestamp);
+            // If parsing failed (NaN), consider it valid
+            return Number.isNaN(ageMs) || ageMs <= windowMs;
+        });
+    }
+
+    /**
      * Build a shadow prompt for retrieval logging (Milestone 2).
      * @private
      */
     _runShadowPromptBuild(query, context, mode, routingPlan = null) {
         if (!this.config.enableShadowPrompt || !this.memoryStore) {
+            return;
+        }
+
+        // Skip if no data within recency window (avoid wasted computation)
+        if (!this._hasRecentMemoryData()) {
+            console.debug('[RLM:ShadowPrompt] Skipped - no data within recency window');
             return;
         }
 
