@@ -30,7 +30,7 @@ Features include multi-meeting orchestration, agent export/import, image OCR wit
   - Query cache keys include a corpus stamp to avoid stale hits after agent changes
   - Parallel/map-reduce sub-queries run via a worker pool (max concurrency bumped to 4)
   - Shadow prompt diagnostics run asynchronously so hybrid mode doesn't block responses
-  - Model tiering uses GPT-5-mini for sub-queries and REPL sub_lm calls when GPT-5.2 is selected
+  - Model tiering uses GPT-5-mini for sub-queries and REPL sub_lm calls when GPT-5.2 is selected (can be disabled via "Let orchestrator pick best model?" toggle)
   - Summary prompts cap sub-query fan-out and use a lighter retrieval preset to reduce tail latency
   - Per-stage timing telemetry (decompose/retrieve/execute/aggregate/shadow) appears in metrics and CSV export
 - Memory debug shows retrieval cache hit rate for cache discipline checks
@@ -61,10 +61,11 @@ Features include multi-meeting orchestration, agent export/import, image OCR wit
   - Canvas dynamically expands to fit any number of agents
   - New `js/kb-canvas.js` module handles all canvas rendering and interactions
 
-- **Agent Limit Increase:**
-  - Increased max agents for context building from 5 to 50
-  - All enabled agents now included in chat context (transcript per agent dynamically limited)
-  - Context gauge now accurately reflects usage with many agents
+- **Agent Limit:**
+  - Maximum 25 agents can be added to the Knowledge Base
+  - Sub-queries scale 1:1 with active agent count (one sub-query per agent)
+  - All enabled agents included in chat context (transcript per agent dynamically limited)
+  - Context gauge accurately reflects usage with many agents
 
 ## Architecture
 
@@ -497,7 +498,7 @@ flowchart TB
 
 ```javascript
 const RLM_CONFIG = {
-    maxSubQueries: 5,        // Max sub-queries per decomposition
+    maxSubQueries: 25,       // Dynamic: scales with active agent count (max 25)
     summaryMaxSubQueries: 4, // Cap fan-out for full-scope summaries
     maxConcurrent: 4,        // Parallel execution limit
     maxDepth: 2,             // Max recursion depth for sub_lm calls
