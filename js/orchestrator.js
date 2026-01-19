@@ -45,6 +45,8 @@ const state = {
     memoryIndex: [],
     promptCounter: 0,
     isProcessing: false,
+    depthTracking: new Map(),  // messageId -> { query, depthInfo, responseId }
+    lastResponseId: null,      // ID of the last assistant message
     settings: {
         model: GPT_52_MODEL,      // 'gpt-5.2-2025-12-11', 'gpt-5-mini', or 'gpt-5-nano'
         effort: 'none',        // 'none', 'low', 'medium', 'high' (only for GPT-5.2) - default 'none' for compatibility
@@ -4938,7 +4940,7 @@ async function sendChatMessage() {
         }
 
         // Execute the actual chat processing (pass thinkingId for real-time updates from RLM)
-        const response = await chatWithAgents(message, thinkingId, {
+        const result = await chatWithAgents(message, thinkingId, {
             onStart: () => {
                 updateStreamingStatus(streamState, 'Streaming response...');
                 removeThinkingIndicator(thinkingId);
@@ -4950,7 +4952,11 @@ async function sendChatMessage() {
                 updateStreamingStatus(streamState, 'Finalizing response...');
             }
         });
-        
+
+        // Extract response and depthInfo from result
+        const response = result.response;
+        const depthInfo = result.depthInfo;
+
         // Store prompt preview and response in the active group
         if (activePromptGroup) {
             activePromptGroup.promptPreview = queryPreview;
@@ -4964,7 +4970,13 @@ async function sendChatMessage() {
         if (document.getElementById(thinkingId)) {
             removeThinkingIndicator(thinkingId);
         }
-        finalizeStreamingMessage(streamState, response);
+        const messageContainer = finalizeStreamingMessage(streamState, response);
+
+        // Render depth controls if depthInfo is available (RLM mode only)
+        if (depthInfo && messageContainer) {
+            const messageId = 'msg-' + Date.now();
+            renderDepthControls(messageContainer, messageId, message, depthInfo);
+        }
     } catch (error) {
         // Store error response in active group if available
         if (activePromptGroup) {
@@ -5017,13 +5029,24 @@ async function sendChatMessage() {
     }
 }
 
-async function chatWithAgents(userMessage, thinkingId = null, streamHandlers = null) {
+/**
+ * Process chat with agents using the appropriate pipeline
+ * @param {string} userMessage - The user's query
+ * @param {string} thinkingId - ID for thinking indicator updates
+ * @param {Object} streamHandlers - Optional streaming handlers
+ * @param {Object} options - Optional settings: { depthOverride }
+ * @returns {Promise<{response: string, depthInfo: Object|null}>}
+ */
+async function chatWithAgents(userMessage, thinkingId = null, streamHandlers = null, options = {}) {
+    const { depthOverride = null } = options;
+
     // Check if RLM is enabled in settings
     if (!state.settings.useRLM) {
         console.log('[Chat] RLM disabled via settings, using legacy processing');
-        return await chatWithAgentsLegacy(userMessage, streamHandlers);
+        const response = await chatWithAgentsLegacy(userMessage, streamHandlers);
+        return { response, depthInfo: null };
     }
-    
+
     // Check if REPL should be used (code-assisted queries)
     const useREPL = rlmPipeline.shouldUseREPL && rlmPipeline.shouldUseREPL(userMessage, { auto: state.settings.rlmAuto });
 
@@ -5033,7 +5056,8 @@ async function chatWithAgents(userMessage, thinkingId = null, streamHandlers = n
         if (streamHandlers) {
             await simulateStreamingResponse(response, streamHandlers);
         }
-        return response;
+        // REPL doesn't support progressive depth (different execution model)
+        return { response, depthInfo: null };
     }
 
     // Check if RLM should be used for this query
@@ -5041,14 +5065,15 @@ async function chatWithAgents(userMessage, thinkingId = null, streamHandlers = n
 
     if (useRLM) {
         console.log('[Chat] Using RLM pipeline for query');
-        const response = await chatWithRLM(userMessage, thinkingId);
+        const result = await chatWithRLM(userMessage, thinkingId, { depthOverride });
         if (streamHandlers) {
-            await simulateStreamingResponse(response, streamHandlers);
+            await simulateStreamingResponse(result.response, streamHandlers);
         }
-        return response;
+        return result;
     } else {
         console.log('[Chat] Using legacy processing for query');
-        return await chatWithAgentsLegacy(userMessage, streamHandlers);
+        const response = await chatWithAgentsLegacy(userMessage, streamHandlers);
+        return { response, depthInfo: null };
     }
 }
 
@@ -5137,8 +5162,14 @@ async function chatWithREPL(userMessage, thinkingId = null) {
 
 /**
  * Process chat using RLM pipeline (decompose → parallel → aggregate)
+ * @param {string} userMessage - The user's query
+ * @param {string} thinkingId - ID for thinking indicator updates
+ * @param {Object} options - Optional settings: { depthOverride }
+ * @returns {Promise<{response: string, depthInfo: Object|null}>}
  */
-async function chatWithRLM(userMessage, thinkingId = null) {
+async function chatWithRLM(userMessage, thinkingId = null, options = {}) {
+    const { depthOverride = null } = options;
+
     // Create a wrapper for the LLM call that the RLM pipeline can use
     const llmCallWrapper = async (systemPrompt, userContent, context) => {
         const messages = [
@@ -5173,9 +5204,10 @@ async function chatWithRLM(userMessage, thinkingId = null) {
         recordFocusTelemetry(details);
     });
 
-    // Process through RLM pipeline
+    // Process through RLM pipeline with optional depth override
     const result = await rlmPipeline.process(userMessage, llmCallWrapper, {
-        apiKey: state.apiKey
+        apiKey: state.apiKey,
+        depthOverride
     });
 
     // Clear progress callback
@@ -5209,11 +5241,16 @@ async function chatWithRLM(userMessage, thinkingId = null) {
         console.log('[RLM] Query processed:', {
             strategy: result.metadata.strategy,
             subQueries: result.metadata.totalSubQueries,
+            depthInfo: result.metadata.depthInfo,
             time: result.metadata.pipelineTime + 'ms'
         });
     }
 
-    return result.response;
+    // Return both response and depthInfo for progressive depth feature
+    return {
+        response: result.response,
+        depthInfo: result.metadata?.depthInfo || null
+    };
 }
 
 /**
@@ -5495,6 +5532,148 @@ function finalizeStreamingMessage(streamState, fullText, options = {}) {
     elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
     saveState();
     updateContextGauge();
+
+    // Return the container for depth controls attachment
+    return streamState.container;
+}
+
+/**
+ * Render depth controls on an assistant message
+ * Shows "Queried X of Y agents" indicator and "Go Deeper" button when applicable
+ * @param {HTMLElement} messageContainer - The chat message container element
+ * @param {string} messageId - Unique ID for this message (for depth tracking)
+ * @param {string} query - The original user query
+ * @param {Object} depthInfo - Depth info from RLM pipeline
+ */
+function renderDepthControls(messageContainer, messageId, query, depthInfo) {
+    if (!messageContainer || !depthInfo) return;
+
+    const { currentDepth, maxDepth, agentsQueried, canGoDeeper, nextDepth, depthIncrement } = depthInfo;
+
+    // Don't show controls if there's only 1 agent or fewer than the default depth
+    if (maxDepth <= 1 || (maxDepth <= (RLM_CONFIG.defaultSubQueryDepth || 5) && !canGoDeeper)) {
+        return;
+    }
+
+    // Store tracking info for "Go Deeper" functionality
+    state.depthTracking.set(messageId, {
+        query,
+        depthInfo,
+        responseId: messageId
+    });
+    state.lastResponseId = messageId;
+
+    // Create depth controls container
+    const depthControls = document.createElement('div');
+    depthControls.className = 'depth-controls';
+    depthControls.dataset.messageId = messageId;
+
+    // Depth indicator
+    const indicator = document.createElement('span');
+    indicator.className = 'depth-indicator';
+    indicator.innerHTML = `<span class="depth-icon">📊</span> Queried ${agentsQueried} of ${maxDepth} agents`;
+    depthControls.appendChild(indicator);
+
+    if (canGoDeeper) {
+        // "Go Deeper" button
+        const goDeepBtn = document.createElement('button');
+        goDeepBtn.className = 'go-deeper-btn';
+        goDeepBtn.innerHTML = `<span class="go-deeper-icon">🔍</span> Go Deeper (+${Math.min(depthIncrement, maxDepth - agentsQueried)} agents)`;
+        goDeepBtn.onclick = () => handleGoDeeper(messageId);
+        depthControls.appendChild(goDeepBtn);
+    } else {
+        // All agents queried indicator
+        const complete = document.createElement('span');
+        complete.className = 'depth-complete';
+        complete.innerHTML = '<span class="complete-icon">✓</span> All agents queried';
+        depthControls.appendChild(complete);
+    }
+
+    // Append to message content area
+    const contentArea = messageContainer.querySelector('.chat-message-content');
+    if (contentArea) {
+        contentArea.appendChild(depthControls);
+    }
+
+    console.log(`[Depth] Rendered controls for message ${messageId}: ${agentsQueried}/${maxDepth}, canGoDeeper=${canGoDeeper}`);
+}
+
+/**
+ * Handle "Go Deeper" button click - re-run query with expanded depth
+ * @param {string} messageId - The message ID to expand
+ */
+async function handleGoDeeper(messageId) {
+    const tracking = state.depthTracking.get(messageId);
+    if (!tracking) {
+        console.error('[Depth] No tracking data for message:', messageId);
+        return;
+    }
+
+    const { query, depthInfo } = tracking;
+    const newDepth = depthInfo.nextDepth;
+
+    console.log(`[Depth] Going deeper: ${depthInfo.agentsQueried} → ${newDepth} agents for query: "${query.substring(0, 40)}..."`);
+
+    // Disable the button and show loading state
+    const depthControls = document.querySelector(`.depth-controls[data-message-id="${messageId}"]`);
+    if (depthControls) {
+        const btn = depthControls.querySelector('.go-deeper-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="go-deeper-icon">⏳</span> Expanding...';
+        }
+    }
+
+    // Show thinking indicator
+    const thinkingId = showThinkingIndicator();
+    updateThinkingTitle(thinkingId, 'Going Deeper...');
+    addThinkingStep(thinkingId, `Expanding from ${depthInfo.agentsQueried} to ${newDepth} agents`, 'info');
+
+    try {
+        // Start a new prompt group for the expanded query
+        startPromptGroup(`Go Deeper: ${query.substring(0, 30)}...`, true, 'rlm');
+
+        // Re-run the query with the new depth
+        const result = await chatWithAgents(query, thinkingId, null, { depthOverride: newDepth });
+
+        // Remove thinking indicator
+        removeThinkingIndicator(thinkingId);
+
+        // Create new streaming message for the expanded response
+        const streamState = createStreamingMessage();
+        finalizeStreamingMessage(streamState, result.response);
+
+        // Render depth controls on the new message
+        const newMessageId = 'depth-' + Date.now();
+        if (streamState.container) {
+            renderDepthControls(streamState.container, newMessageId, query, result.depthInfo);
+        }
+
+        // Remove the old depth controls
+        if (depthControls) {
+            depthControls.remove();
+        }
+
+        endPromptGroup();
+        saveState();
+
+    } catch (error) {
+        console.error('[Depth] Error going deeper:', error);
+        removeThinkingIndicator(thinkingId);
+
+        // Restore the button
+        if (depthControls) {
+            const btn = depthControls.querySelector('.go-deeper-btn');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<span class="go-deeper-icon">🔍</span> Go Deeper (+${depthInfo.depthIncrement} agents)`;
+            }
+        }
+
+        // Show error in chat
+        appendChatMessage('assistant', `Error expanding query: ${error.message}`);
+        endPromptGroup();
+    }
 }
 
 async function simulateStreamingResponse(fullText, streamHandlers) {

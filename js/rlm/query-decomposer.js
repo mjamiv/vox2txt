@@ -55,8 +55,11 @@ export class QueryDecomposer {
         // Classify the query
         const classification = this._classifyQuery(query);
 
-        // Get relevant agents - dynamic limit based on active agent count
-        const maxResults = this._resolveMaxResults(classification, stats.activeAgents);
+        // Extract depth override from context (for "Go Deeper" feature)
+        const depthOverride = context.depthOverride ?? null;
+
+        // Get relevant agents - uses conservative default or depth override
+        const maxResults = this._resolveMaxResults(classification, stats.activeAgents, depthOverride);
         const relevantAgents = store.queryAgents(query, {
             maxResults,
             minScore: this.options.minRelevanceScore
@@ -74,12 +77,26 @@ export class QueryDecomposer {
             context
         );
 
+        // Calculate depth info for progressive depth feature
+        const defaultDepth = this.options.defaultSubQueryDepth || 5;
+        const currentDepth = depthOverride ?? Math.min(defaultDepth, stats.activeAgents);
+        const depthIncrement = this.options.depthIncrement || 5;
+        const depthInfo = {
+            currentDepth: relevantAgents.length,
+            maxDepth: stats.activeAgents,
+            agentsQueried: relevantAgents.length,
+            canGoDeeper: relevantAgents.length < stats.activeAgents,
+            nextDepth: Math.min(currentDepth + depthIncrement, stats.activeAgents),
+            depthIncrement
+        };
+
         return {
             originalQuery: query,
             classification,
             strategy,
             relevantAgents,
             subQueries,
+            depthInfo,
             metadata: {
                 totalAgents: stats.totalAgents,
                 activeAgents: stats.activeAgents,
@@ -171,17 +188,20 @@ export class QueryDecomposer {
         }
     }
 
-    _resolveMaxResults(classification, activeAgentCount = 5) {
-        // Dynamic sub-query limit: scale with agent count (max 25 agents allowed)
-        const dynamicMax = Math.min(activeAgentCount, 25);
-
-        if (classification?.summaryScope === 'full') {
-            // For full summaries, use slightly fewer to reduce latency
-            return Math.min(this.options.summaryMaxSubQueries, dynamicMax);
+    _resolveMaxResults(classification, activeAgentCount = 5, depthOverride = null) {
+        // If explicit depth override (from "Go Deeper"), use it
+        if (depthOverride !== null && depthOverride > 0) {
+            return Math.min(depthOverride, activeAgentCount, this.options.maxSubQueries);
         }
 
-        // Use dynamic limit instead of fixed maxSubQueries
-        return dynamicMax;
+        // For full-scope summaries, use dedicated limit
+        if (classification?.summaryScope === 'full') {
+            return Math.min(this.options.summaryMaxSubQueries, activeAgentCount);
+        }
+
+        // Default: use conservative default (cost-effective) instead of full agent count
+        const defaultDepth = this.options.defaultSubQueryDepth || 5;
+        return Math.min(defaultDepth, activeAgentCount, this.options.maxSubQueries);
     }
 
     _detectFormatConstraints(query) {
