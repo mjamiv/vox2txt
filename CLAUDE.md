@@ -63,9 +63,17 @@ Features include multi-meeting orchestration, agent export/import, image OCR wit
 
 - **Agent Limit:**
   - Maximum 25 agents can be added to the Knowledge Base
-  - Sub-queries scale 1:1 with active agent count (one sub-query per agent)
   - All enabled agents included in chat context (transcript per agent dynamically limited)
   - Context gauge accurately reflects usage with many agents
+
+- **Progressive Sub-Query Depth:**
+  - Default sub-query depth reduced to 5 (from scaling 1:1 with agent count) for ~77% cost savings
+  - "Go Deeper" button on responses allows expanding to query more agents on demand
+  - Depth indicator shows "Queried X of Y agents" with visual feedback
+  - Each "Go Deeper" click adds +5 agents until all are queried
+  - Shows "All agents queried ✓" when at maximum depth
+  - State tracking enables re-running queries with expanded depth
+  - Model mixing recommended: GPT-5-mini for sub-queries, GPT-5.2 for final synthesis
 
 ## Architecture
 
@@ -498,18 +506,20 @@ flowchart TB
 
 ```javascript
 const RLM_CONFIG = {
-    maxSubQueries: 25,       // Dynamic: scales with active agent count (max 25)
-    summaryMaxSubQueries: 4, // Cap fan-out for full-scope summaries
-    maxConcurrent: 4,        // Parallel execution limit
-    maxDepth: 2,             // Max recursion depth for sub_lm calls
-    tokensPerSubQuery: 800,  // Token budget per sub-query
-    enableLLMSynthesis: true,// Use LLM to synthesize results
-    enableREPL: true,        // Enable REPL-based code execution
-    replTimeout: 30000,      // REPL execution timeout (30s)
-    subLmTimeout: 60000,     // Timeout for sub_lm calls (60s)
-    autoInitREPL: false,     // Auto-initialize REPL on first use
-    preferREPL: false,       // Prefer REPL over decomposition
-    enableSyncSubLm: true    // Enable synchronous sub_lm
+    maxSubQueries: 25,           // Absolute ceiling
+    defaultSubQueryDepth: 5,     // Starting depth (cost-effective default)
+    depthIncrement: 5,           // How many to add per "Go Deeper"
+    summaryMaxSubQueries: 4,     // Cap fan-out for full-scope summaries
+    maxConcurrent: 4,            // Parallel execution limit
+    maxDepth: 2,                 // Max recursion depth for sub_lm calls
+    tokensPerSubQuery: 800,      // Token budget per sub-query
+    enableLLMSynthesis: true,    // Use LLM to synthesize results
+    enableREPL: true,            // Enable REPL-based code execution
+    replTimeout: 30000,          // REPL execution timeout (30s)
+    subLmTimeout: 60000,         // Timeout for sub_lm calls (60s)
+    autoInitREPL: false,         // Auto-initialize REPL on first use
+    preferREPL: false,           // Prefer REPL over decomposition
+    enableSyncSubLm: true        // Enable synchronous sub_lm
 };
 ```
 
@@ -653,12 +663,14 @@ Completed optimizations:
 - ✅ Async shadow prompt diagnostics to avoid blocking hybrid responses
 - ✅ Model tiering for sub-queries and REPL sub_lm (GPT-5-mini with GPT-5.2)
 - ✅ Stage timing telemetry in metrics/CSV and retrieval cache hit-rate visibility
+- ✅ Progressive sub-query depth with "Go Deeper" UI for cost-efficient defaults (~77% savings)
 
 Remaining items:
 - Eval harness rubric scoring and regression reports
 
 Recently completed:
 - ✅ A/B testing framework via multi-configuration test runs (run same prompts against Direct vs RLM configs)
+- ✅ Progressive depth controls: default 5 sub-queries with on-demand expansion
 
 ## Data Flow: Agent Export/Import
 

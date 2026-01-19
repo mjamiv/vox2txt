@@ -3130,12 +3130,14 @@ async function runPromptWithMetrics(promptText, labelPrefix = 'Test', streamHand
     }
 
     try {
-        const response = await chatWithAgents(promptText, null, streamHandlers);
+        // chatWithAgents now returns { response, depthInfo }
+        const result = await chatWithAgents(promptText, null, streamHandlers);
+        const responseText = result.response;
         if (activePromptGroup) {
             activePromptGroup.promptPreview = queryPreview;
-            activePromptGroup.response = response;
+            activePromptGroup.response = responseText;
         }
-        return response;
+        return responseText;
     } catch (error) {
         if (activePromptGroup) {
             activePromptGroup.promptPreview = queryPreview;
