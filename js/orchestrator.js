@@ -48,6 +48,7 @@ const state = {
     settings: {
         model: GPT_52_MODEL,      // 'gpt-5.2-2025-12-11', 'gpt-5-mini', or 'gpt-5-nano'
         effort: 'none',        // 'none', 'low', 'medium', 'high' (only for GPT-5.2) - default 'none' for compatibility
+        allowModelMixing: true, // Allow orchestrator to use faster models for sub-queries
         processingMode: 'rlm-hybrid', // 'direct', 'rlm-swm', 'rlm-hybrid'
         optimizationMode: 'balanced', // 'balanced', 'speed', 'cost' (Recommendation D)
         useRLM: true,          // Enable/disable RLM processing
@@ -941,6 +942,8 @@ function initElements() {
         modelSelect: document.getElementById('model-select'),
         effortGroup: document.getElementById('effort-group'),
         effortSelect: document.getElementById('effort-select'),
+        modelMixingGroup: document.getElementById('model-mixing-group'),
+        modelMixingToggle: document.getElementById('model-mixing-toggle'),
         processingModeSelect: document.getElementById('processing-mode-select'),
         optimizationModeSelect: document.getElementById('optimization-mode-select'),
         optimizationModeGroup: document.getElementById('optimization-mode-group'),
@@ -1196,6 +1199,9 @@ function updateSettingsUI() {
     if (elements.effortSelect) {
         elements.effortSelect.value = state.settings.effort;
     }
+    if (elements.modelMixingToggle) {
+        elements.modelMixingToggle.checked = state.settings.allowModelMixing !== false;
+    }
     if (elements.processingModeSelect) {
         elements.processingModeSelect.value = state.settings.processingMode;
     }
@@ -1277,7 +1283,10 @@ function applyRlmFeatureFlags() {
 
 function buildModelTieringConfig() {
     const baseModel = state.settings.model;
-    if (!isGpt52Model(baseModel)) {
+    const allowMixing = state.settings.allowModelMixing !== false;
+
+    // Disable tiering if not GPT-5.2 or user disabled model mixing
+    if (!isGpt52Model(baseModel) || !allowMixing) {
         return {
             enableModelTiering: false,
             modelTiering: {
@@ -1307,10 +1316,14 @@ function buildModelTieringConfig() {
  * Update effort dropdown visibility based on selected model
  */
 function updateEffortVisibility() {
+    const showGpt52Options = isGpt52Model(state.settings.model);
     if (elements.effortGroup) {
         // Only show effort for GPT-5.2 (reasoning model), not for mini
-    const showEffort = isGpt52Model(state.settings.model);
-        elements.effortGroup.style.display = showEffort ? 'flex' : 'none';
+        elements.effortGroup.style.display = showGpt52Options ? 'flex' : 'none';
+    }
+    if (elements.modelMixingGroup) {
+        // Only show model mixing option for GPT-5.2 (mixing uses mini for sub-queries)
+        elements.modelMixingGroup.style.display = showGpt52Options ? 'flex' : 'none';
     }
 }
 
@@ -1587,6 +1600,9 @@ function setupEventListeners() {
     if (elements.effortSelect) {
         elements.effortSelect.addEventListener('change', handleEffortChange);
     }
+    if (elements.modelMixingToggle) {
+        elements.modelMixingToggle.addEventListener('change', handleModelMixingToggle);
+    }
     if (elements.processingModeSelect) {
         elements.processingModeSelect.addEventListener('change', handleProcessingModeChange);
     }
@@ -1642,6 +1658,16 @@ function handleEffortChange(e) {
     state.settings.effort = e.target.value;
     saveSettings();
     console.log('[Settings] Effort changed to:', state.settings.effort);
+}
+
+/**
+ * Handle model mixing toggle change
+ */
+function handleModelMixingToggle(e) {
+    state.settings.allowModelMixing = e.target.checked;
+    applyRlmFeatureFlags();
+    saveSettings();
+    console.log('[Settings] Model mixing changed to:', state.settings.allowModelMixing);
 }
 
 /**
