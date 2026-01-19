@@ -5,7 +5,7 @@
  * IMPORTANT: Increment CACHE_VERSION when deploying new changes!
  */
 
-const CACHE_VERSION = 5;
+const CACHE_VERSION = 6;
 const CACHE_NAME = `northstar-lm-v${CACHE_VERSION}`;
 
 /**
@@ -51,27 +51,38 @@ const CORE_FILES = [
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
     console.log(`[SW] Installing version ${CACHE_VERSION}`);
-    
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(async (cache) => {
-            console.log('[SW] Caching core assets');
-            const requests = CORE_FILES.map(url => new Request(url, { cache: 'reload' }));
-            const failures = [];
 
-            await Promise.allSettled(requests.map(async (request) => {
-                try {
-                    await cache.add(request);
-                } catch (err) {
-                    failures.push({ url: request.url, error: err });
+    event.waitUntil((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        console.log('[SW] Caching core assets');
+
+        const scopeBase = self.location.href.replace(/[^/]+$/, '');
+        const failures = [];
+
+        await Promise.allSettled(CORE_FILES.map(async (file) => {
+            const resolvedUrl = new URL(file, scopeBase);
+            const request = new Request(resolvedUrl, { cache: 'reload' });
+
+            try {
+                const response = await fetch(request);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
                 }
-            }));
-
-            if (failures.length > 0) {
-                console.warn('[SW] Failed to cache some assets:', failures);
+                await cache.put(request, response.clone());
+            } catch (err) {
+                failures.push({
+                    url: request.url,
+                    message: err.message
+                });
+                console.debug('[SW] Skip caching asset:', request.url, err);
             }
-        })
-    );
-    
+        }));
+
+        if (failures.length > 0) {
+            console.debug('[SW] Some core assets were skipped during install:', failures);
+        }
+    })());
+
     // Activate immediately without waiting for old SW to finish
     self.skipWaiting();
 });
