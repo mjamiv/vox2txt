@@ -41,6 +41,7 @@ northstar.LM consists of two main applications:
   - Focus episode slices are tagged internal and excluded from retrieval by default to avoid prompt contamination
   - Metrics now separate unique sub-calls from retries in the UI and CSV exports
   - Test runs store canonical prompt-set metadata in analytics and HTML exports
+  - **Progressive Sub-Query Depth**: Default to 5 sub-queries (~77% cost savings) with "Go Deeper" button to expand on demand
 
 - **Core Features:**
   - Agent export embeds a full JSON payload (processing metadata, prompts, metrics, chat history, artifacts, attachments) alongside the markdown summary
@@ -722,11 +723,12 @@ flowchart LR
 
 ### Benefits
 
-- **Token Efficiency**: ~50-60% reduction vs. sending all context in one call
+- **Token Efficiency**: ~77% cost reduction with progressive depth defaults (5 sub-queries)
 - **Better Accuracy**: Focused sub-queries yield more precise answers
 - **Scalability**: Handle 50+ meetings without hitting context limits
 - **Source Attribution**: Know which meeting each insight came from
 - **True Recursion**: Chain multiple LLM calls for deep analysis
+- **On-Demand Depth**: "Go Deeper" expands coverage when initial results need more detail
 
 ## Overview
 
@@ -786,6 +788,7 @@ At-a-glance metrics displayed at the top of every analysis:
 - **Query Classification** - Automatic detection of factual, comparative, aggregative, search, and recursive queries
 - **Knowledge Base Visualization** - Visual chain display of loaded agents with enable/disable controls
 - **Smart Query Routing** - Automatically chooses optimal strategy (direct, parallel, map-reduce, iterative, REPL)
+- **Progressive Depth** - Cost-efficient default (5 sub-queries) with "Go Deeper" button to expand coverage on demand
 - **Model Selection** - Choose between GPT-5.2, GPT-5-mini, or GPT-5-nano
 - **Model Tiering** - Uses GPT-5-mini for sub-queries and REPL sub_lm calls when GPT-5.2 is selected
 - **Reasoning Effort Control** - Configure reasoning depth for GPT-5.2 (none/low/medium/high/xhigh)
