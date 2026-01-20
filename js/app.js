@@ -1798,72 +1798,49 @@ function formatCost(cost) {
 // ============================================
 async function downloadDocx() {
     if (!state.results) return;
-    
-    const { 
-        Document, Paragraph, TextRun, HeadingLevel, Packer, ImageRun, 
+
+    const {
+        Document, Paragraph, TextRun, HeadingLevel, Packer, ImageRun,
         Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType,
         ShadingType, PageBreak, Header, Footer, TableOfContents,
         LevelFormat, convertInchesToTwip, ExternalHyperlink, NumberFormat,
         PageNumber, TextWrappingType, TextWrappingSide
     } = docx;
-    
-    const currentDate = new Date().toLocaleDateString('en-US', { 
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+
+    const currentDate = new Date().toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
     const shortDate = new Date().toLocaleDateString('en-US', {
         year: 'numeric', month: 'short', day: 'numeric'
     });
-    
-    // ========== COLOR PALETTE ==========
+
+    // ========== SIMPLE COLOR PALETTE ==========
     const colors = {
-        primary: "1a365d",      // Deep navy
-        secondary: "2d3748",    // Dark gray
-        accent: "d4a853",       // Gold
-        muted: "718096",        // Gray
-        light: "e2e8f0",        // Light gray
-        success: "22c55e",      // Green
-        white: "ffffff",
-        black: "000000"
+        black: "000000",
+        darkGray: "333333",
+        gray: "666666",
+        lightGray: "cccccc",
+        white: "ffffff"
     };
-    
+
     // ========== HELPER FUNCTIONS ==========
-    
-    // Create a styled section heading (for TOC)
-    const createHeading = (text, level = HeadingLevel.HEADING_1) => {
-        return new Paragraph({
-            text: text,
-            heading: level,
-            spacing: { before: 400, after: 200 },
-            border: level === HeadingLevel.HEADING_1 ? {
-                bottom: { color: colors.accent, size: 6, style: BorderStyle.SINGLE }
-            } : undefined
-        });
-    };
-    
-    // Create a section heading with icon
-    const createSectionHeading = (text, emoji = '') => {
+
+    // Create a simple section heading
+    const createSectionHeading = (text) => {
         return new Paragraph({
             children: [
                 new TextRun({
-                    text: emoji ? `${emoji}  ` : '',
-                    size: 28
-                }),
-                new TextRun({
-                    text: text,
+                    text: text.toUpperCase(),
                     bold: true,
-                    size: 28,
-                    color: colors.primary,
-                    font: "Calibri Light"
+                    size: 26,
+                    font: "Calibri"
                 })
             ],
             heading: HeadingLevel.HEADING_1,
-            spacing: { before: 400, after: 200 },
-            border: {
-                bottom: { color: colors.accent, size: 6, style: BorderStyle.SINGLE }
-            }
+            spacing: { before: 400, after: 200 }
         });
     };
-    
+
     // Create subsection heading
     const createSubHeading = (text) => {
         return new Paragraph({
@@ -1872,7 +1849,6 @@ async function downloadDocx() {
                     text: text,
                     bold: true,
                     size: 24,
-                    color: colors.secondary,
                     font: "Calibri"
                 })
             ],
@@ -1880,7 +1856,7 @@ async function downloadDocx() {
             spacing: { before: 300, after: 150 }
         });
     };
-    
+
     // Create proper bullet point using Word's native list
     const createBulletItem = (text, level = 0) => {
         return new Paragraph({
@@ -1895,44 +1871,25 @@ async function downloadDocx() {
             spacing: { after: 100, line: 276 }
         });
     };
-    
-    // Create numbered list item
-    const createNumberedItem = (text, level = 0) => {
-        return new Paragraph({
-            children: [
-                new TextRun({
-                    text: text.replace(/^\d+[.)]\s*/, '').replace(/^[-•*▸☐✓]\s*/, '').trim(),
-                    size: 22,
-                    font: "Calibri"
-                })
-            ],
-            numbering: { reference: "actionItems", level: level },
-            spacing: { after: 100, line: 276 }
-        });
-    };
-    
-    // Create a styled table
-    const createStyledTable = (headers, rows) => {
+
+    // Create a simple table
+    const createSimpleTable = (headers, rows) => {
         const headerCells = headers.map(h => new TableCell({
             children: [new Paragraph({
-                children: [new TextRun({ text: h, bold: true, size: 20, color: colors.white, font: "Calibri" })],
-                alignment: AlignmentType.CENTER
+                children: [new TextRun({ text: h, bold: true, size: 20, font: "Calibri" })]
             })],
-            shading: { fill: colors.primary, type: ShadingType.SOLID },
-            margins: { top: 100, bottom: 100, left: 150, right: 150 }
+            margins: { top: 80, bottom: 80, left: 100, right: 100 }
         }));
-        
-        const dataRows = rows.map((row, idx) => new TableRow({
+
+        const dataRows = rows.map(row => new TableRow({
             children: row.map(cell => new TableCell({
                 children: [new Paragraph({
-                    children: [new TextRun({ text: String(cell), size: 20, font: "Calibri" })],
-                    alignment: AlignmentType.LEFT
+                    children: [new TextRun({ text: String(cell), size: 20, font: "Calibri" })]
                 })],
-                shading: { fill: idx % 2 === 0 ? colors.light : colors.white, type: ShadingType.SOLID },
-                margins: { top: 80, bottom: 80, left: 150, right: 150 }
+                margins: { top: 60, bottom: 60, left: 100, right: 100 }
             }))
         }));
-        
+
         return new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: [
@@ -1940,18 +1897,18 @@ async function downloadDocx() {
                 ...dataRows
             ],
             borders: {
-                top: { style: BorderStyle.SINGLE, size: 1, color: colors.light },
-                bottom: { style: BorderStyle.SINGLE, size: 1, color: colors.light },
-                left: { style: BorderStyle.SINGLE, size: 1, color: colors.light },
-                right: { style: BorderStyle.SINGLE, size: 1, color: colors.light },
-                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: colors.light },
-                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: colors.light }
+                top: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+                left: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+                right: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray }
             }
         });
     };
-    
-    // Create info box with shading
-    const createInfoBox = (text, bgColor = "f7fafc") => {
+
+    // Create simple text paragraph
+    const createTextParagraph = (text) => {
         return new Paragraph({
             children: [
                 new TextRun({
@@ -1960,218 +1917,104 @@ async function downloadDocx() {
                     font: "Calibri"
                 })
             ],
-            shading: { fill: bgColor, type: ShadingType.SOLID },
-            border: {
-                left: { color: colors.accent, size: 24, style: BorderStyle.SINGLE }
-            },
-            spacing: { before: 100, after: 200 },
-            indent: { left: 200, right: 200 }
+            spacing: { after: 200, line: 276 }
         });
     };
     
     // ========== BUILD DOCUMENT CONTENT ==========
     const children = [];
-    
+
     // ========== COVER PAGE ==========
-    // Spacer for visual balance
-    children.push(new Paragraph({ spacing: { before: 1000 } }));
-    
-    // Decorative top border
-    children.push(new Paragraph({
-        border: {
-            top: { color: colors.accent, size: 24, style: BorderStyle.SINGLE }
-        },
-        spacing: { after: 600 }
-    }));
-    
+    children.push(new Paragraph({ spacing: { before: 1500 } }));
+
     // Main Title
     children.push(new Paragraph({
         children: [
             new TextRun({
-                text: "MEETING INSIGHTS",
+                text: "MEETING INSIGHTS REPORT",
                 bold: true,
-                size: 72,
-                color: colors.primary,
-                font: "Calibri Light"
-            })
-        ],
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 100 }
-    }));
-    
-    children.push(new Paragraph({
-        children: [
-            new TextRun({
-                text: "REPORT",
-                bold: true,
-                size: 72,
-                color: colors.accent,
-                font: "Calibri Light"
+                size: 56,
+                font: "Calibri"
             })
         ],
         alignment: AlignmentType.CENTER,
         spacing: { after: 400 }
     }));
-    
-    // Decorative line
-    children.push(new Paragraph({
-        children: [
-            new TextRun({
-                text: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-                color: colors.accent,
-                size: 24
-            })
-        ],
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 400 }
-    }));
-    
+
     // Date
     children.push(new Paragraph({
         children: [
             new TextRun({
                 text: currentDate,
-                size: 28,
-                color: colors.secondary,
+                size: 24,
                 font: "Calibri"
             })
         ],
         alignment: AlignmentType.CENTER,
-        spacing: { after: 200 }
+        spacing: { after: 600 }
     }));
-    
-    // ========== MEETING DETAILS BOX ==========
-    children.push(new Paragraph({ spacing: { before: 600 } }));
-    
-    // Meeting details table
-    const meetingDetailsTable = new Table({
-        width: { size: 60, type: WidthType.PERCENTAGE },
+
+    // Meeting details
+    children.push(new Paragraph({
+        children: [
+            new TextRun({ text: "Meeting Title: ", bold: true, size: 22, font: "Calibri" }),
+            new TextRun({ text: state.meetingTitle || "Meeting Analysis", size: 22, font: "Calibri" })
+        ],
         alignment: AlignmentType.CENTER,
-        rows: [
-            new TableRow({
-                children: [
-                    new TableCell({
-                        children: [new Paragraph({
-                            children: [new TextRun({ text: "Meeting Title:", bold: true, size: 22, font: "Calibri" })]
-                        })],
-                        width: { size: 30, type: WidthType.PERCENTAGE },
-                        margins: { top: 100, bottom: 100, left: 200, right: 100 }
-                    }),
-                    new TableCell({
-                        children: [new Paragraph({
-                            children: [new TextRun({ 
-                                text: state.meetingTitle || "Meeting Analysis", 
-                                size: 22, 
-                                font: "Calibri" 
-                            })]
-                        })],
-                        margins: { top: 100, bottom: 100, left: 100, right: 200 }
-                    })
-                ]
-            }),
-            new TableRow({
-                children: [
-                    new TableCell({
-                        children: [new Paragraph({
-                            children: [new TextRun({ text: "Date:", bold: true, size: 22, font: "Calibri" })]
-                        })],
-                        margins: { top: 100, bottom: 100, left: 200, right: 100 }
-                    }),
-                    new TableCell({
-                        children: [new Paragraph({
-                            children: [new TextRun({ 
-                                text: state.meetingDate || shortDate, 
-                                size: 22, 
-                                font: "Calibri" 
-                            })]
-                        })],
-                        margins: { top: 100, bottom: 100, left: 100, right: 200 }
-                    })
-                ]
-            }),
-            new TableRow({
-                children: [
-                    new TableCell({
-                        children: [new Paragraph({
-                            children: [new TextRun({ text: "Source:", bold: true, size: 22, font: "Calibri" })]
-                        })],
-                        margins: { top: 100, bottom: 100, left: 200, right: 100 }
-                    }),
-                    new TableCell({
-                        children: [new Paragraph({
-                            children: [new TextRun({ 
-                                text: state.selectedFile ? `Audio: ${state.selectedFile.name}` : 
-                                      state.selectedPdfFile ? `PDF: ${state.selectedPdfFile.name}` :
-                                      state.urlContent ? 'URL Import' : 'Text Input',
-                                size: 22, 
-                                font: "Calibri",
-                                italics: true
-                            })]
-                        })],
-                        margins: { top: 100, bottom: 100, left: 100, right: 200 }
-                    })
-                ]
+        spacing: { after: 100 }
+    }));
+
+    children.push(new Paragraph({
+        children: [
+            new TextRun({ text: "Source: ", bold: true, size: 22, font: "Calibri" }),
+            new TextRun({
+                text: state.selectedFile ? `Audio: ${state.selectedFile.name}` :
+                      state.selectedPdfFile ? `PDF: ${state.selectedPdfFile.name}` :
+                      state.selectedVideoFile ? `Video: ${state.selectedVideoFile.name}` :
+                      state.urlContent ? 'URL Import' : 'Text Input',
+                size: 22,
+                font: "Calibri"
             })
         ],
-        borders: {
-            top: { style: BorderStyle.SINGLE, size: 1, color: colors.light },
-            bottom: { style: BorderStyle.SINGLE, size: 1, color: colors.light },
-            left: { style: BorderStyle.SINGLE, size: 1, color: colors.light },
-            right: { style: BorderStyle.SINGLE, size: 1, color: colors.light },
-            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: colors.light }
-        }
-    });
-    children.push(meetingDetailsTable);
-    
-    // Branding at bottom of cover
-    children.push(new Paragraph({ spacing: { before: 1200 } }));
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 }
+    }));
+
+    // Branding
+    children.push(new Paragraph({ spacing: { before: 800 } }));
     children.push(new Paragraph({
         children: [
             new TextRun({
-                text: "Generated by ",
+                text: "Generated by northstar.LM",
                 size: 20,
-                color: colors.muted,
-                font: "Calibri"
-            }),
-            new TextRun({
-                text: "northstar.LM",
-                size: 20,
-                color: colors.accent,
-                bold: true,
-                font: "Calibri"
-            }),
-            new TextRun({
-                text: " • AI-Powered Meeting Intelligence",
-                size: 20,
-                color: colors.muted,
+                color: colors.gray,
                 font: "Calibri"
             })
         ],
         alignment: AlignmentType.CENTER
     }));
-    
+
     // Page break after cover
     children.push(new Paragraph({ children: [new PageBreak()] }));
-    
+
     // ========== TABLE OF CONTENTS ==========
     children.push(new Paragraph({
         children: [
             new TextRun({
-                text: "Table of Contents",
+                text: "TABLE OF CONTENTS",
                 bold: true,
-                size: 32,
-                color: colors.primary,
-                font: "Calibri Light"
+                size: 28,
+                font: "Calibri"
             })
         ],
         spacing: { after: 400 }
     }));
-    
+
     children.push(new TableOfContents("Table of Contents", {
         hyperlink: true,
         headingStyleRange: "1-3"
     }));
-    
+
     children.push(new Paragraph({ spacing: { after: 200 } }));
     children.push(new Paragraph({
         children: [
@@ -2179,129 +2022,59 @@ async function downloadDocx() {
                 text: "Note: Update this table by right-clicking and selecting 'Update Field' in Microsoft Word.",
                 italics: true,
                 size: 18,
-                color: colors.muted
+                color: colors.gray
             })
         ],
         spacing: { after: 400 }
     }));
-    
+
     // Page break after TOC
     children.push(new Paragraph({ children: [new PageBreak()] }));
-    
+
     // ========== EXECUTIVE SUMMARY ==========
-    children.push(createSectionHeading("Executive Summary", "📋"));
-    children.push(createInfoBox(state.results.summary, "f0f9ff"));
+    children.push(createSectionHeading("Executive Summary"));
+    children.push(createTextParagraph(state.results.summary));
     children.push(new Paragraph({ spacing: { after: 300 } }));
     
     // ========== KEY POINTS ==========
-    children.push(createSectionHeading("Key Points", "💡"));
-    children.push(new Paragraph({
-        children: [
-            new TextRun({
-                text: "The following key insights were identified from the meeting:",
-                size: 22,
-                color: colors.muted,
-                italics: true,
-                font: "Calibri"
-            })
-        ],
-        spacing: { after: 200 }
-    }));
-    
+    children.push(createSectionHeading("Key Points"));
+
     state.results.keyPoints.split('\n')
         .filter(line => line.trim())
         .forEach(point => {
             children.push(createBulletItem(point));
         });
     children.push(new Paragraph({ spacing: { after: 300 } }));
-    
+
     // ========== ACTION ITEMS ==========
-    children.push(createSectionHeading("Action Items", "✅"));
-    children.push(new Paragraph({
-        children: [
-            new TextRun({
-                text: "The following action items require follow-up:",
-                size: 22,
-                color: colors.muted,
-                italics: true,
-                font: "Calibri"
-            })
-        ],
-        spacing: { after: 200 }
-    }));
-    
+    children.push(createSectionHeading("Action Items"));
+
     state.results.actionItems.split('\n')
         .filter(line => line.trim())
-        .forEach((item, idx) => {
-            children.push(new Paragraph({
-                children: [
-                    new TextRun({
-                        text: "☐  ",
-                        size: 24,
-                        color: colors.accent
-                    }),
-                    new TextRun({
-                        text: item.replace(/^[-•*▸☐✓\d+.)]\s*/, '').trim(),
-                        size: 22,
-                        font: "Calibri"
-                    })
-                ],
-                spacing: { after: 120 },
-                indent: { left: 200 }
-            }));
+        .forEach(item => {
+            children.push(createBulletItem(item));
         });
     children.push(new Paragraph({ spacing: { after: 300 } }));
-    
+
     // ========== SENTIMENT ANALYSIS ==========
-    children.push(createSectionHeading("Sentiment Analysis", "📊"));
-    
-    // Determine sentiment color
-    const sentimentText = state.results.sentiment.toLowerCase();
-    let sentimentColor = colors.muted;
-    let sentimentBg = "f7fafc";
-    if (sentimentText.includes('positive') || sentimentText.includes('optimistic')) {
-        sentimentColor = colors.success;
-        sentimentBg = "f0fff4";
-    } else if (sentimentText.includes('negative') || sentimentText.includes('concern')) {
-        sentimentColor = "dc2626";
-        sentimentBg = "fef2f2";
-    }
-    
+    children.push(createSectionHeading("Sentiment Analysis"));
+
     children.push(new Paragraph({
         children: [
             new TextRun({
                 text: state.results.sentiment,
-                size: 26,
-                bold: true,
-                color: sentimentColor,
+                size: 22,
                 font: "Calibri"
             })
         ],
-        shading: { fill: sentimentBg, type: ShadingType.SOLID },
-        border: {
-            left: { color: sentimentColor, size: 24, style: BorderStyle.SINGLE }
-        },
-        spacing: { before: 100, after: 400 },
-        indent: { left: 200, right: 200 }
+        spacing: { after: 400 }
     }));
     
     // ========== CHAT Q&A (if present) ==========
     const chatMessages = document.querySelectorAll('#chat-messages .chat-message');
     if (chatMessages && chatMessages.length > 1) {
-        children.push(createSectionHeading("Questions & Answers", "💬"));
-        children.push(new Paragraph({
-            children: [
-                new TextRun({
-                    text: "The following questions were asked about the meeting content:",
-                    size: 22,
-                    color: colors.muted,
-                    italics: true,
-                    font: "Calibri"
-                })
-            ],
-            spacing: { after: 200 }
-        }));
-        
+        children.push(createSectionHeading("Questions & Answers"));
+
         chatMessages.forEach(msg => {
             const isUser = msg.classList.contains('user');
             const content = msg.querySelector('.chat-message-content')?.textContent?.trim();
@@ -2312,44 +2085,28 @@ async function downloadDocx() {
                             text: isUser ? "Q: " : "A: ",
                             bold: true,
                             size: 22,
-                            color: isUser ? colors.accent : colors.primary,
                             font: "Calibri"
                         }),
                         new TextRun({
                             text: content,
                             size: 22,
-                            font: "Calibri",
-                            italics: isUser
+                            font: "Calibri"
                         })
                     ],
-                    shading: { fill: isUser ? "fffbeb" : "f0f9ff", type: ShadingType.SOLID },
-                    spacing: { after: 100 },
-                    indent: { left: 200, right: 200 }
+                    spacing: { after: 150 }
                 }));
             }
         });
         children.push(new Paragraph({ spacing: { after: 300 } }));
     }
-    
+
     // ========== AUDIO BRIEFING (if generated) ==========
     if (generatedAudioUrl) {
-        children.push(createSectionHeading("Audio Briefing", "🎧"));
+        children.push(createSectionHeading("Audio Briefing"));
         children.push(new Paragraph({
             children: [
                 new TextRun({
-                    text: "✓ AUDIO GENERATED",
-                    bold: true,
-                    size: 26,
-                    color: colors.success,
-                    font: "Calibri"
-                })
-            ],
-            spacing: { after: 150 }
-        }));
-        children.push(new Paragraph({
-            children: [
-                new TextRun({
-                    text: "An executive audio summary (~2 minutes) has been generated for this meeting.",
+                    text: "An executive audio summary has been generated for this meeting.",
                     size: 22,
                     font: "Calibri"
                 })
@@ -2359,15 +2116,14 @@ async function downloadDocx() {
         children.push(new Paragraph({
             children: [
                 new TextRun({
-                    text: "📎 Attachment: ",
-                    size: 22,
+                    text: "Attachment: ",
                     bold: true,
+                    size: 22,
                     font: "Calibri"
                 }),
                 new TextRun({
                     text: `meeting-briefing-${new Date().toISOString().slice(0, 10)}.mp3`,
                     size: 22,
-                    color: "2563eb",
                     font: "Calibri"
                 })
             ],
@@ -2376,17 +2132,17 @@ async function downloadDocx() {
         children.push(new Paragraph({
             children: [
                 new TextRun({
-                    text: "Note: Download the MP3 file separately from northstar.LM. DOCX does not support embedded audio.",
+                    text: "Note: Download the MP3 file separately. DOCX does not support embedded audio.",
                     size: 18,
                     italics: true,
-                    color: colors.muted,
+                    color: colors.gray,
                     font: "Calibri"
                 })
             ],
             spacing: { after: 400 }
         }));
     }
-    
+
     // ========== INFOGRAPHIC (if generated) ==========
     if (generatedImageBase64) {
         try {
@@ -2396,8 +2152,8 @@ async function downloadDocx() {
                 bytes[i] = binaryString.charCodeAt(i);
             }
             const imageArrayBuffer = bytes.buffer;
-            
-            children.push(createSectionHeading("Meeting Infographic", "🎨"));
+
+            children.push(createSectionHeading("Meeting Infographic"));
             children.push(new Paragraph({
                 children: [
                     new ImageRun({
@@ -2418,7 +2174,7 @@ async function downloadDocx() {
                         text: "AI-generated infographic visualizing key meeting insights",
                         italics: true,
                         size: 18,
-                        color: colors.muted,
+                        color: colors.gray,
                         font: "Calibri"
                     })
                 ],
@@ -2429,63 +2185,54 @@ async function downloadDocx() {
             console.error('Failed to embed infographic:', error);
         }
     }
-    
-    // ========== PROCESSING STATISTICS (as table) ==========
+
+    // ========== PROCESSING STATISTICS ==========
     if (state.metrics) {
         const metrics = state.metrics;
-        children.push(createSectionHeading("Processing Statistics", "⚡"));
-        
+        children.push(createSectionHeading("Processing Statistics"));
+
         // Build stats rows
         const statsRows = [];
-        
+
         if (metrics.whisperMinutes > 0) {
             statsRows.push(["Audio Transcription", `${metrics.whisperMinutes.toFixed(2)} minutes`, "Whisper"]);
         }
-        
+
         statsRows.push(["Text Analysis", formatTokens(metrics.totalTokens) + " tokens", "GPT-5.2"]);
-        
+
         if (metrics.ttsCharacters > 0) {
             statsRows.push(["Audio Generation", metrics.ttsCharacters.toLocaleString() + " characters", "GPT-4o-mini-TTS"]);
         }
-        
+
         if (metrics.imageTotalTokens > 0) {
             statsRows.push(["Image Generation", formatTokens(metrics.imageTotalTokens) + " tokens", "GPT-Image-1.5"]);
         }
-        
-        children.push(createStyledTable(["Operation", "Usage", "Model"], statsRows));
+
+        children.push(createSimpleTable(["Operation", "Usage", "Model"], statsRows));
         children.push(new Paragraph({ spacing: { after: 200 } }));
-        
-        // Total cost in highlighted box
+
+        // Total cost
         children.push(new Paragraph({
             children: [
                 new TextRun({
                     text: "Total Estimated Cost: ",
-                    size: 24,
+                    size: 22,
                     font: "Calibri"
                 }),
                 new TextRun({
                     text: formatCost(metrics.totalCost),
-                    size: 28,
+                    size: 22,
                     bold: true,
-                    color: colors.accent,
                     font: "Calibri"
                 })
             ],
-            shading: { fill: "fffbeb", type: ShadingType.SOLID },
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 200, after: 400 },
-            border: {
-                top: { style: BorderStyle.SINGLE, size: 1, color: colors.accent },
-                bottom: { style: BorderStyle.SINGLE, size: 1, color: colors.accent },
-                left: { style: BorderStyle.SINGLE, size: 1, color: colors.accent },
-                right: { style: BorderStyle.SINGLE, size: 1, color: colors.accent }
-            }
+            spacing: { after: 400 }
         }));
-        
+
         // API calls breakdown table
         if (metrics.apiCalls && metrics.apiCalls.length > 0) {
             children.push(createSubHeading("API Calls Breakdown"));
-            
+
             const apiRows = metrics.apiCalls.map(call => {
                 let detail = '';
                 if (call.model === 'gpt-4o-mini-tts') {
@@ -2499,83 +2246,47 @@ async function downloadDocx() {
                 }
                 return [call.name, call.model, detail];
             });
-            
-            children.push(createStyledTable(["API Call", "Model", "Usage"], apiRows));
+
+            children.push(createSimpleTable(["API Call", "Model", "Usage"], apiRows));
             children.push(new Paragraph({ spacing: { after: 400 } }));
         }
     }
     
     // ========== APPENDIX: FULL TRANSCRIPT ==========
     children.push(new Paragraph({ children: [new PageBreak()] }));
-    
+
     children.push(new Paragraph({
         children: [
             new TextRun({
-                text: "APPENDIX",
+                text: "APPENDIX: FULL TRANSCRIPT",
                 bold: true,
-                size: 36,
-                color: colors.muted,
-                font: "Calibri Light"
-            })
-        ],
-        heading: HeadingLevel.HEADING_1,
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 100 }
-    }));
-    
-    children.push(new Paragraph({
-        children: [
-            new TextRun({
-                text: "Full Meeting Transcript",
-                size: 28,
-                color: colors.secondary,
-                font: "Calibri Light"
-            })
-        ],
-        heading: HeadingLevel.HEADING_2,
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 100 }
-    }));
-    
-    children.push(new Paragraph({
-        children: [
-            new TextRun({
-                text: "The following is the complete transcript of the meeting for reference.",
-                italics: true,
-                size: 18,
-                color: colors.muted,
+                size: 26,
                 font: "Calibri"
             })
         ],
-        alignment: AlignmentType.CENTER,
+        heading: HeadingLevel.HEADING_1,
         spacing: { after: 300 }
     }));
-    
-    children.push(new Paragraph({
-        border: { bottom: { color: colors.light, size: 1, style: BorderStyle.SINGLE } },
-        spacing: { after: 300 }
-    }));
-    
+
     // Transcript content
     children.push(new Paragraph({
         children: [
             new TextRun({
                 text: state.results.transcription,
                 size: 20,
-                color: colors.secondary,
                 font: "Calibri"
             })
         ],
         spacing: { after: 400, line: 320 }
     }));
     
-    // ========== CREATE DOCUMENT WITH ALL FEATURES ==========
+    // ========== CREATE DOCUMENT ==========
     const doc = new Document({
         creator: "northstar.LM",
         title: "Meeting Insights Report",
         subject: "AI-Generated Meeting Analysis",
         keywords: "meeting, analysis, insights, transcript, action items",
-        description: "Meeting insights report generated by northstar.LM AI Meeting Intelligence Platform",
+        description: "Meeting insights report generated by northstar.LM",
         lastModifiedBy: "northstar.LM",
         styles: {
             default: {
@@ -2587,10 +2298,9 @@ async function downloadDocx() {
                 },
                 heading1: {
                     run: {
-                        font: "Calibri Light",
-                        size: 32,
-                        bold: true,
-                        color: colors.primary
+                        font: "Calibri",
+                        size: 26,
+                        bold: true
                     },
                     paragraph: {
                         spacing: { before: 400, after: 200 }
@@ -2599,9 +2309,8 @@ async function downloadDocx() {
                 heading2: {
                     run: {
                         font: "Calibri",
-                        size: 26,
-                        bold: true,
-                        color: colors.secondary
+                        size: 24,
+                        bold: true
                     },
                     paragraph: {
                         spacing: { before: 300, after: 150 }
@@ -2659,27 +2368,13 @@ async function downloadDocx() {
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: "Meeting Insights Report",
+                                    text: `Meeting Insights Report - ${shortDate}`,
                                     size: 18,
-                                    color: colors.muted,
-                                    font: "Calibri"
-                                }),
-                                new TextRun({
-                                    text: "  •  ",
-                                    size: 18,
-                                    color: colors.light
-                                }),
-                                new TextRun({
-                                    text: shortDate,
-                                    size: 18,
-                                    color: colors.muted,
+                                    color: colors.gray,
                                     font: "Calibri"
                                 })
                             ],
-                            alignment: AlignmentType.RIGHT,
-                            border: {
-                                bottom: { color: colors.light, size: 1, style: BorderStyle.SINGLE }
-                            }
+                            alignment: AlignmentType.RIGHT
                         })
                     ]
                 })
@@ -2690,36 +2385,28 @@ async function downloadDocx() {
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: "Generated by northstar.LM",
+                                    text: "Page ",
                                     size: 16,
-                                    color: colors.muted,
+                                    color: colors.gray,
                                     font: "Calibri"
-                                }),
-                                new TextRun({
-                                    text: "  |  Page ",
-                                    size: 16,
-                                    color: colors.light
                                 }),
                                 new TextRun({
                                     children: [PageNumber.CURRENT],
                                     size: 16,
-                                    color: colors.muted
+                                    color: colors.gray
                                 }),
                                 new TextRun({
                                     text: " of ",
                                     size: 16,
-                                    color: colors.light
+                                    color: colors.gray
                                 }),
                                 new TextRun({
                                     children: [PageNumber.TOTAL_PAGES],
                                     size: 16,
-                                    color: colors.muted
+                                    color: colors.gray
                                 })
                             ],
-                            alignment: AlignmentType.CENTER,
-                            border: {
-                                top: { color: colors.light, size: 1, style: BorderStyle.SINGLE }
-                            }
+                            alignment: AlignmentType.CENTER
                         })
                     ]
                 })
