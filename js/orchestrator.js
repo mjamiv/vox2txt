@@ -1705,19 +1705,19 @@ function applyOptimizationMode() {
         balanced: {
             shadowSkipSimpleQueries: true,
             shadowPromptAsyncTimeoutMs: 2000,
-            maxSubQueries: 5,
+            maxSubQueries: 10,                  // Default depth covers most agent sets
             enableShadowPrompt: state.settings.enableShadowPrompt
         },
         speed: {
             shadowSkipSimpleQueries: true,
             shadowPromptAsyncTimeoutMs: 1000,  // Shorter timeout
-            maxSubQueries: 3,                   // Fewer sub-queries
+            maxSubQueries: 6,                   // Reduced sub-queries for speed
             enableShadowPrompt: false           // Skip shadow entirely for speed
         },
         cost: {
             shadowSkipSimpleQueries: false,    // Always run shadow for quality
             shadowPromptAsyncTimeoutMs: 3000,  // Longer timeout for full analysis
-            maxSubQueries: 5,
+            maxSubQueries: 10,                  // Full depth for quality
             enableShadowPrompt: true           // Always enable shadow
         }
     };
@@ -5554,7 +5554,7 @@ function renderDepthControls(messageContainer, messageId, query, depthInfo) {
     const { currentDepth, maxDepth, agentsQueried, canGoDeeper, nextDepth, depthIncrement } = depthInfo;
 
     // Don't show controls if there's only 1 agent or fewer than the default depth
-    if (maxDepth <= 1 || (maxDepth <= (RLM_CONFIG.defaultSubQueryDepth || 5) && !canGoDeeper)) {
+    if (maxDepth <= 1 || (maxDepth <= (RLM_CONFIG.defaultSubQueryDepth || 10) && !canGoDeeper)) {
         return;
     }
 
