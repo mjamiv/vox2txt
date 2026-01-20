@@ -39,7 +39,7 @@ import { EVAL_RUBRIC, scoreEvaluation, buildEvalReport } from './eval-harness.js
 export const RLM_CONFIG = {
     // Decomposition settings
     maxSubQueries: 25,  // Absolute ceiling
-    defaultSubQueryDepth: 5,  // Starting depth (cost-effective default)
+    defaultSubQueryDepth: 10,  // Starting depth (covers up to 10 agents by default)
     depthIncrement: 5,  // How many to add per "Go Deeper"
     summaryMaxSubQueries: 4,
     minRelevanceScore: 2,

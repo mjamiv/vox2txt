@@ -5,7 +5,7 @@
  * IMPORTANT: Increment CACHE_VERSION when deploying new changes!
  */
 
-const CACHE_VERSION = 8;
+const CACHE_VERSION = 9;
 const CACHE_NAME = `northstar-lm-v${CACHE_VERSION}`;
 
 /**
