@@ -483,7 +483,7 @@ function recordModelFallback(requestedModel, actualModel, callName = 'API Call')
  * All API calls within this group will be aggregated together
  * @param {string} queryName - Name/description of the user query
  * @param {boolean} usesRLM - Whether this query uses RLM processing
- * @param {string} mode - Processing mode ('direct', 'rlm', 'repl')
+ * @param {string} mode - Processing mode ('direct', 'rlm-swm', 'rlm-hybrid', 'repl')
  */
 function startPromptGroup(queryName, usesRLM = false, mode = 'direct') {
     console.log('[Metrics] startPromptGroup:', queryName, 'mode:', mode, 'usesRLM:', usesRLM);
@@ -493,7 +493,7 @@ function startPromptGroup(queryName, usesRLM = false, mode = 'direct') {
         name: queryName,
         prompt: '',
         usesRLM: usesRLM,
-        mode: mode,  // 'direct', 'rlm', or 'repl'
+        mode: mode,  // 'direct', 'rlm-swm', 'rlm-hybrid', or 'repl'
         model: state.settings.model,
         requestedModel: state.settings.model,
         effort: isGpt52Model(state.settings.model) ? state.settings.effort : 'N/A',
@@ -3114,7 +3114,8 @@ function getPromptProcessingMode(promptText) {
     const rlmAuto = state.settings.rlmAuto;
     const useREPL = rlmEnabled && rlmPipeline.shouldUseREPL && rlmPipeline.shouldUseREPL(promptText, { auto: rlmAuto });
     const useRLM = rlmEnabled && !useREPL && rlmPipeline.shouldUseRLM(promptText, { auto: rlmAuto });
-    const processingMode = useREPL ? 'repl' : (useRLM ? 'rlm' : 'direct');
+    // Return full processing mode for CSV/metrics (rlm-swm, rlm-hybrid) instead of generic 'rlm'
+    const processingMode = useREPL ? 'repl' : (useRLM ? state.settings.processingMode : 'direct');
 
     return { useREPL, useRLM, processingMode };
 }
@@ -4905,9 +4906,9 @@ async function sendChatMessage() {
         const modelNames = { 'gpt-5.2': 'GPT-5.2', 'gpt-5.2-2025-12-11': 'GPT-5.2', 'gpt-5-mini': 'GPT-5-mini', 'gpt-5-nano': 'GPT-5-nano' };
         const modelName = modelNames[state.settings.model] || 'GPT-5.2';
 
-        // Determine processing mode for metrics
-        const processingMode = useREPL ? 'repl' : (useRLM ? 'rlm' : 'direct');
-        
+        // Determine processing mode for metrics (use full mode for CSV/metrics)
+        const processingMode = useREPL ? 'repl' : (useRLM ? state.settings.processingMode : 'direct');
+
         // Start a prompt group to aggregate all API calls for this user query
         const queryPreview = message.substring(0, 50) + (message.length > 50 ? '...' : '');
         startPromptGroup(`Chat: ${queryPreview}`, useRLM || useREPL, processingMode);
@@ -5633,7 +5634,7 @@ async function handleGoDeeper(messageId) {
 
     try {
         // Start a new prompt group for the expanded query
-        startPromptGroup(`Go Deeper: ${query.substring(0, 30)}...`, true, 'rlm');
+        startPromptGroup(`Go Deeper: ${query.substring(0, 30)}...`, true, state.settings.processingMode);
 
         // Re-run the query with the new depth
         const result = await chatWithAgents(query, thinkingId, null, { depthOverride: newDepth });
@@ -7468,6 +7469,8 @@ function downloadMetricsCSV() {
         const methodLabels = {
             'direct': 'Direct Chat',
             'rlm': 'RLM',
+            'rlm-swm': 'RLM Standard',
+            'rlm-hybrid': 'RLM Hybrid',
             'repl': 'REPL'
         };
         return methodLabels[mode] || mode || 'Direct Chat';

@@ -20,6 +20,8 @@ Features include multi-meeting orchestration, agent export/import, image OCR wit
   - Fixed JavaScript syntax error: nullish coalescing (`??`) mixed with logical OR (`||`) requires parentheses
   - Added fallback handlers with longer timeout (1500ms) for slower module loading
   - Improved accessibility with ARIA labels and `role="button"` on upload zone
+  - Fixed RLM `_executeDirect` returning results without `success: true`, causing aggregator to filter out valid responses ("No results could be gathered" error with single agent)
+  - Simplified DOCX export formatting: removed emojis, decorative borders, and colored backgrounds while retaining all content sections
 
 - **RLM Optimizations:**
   - Query decomposer now emits `intent`, `dataPreference`, and `formatConstraints` for intelligent routing
@@ -60,6 +62,11 @@ Features include multi-meeting orchestration, agent export/import, image OCR wit
   - Compact node design with icon, editable name, toggle, and remove controls
   - Canvas dynamically expands to fit any number of agents
   - New `js/kb-canvas.js` module handles all canvas rendering and interactions
+  - Enhanced visual design: animated background grid, pulsing glow effects on active nodes, larger node cards (160-220px), improved entrance animations
+
+- **Metrics Enhancements:**
+  - CSV Method column now displays specific RLM sub-mode ("RLM Standard" or "RLM Hybrid") instead of generic "RLM"
+  - Processing mode passed correctly through chat and Go Deeper functions
 
 - **Agent Limit:**
   - Maximum 25 agents can be added to the Knowledge Base
@@ -67,7 +74,7 @@ Features include multi-meeting orchestration, agent export/import, image OCR wit
   - Context gauge accurately reflects usage with many agents
 
 - **Progressive Sub-Query Depth:**
-  - Default sub-query depth reduced to 5 (from scaling 1:1 with agent count) for ~77% cost savings
+  - Default sub-query depth set to 10 (covers most datasets by default; can be increased for larger agent sets)
   - "Go Deeper" button on responses allows expanding to query more agents on demand
   - Depth indicator shows "Queried X of Y agents" with visual feedback
   - Each "Go Deeper" click adds +5 agents until all are queried
@@ -507,7 +514,7 @@ flowchart TB
 ```javascript
 const RLM_CONFIG = {
     maxSubQueries: 25,           // Absolute ceiling
-    defaultSubQueryDepth: 5,     // Starting depth (cost-effective default)
+    defaultSubQueryDepth: 10,    // Starting depth (covers most datasets)
     depthIncrement: 5,           // How many to add per "Go Deeper"
     summaryMaxSubQueries: 4,     // Cap fan-out for full-scope summaries
     maxConcurrent: 4,            // Parallel execution limit
@@ -670,7 +677,9 @@ Remaining items:
 
 Recently completed:
 - ✅ A/B testing framework via multi-configuration test runs (run same prompts against Direct vs RLM configs)
-- ✅ Progressive depth controls: default 5 sub-queries with on-demand expansion
+- ✅ Progressive depth controls: default 10 sub-queries with on-demand expansion
+- ✅ CSV Method column displays specific sub-mode (RLM Standard vs RLM Hybrid)
+- ✅ KB Canvas visual enhancements: animated backgrounds, pulsing glow effects, larger nodes
 
 ## Data Flow: Agent Export/Import
 

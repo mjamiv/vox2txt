@@ -215,11 +215,11 @@ class KBCanvas {
      */
     calculateInitialPosition(index, totalNodes = null) {
         const containerRect = this.space.getBoundingClientRect();
-        const nodeWidth = 130;  // Readable node width
-        const nodeHeight = 40;  // Comfortable height
-        const padding = 20;
-        const gapX = 40;        // Space for horizontal connectors
-        const gapY = 30;        // Space for vertical connectors
+        const nodeWidth = 190;  // Larger readable node width
+        const nodeHeight = 50;  // Comfortable height
+        const padding = 30;
+        const gapX = 50;        // Space for horizontal connectors
+        const gapY = 40;        // Space for vertical connectors
 
         // Calculate how many nodes fit per row
         const availableWidth = containerRect.width - (padding * 2);
@@ -263,12 +263,12 @@ class KBCanvas {
      */
     autoResizeCanvas() {
         if (this.nodes.size === 0) {
-            this.space.style.minHeight = '200px';
+            this.space.style.minHeight = '280px';
             return;
         }
 
-        const nodeHeight = 40;
-        const padding = 20;
+        const nodeHeight = 50;
+        const padding = 30;
         let maxY = 0;
 
         // Find the lowest node position
@@ -307,9 +307,9 @@ class KBCanvas {
 
         // Calculate nodes per row for snake detection
         const containerRect = this.space.getBoundingClientRect();
-        const nodeWidth = 130;
-        const padding = 20;
-        const gapX = 40;
+        const nodeWidth = 190;
+        const padding = 30;
+        const gapX = 50;
         const availableWidth = containerRect.width - (padding * 2);
         const nodesPerRow = Math.max(1, Math.floor(availableWidth / (nodeWidth + gapX)));
 
@@ -452,8 +452,8 @@ class KBCanvas {
         }));
 
         // Pre-expand canvas to fit all nodes
-        const nodeHeight = 40;
-        const padding = 20;
+        const nodeHeight = 50;
+        const padding = 30;
         const maxY = Math.max(...newPositions.map(p => p.position.y));
         const requiredHeight = maxY + nodeHeight + padding + 30;
         this.space.style.minHeight = `${Math.max(200, requiredHeight)}px`;
