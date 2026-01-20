@@ -123,7 +123,7 @@ const MODEL_CONTEXT_WINDOWS = {
     'gpt-5-nano': 400000
 };
 
-const TEST_PROMPT_LIMIT = 10;
+const TEST_PROMPT_LIMIT = 100;  // Effectively unlimited for practical use
 const TEST_SETTINGS_KEYS = [
     'useRLM',
     'rlmAuto',
