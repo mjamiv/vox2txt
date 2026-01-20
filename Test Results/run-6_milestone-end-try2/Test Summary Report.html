@@ -1,0 +1,318 @@
+
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>northstar.LM Multi-Config Test Report</title>
+            <style>
+                body { font-family: 'Source Sans 3', Arial, sans-serif; margin: 32px; color: #0a0e17; }
+                h1 { color: #b17d1b; margin-bottom: 8px; }
+                h2 { margin-top: 32px; color: #0a0e17; border-bottom: 2px solid #d4a853; padding-bottom: 8px; }
+                .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin: 24px 0; }
+                .summary-card { padding: 16px; border-radius: 12px; border: 1px solid #e0d6c3; background: #f8f4ee; }
+                table { width: 100%; border-collapse: collapse; margin-top: 16px; margin-bottom: 32px; }
+                th, td { text-align: left; border-bottom: 1px solid #e0d6c3; padding: 12px; vertical-align: top; }
+                th { background: #f1e9dc; }
+                .comparison-section { background: #fef9f0; padding: 24px; border-radius: 12px; margin: 24px 0; border: 1px solid #d4a853; }
+            </style>
+        </head>
+        <body>
+            <h1>northstar.LM Multi-Configuration Test Report</h1>
+            <p>Generated 1/19/2026, 3:48:43 PM</p>
+            <p><strong>Prompt set:</strong> northstar-rlm-core-7 (v2026-01-18)</p>
+            <p>This report compares 3 configuration(s) across 7 prompt(s).</p>
+
+            <div class="summary">
+                <div class="summary-card">
+                    <strong>Configurations</strong>
+                    <div>3</div>
+                </div>
+                <div class="summary-card">
+                    <strong>Prompts</strong>
+                    <div>7</div>
+                </div>
+                <div class="summary-card">
+                    <strong>Total Runs</strong>
+                    <div>21</div>
+                </div>
+                <div class="summary-card">
+                    <strong>Total Tokens</strong>
+                    <div>434,739</div>
+                </div>
+                <div class="summary-card">
+                    <strong>Total Cost</strong>
+                    <div>$0.6604</div>
+                </div>
+            </div>
+
+            <div class="comparison-section">
+                <h2 style="margin-top: 0; border: none;">Configuration Comparison</h2>
+                
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Method 1 - Direct LLM Chat</th><th>Method 2 - RLM with Signal-Weighted Memory</th><th>Method 3 - RLM with Focus-Shadow Prompt</th>
+                    
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Tokens</strong></td><td>213,406</td><td>106,418</td><td>114,915</td></tr>
+                <tr><td><strong>Cost</strong></td><td>$0.4372</td><td>$0.1117</td><td>$0.1115</td></tr>
+                <tr><td><strong>Avg Time</strong></td><td>16.1s</td><td>40.4s</td><td>40.8s</td></tr>
+                <tr><td><strong>Errors</strong></td><td>0</td><td>0</td><td>0</td></tr>
+            </tbody>
+        </table>
+    
+            </div>
+
+            
+            <h2>Configuration 1: Method 1 - Direct LLM Chat</h2>
+            <p><strong>Settings:</strong> Model: GPT-5.2 • Effort: none • RLM: Off • RLM Auto: Off • Shadow Prompt: Off • Retrieval Prompt: Off • Focus Shadow: Off • Focus Episodes: Off • Prompt Guardrails: Off • Memory Debug: Off</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Prompt</th>
+                        <th>Tokens</th>
+                        <th>Cost</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                <tr>
+                    <td>1</td>
+                    <td>Summarize the key decisions made throughout the meetings.</td>
+                    <td>30,695</td>
+                    <td>$0.0710</td>
+                    <td>21.4s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>2</td>
+                    <td>What were the main blockers discussed across the meetings.</td>
+                    <td>30,538</td>
+                    <td>$0.0604</td>
+                    <td>18.7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>3</td>
+                    <td>List the action items and owners that came out of the Q3 and Q4 meetings.</td>
+                    <td>31,250</td>
+                    <td>$0.0683</td>
+                    <td>20.7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>4</td>
+                    <td>Which risks keep showing up across all meetings.</td>
+                    <td>30,222</td>
+                    <td>$0.0596</td>
+                    <td>12.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>5</td>
+                    <td>What were the main concerns with the capital markets in 2025.</td>
+                    <td>30,156</td>
+                    <td>$0.0590</td>
+                    <td>12.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>6</td>
+                    <td>Highlight any commitments made to external stakeholders since Q2.</td>
+                    <td>30,276</td>
+                    <td>$0.0608</td>
+                    <td>12.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>7</td>
+                    <td>Summarize this conversation with 6 bullets per topic.</td>
+                    <td>30,269</td>
+                    <td>$0.0581</td>
+                    <td>13.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                </tbody>
+            </table>
+        
+
+            <h2>Configuration 2: Method 2 - RLM with Signal-Weighted Memory</h2>
+            <p><strong>Settings:</strong> Model: GPT-5.2 • Effort: none • RLM: On • RLM Auto: Off • Shadow Prompt: Off • Retrieval Prompt: On • Focus Shadow: Off • Focus Episodes: Off • Prompt Guardrails: On • Memory Debug: Off</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Prompt</th>
+                        <th>Tokens</th>
+                        <th>Cost</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                <tr>
+                    <td>1</td>
+                    <td>Summarize the key decisions made throughout the meetings.</td>
+                    <td>5,066</td>
+                    <td><$0.01</td>
+                    <td>37.0s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>2</td>
+                    <td>What were the main blockers discussed across the meetings.</td>
+                    <td>10,980</td>
+                    <td>$0.0107</td>
+                    <td>40.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>3</td>
+                    <td>List the action items and owners that came out of the Q3 and Q4 meetings.</td>
+                    <td>17,114</td>
+                    <td>$0.0249</td>
+                    <td>53.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>4</td>
+                    <td>Which risks keep showing up across all meetings.</td>
+                    <td>15,729</td>
+                    <td>$0.0132</td>
+                    <td>39.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>5</td>
+                    <td>What were the main concerns with the capital markets in 2025.</td>
+                    <td>20,425</td>
+                    <td>$0.0279</td>
+                    <td>35.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>6</td>
+                    <td>Highlight any commitments made to external stakeholders since Q2.</td>
+                    <td>17,735</td>
+                    <td>$0.0134</td>
+                    <td>40.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>7</td>
+                    <td>Summarize this conversation with 6 bullets per topic.</td>
+                    <td>19,369</td>
+                    <td>$0.0149</td>
+                    <td>35.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                </tbody>
+            </table>
+        
+
+            <h2>Configuration 3: Method 3 - RLM with Focus-Shadow Prompt</h2>
+            <p><strong>Settings:</strong> Model: GPT-5.2 • Effort: none • RLM: On • RLM Auto: Off • Shadow Prompt: On • Retrieval Prompt: On • Focus Shadow: On • Focus Episodes: On • Prompt Guardrails: On • Memory Debug: On</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Prompt</th>
+                        <th>Tokens</th>
+                        <th>Cost</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                <tr>
+                    <td>1</td>
+                    <td>Summarize the key decisions made throughout the meetings.</td>
+                    <td>8,676</td>
+                    <td><$0.01</td>
+                    <td>35.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>2</td>
+                    <td>What were the main blockers discussed across the meetings.</td>
+                    <td>13,845</td>
+                    <td>$0.0111</td>
+                    <td>40.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>3</td>
+                    <td>List the action items and owners that came out of the Q3 and Q4 meetings.</td>
+                    <td>18,313</td>
+                    <td>$0.0248</td>
+                    <td>48.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>4</td>
+                    <td>Which risks keep showing up across all meetings.</td>
+                    <td>14,761</td>
+                    <td><$0.01</td>
+                    <td>24.5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>5</td>
+                    <td>What were the main concerns with the capital markets in 2025.</td>
+                    <td>20,131</td>
+                    <td>$0.0271</td>
+                    <td>40.4s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>6</td>
+                    <td>Highlight any commitments made to external stakeholders since Q2.</td>
+                    <td>18,510</td>
+                    <td>$0.0150</td>
+                    <td>50.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>7</td>
+                    <td>Summarize this conversation with 6 bullets per topic.</td>
+                    <td>20,679</td>
+                    <td>$0.0153</td>
+                    <td>45.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                </tbody>
+            </table>
+        
+        </body>
+        </html>
+    
