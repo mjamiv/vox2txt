@@ -137,7 +137,9 @@ export class SubExecutor {
             queryId: query.id,
             type: query.type,
             response: result,
-            targetAgents: query.targetAgents
+            targetAgents: query.targetAgents,
+            agentName: query.agentName,
+            success: true
         }];
     }
 
