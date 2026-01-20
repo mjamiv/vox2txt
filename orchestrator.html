@@ -554,12 +554,17 @@
                 <button class="modal-close" id="test-prompting-close-btn">&times;</button>
             </div>
             <div class="modal-body test-modal-body">
-                <p class="modal-intro">Select up to 10 prompts, edit them, or add your own to evaluate orchestrator behavior.</p>
+                <p class="modal-intro">Select prompts, edit them, or add your own to evaluate orchestrator behavior. Import from CSV or export your test program for reuse.</p>
                 <div class="test-prompt-controls">
                     <div class="test-selected-count">
-                        Selected: <span id="test-selected-count">0</span> / 10
+                        Selected: <span id="test-selected-count">0</span>
                     </div>
-                    <button class="btn-secondary btn-sm" id="add-custom-prompt-btn">+ Add Custom Prompt</button>
+                    <div class="test-prompt-actions">
+                        <button class="btn-secondary btn-sm" id="add-custom-prompt-btn">+ Add Prompt</button>
+                        <button class="btn-secondary btn-sm" id="import-csv-btn" title="Import prompts from CSV file">Import CSV</button>
+                        <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+                        <button class="btn-secondary btn-sm" id="export-test-program-btn" title="Export prompts and configurations for reuse">Export Program</button>
+                    </div>
                 </div>
                 <div class="test-prompt-list" id="test-prompt-list">
                     <!-- Prompt rows injected by JS -->

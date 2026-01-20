@@ -975,6 +975,9 @@ function initElements() {
         testPromptList: document.getElementById('test-prompt-list'),
         testSelectedCount: document.getElementById('test-selected-count'),
         addCustomPromptBtn: document.getElementById('add-custom-prompt-btn'),
+        importCsvBtn: document.getElementById('import-csv-btn'),
+        csvFileInput: document.getElementById('csv-file-input'),
+        exportTestProgramBtn: document.getElementById('export-test-program-btn'),
         deployTestAgentBtn: document.getElementById('deploy-test-agent-btn'),
         testPromptError: document.getElementById('test-prompt-error'),
         testSettingsResetBtn: document.getElementById('test-settings-reset-btn'),
@@ -1456,6 +1459,17 @@ function setupEventListeners() {
     }
     if (elements.addCustomPromptBtn) {
         elements.addCustomPromptBtn.addEventListener('click', addCustomTestPrompt);
+    }
+    if (elements.importCsvBtn) {
+        elements.importCsvBtn.addEventListener('click', () => {
+            elements.csvFileInput?.click();
+        });
+    }
+    if (elements.csvFileInput) {
+        elements.csvFileInput.addEventListener('change', handleCsvImport);
+    }
+    if (elements.exportTestProgramBtn) {
+        elements.exportTestProgramBtn.addEventListener('click', exportTestProgram);
     }
     if (elements.addConfigBtn) {
         elements.addConfigBtn.addEventListener('click', () => {
@@ -2904,6 +2918,225 @@ function addCustomTestPrompt() {
     if (lastTextarea) {
         lastTextarea.focus();
     }
+}
+
+/**
+ * Parse CSV content and extract prompt texts
+ * Supports: "prompt_text" column, "prompt" column, or single-column CSVs
+ */
+function parseCsvPrompts(csvText) {
+    const lines = csvText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    if (lines.length === 0) return [];
+
+    // Try to detect header row
+    const firstLine = lines[0].toLowerCase();
+    let hasHeader = firstLine.includes('prompt') || firstLine.includes('text') || firstLine.includes('question');
+
+    // Parse CSV properly handling quoted strings
+    const parseCSVLine = (line) => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                if (inQuotes && line[i + 1] === '"') {
+                    // Escaped quote
+                    current += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current.trim());
+        return result;
+    };
+
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+    const prompts = [];
+
+    // Determine column index for prompt text
+    let promptColIndex = 0;
+    if (hasHeader) {
+        const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/"/g, ''));
+        const promptIndex = headers.findIndex(h =>
+            h === 'prompt_text' || h === 'prompt' || h === 'text' || h === 'question'
+        );
+        if (promptIndex >= 0) {
+            promptColIndex = promptIndex;
+        }
+    }
+
+    for (const line of dataLines) {
+        const columns = parseCSVLine(line);
+        if (columns.length > promptColIndex) {
+            let promptText = columns[promptColIndex];
+            // Remove surrounding quotes if present
+            if (promptText.startsWith('"') && promptText.endsWith('"')) {
+                promptText = promptText.slice(1, -1);
+            }
+            // Unescape double quotes
+            promptText = promptText.replace(/""/g, '"');
+            if (promptText.trim().length > 0) {
+                prompts.push(promptText.trim());
+            }
+        }
+    }
+
+    return prompts;
+}
+
+/**
+ * Handle CSV file import for test prompts
+ */
+function handleCsvImport(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const csvText = e.target.result;
+            const prompts = parseCsvPrompts(csvText);
+
+            if (prompts.length === 0) {
+                setTestPromptError('No valid prompts found in CSV file. Ensure the file has a "prompt_text" or "prompt" column.');
+                return;
+            }
+
+            // Clear existing prompts and add imported ones
+            testPromptState.prompts = prompts.map((text, index) =>
+                createTestPrompt(text, {
+                    selected: index < TEST_PROMPT_LIMIT,
+                    isCustom: true
+                })
+            );
+
+            updateTestSelectedCount();
+            renderTestPromptList();
+            setTestPromptError('');
+
+            // Show success message
+            const countMsg = prompts.length === 1 ? '1 prompt' : `${prompts.length} prompts`;
+            showTemporaryMessage(elements.importCsvBtn, `Imported ${countMsg}`, 'Import CSV');
+        } catch (err) {
+            console.error('CSV import error:', err);
+            setTestPromptError(`Failed to parse CSV: ${err.message}`);
+        }
+    };
+    reader.onerror = () => {
+        setTestPromptError('Failed to read file');
+    };
+    reader.readAsText(file);
+
+    // Reset the input so the same file can be selected again
+    event.target.value = '';
+}
+
+/**
+ * Export test program (prompts + configurations) as JSON file
+ */
+function exportTestProgram() {
+    const selectedPrompts = getSelectedTestPrompts();
+    const allPrompts = testPromptState.prompts.map(p => ({
+        text: p.text,
+        selected: p.selected,
+        isCustom: p.isCustom
+    }));
+
+    const program = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        name: `Test Program - ${new Date().toLocaleDateString()}`,
+        prompts: allPrompts,
+        selectedCount: selectedPrompts.length,
+        configurations: testPromptState.configurations.map(config => ({
+            name: config.name,
+            enabled: config.enabled,
+            settings: { ...config.settings }
+        }))
+    };
+
+    const json = JSON.stringify(program, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `northstar-test-program-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showTemporaryMessage(elements.exportTestProgramBtn, 'Exported!', 'Export Program');
+}
+
+/**
+ * Import test program from JSON file
+ * Can be called programmatically or via file input
+ */
+function importTestProgram(programJson) {
+    try {
+        const program = typeof programJson === 'string' ? JSON.parse(programJson) : programJson;
+
+        if (!program.prompts || !Array.isArray(program.prompts)) {
+            throw new Error('Invalid test program format: missing prompts array');
+        }
+
+        // Import prompts
+        testPromptState.prompts = program.prompts.map((p, index) =>
+            createTestPrompt(p.text || '', {
+                selected: p.selected ?? index < TEST_PROMPT_LIMIT,
+                isCustom: p.isCustom ?? true
+            })
+        );
+
+        // Import configurations if present
+        if (program.configurations && Array.isArray(program.configurations)) {
+            testPromptState.configurations = program.configurations.map(config =>
+                createTestConfiguration(config.name, config.settings)
+            );
+            // Update enabled state
+            testPromptState.configurations.forEach((config, index) => {
+                if (program.configurations[index]?.enabled !== undefined) {
+                    config.enabled = program.configurations[index].enabled;
+                }
+            });
+        }
+
+        updateTestSelectedCount();
+        renderTestPromptList();
+        renderTestConfigurations();
+        setTestPromptError('');
+
+        return { success: true, promptCount: program.prompts.length };
+    } catch (err) {
+        console.error('Test program import error:', err);
+        setTestPromptError(`Failed to import test program: ${err.message}`);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * Show a temporary message on a button then restore original text
+ */
+function showTemporaryMessage(button, message, originalText) {
+    if (!button) return;
+    const original = originalText || button.textContent;
+    button.textContent = message;
+    button.disabled = true;
+    setTimeout(() => {
+        button.textContent = original;
+        button.disabled = false;
+    }, 1500);
 }
 
 function getSelectedTestPrompts() {
