@@ -82,6 +82,20 @@ Features include multi-meeting orchestration, agent export/import, image OCR wit
   - State tracking enables re-running queries with expanded depth
   - Model mixing recommended: GPT-5-mini for sub-queries, GPT-5.2 for final synthesis
 
+- **Memory Retention Testing (Test Run 20260119-4):**
+  - Comprehensive 25-question stress test comparing Direct Chat vs RLM modes
+  - **Critical Finding:** Direct Chat loses memory after ~15 conversation turns
+    - 5 of 25 prompts failed with explicit memory loss: "I don't have response #X in the meeting data available here"
+    - Memory recall rate: 80% (Direct Chat) vs 100% (RLM modes)
+  - **RLM Advantage:** Re-queries source agents each turn, providing fresh context reconstruction
+  - **Cost Paradox:** RLM uses 58% more tokens but costs 10% less ($1.09 vs $1.21) due to model tiering
+  - **Shadow/Focus Finding:** Retrieved zero slices across all 25 prompts (27% token overhead, zero benefit in fresh sessions)
+  - **Recommendations:**
+    - Use RLM+SWM for conversations exceeding 10-15 turns
+    - Disable Shadow/Focus by default for fresh sessions
+    - Direct Chat only for quick, single-turn queries or short conversations
+  - Test results archived in `Test Results/20260119-4/`
+
 ## Architecture
 
 ```

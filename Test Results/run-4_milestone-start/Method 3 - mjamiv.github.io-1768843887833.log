@@ -1,0 +1,330 @@
+orchestrator.js?v=41:1386 [KBCanvas] Initialized successfully
+orchestrator.js?v=41:1697 [Settings] Applied optimization mode config: balanced Object
+index.js:427 [RLM] Loaded 0 agents into context store
+query-cache.js:272 [Cache] CLEARED 0 entries
+index.js:433 [RLM] Cache invalidated due to agent change
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.html:794 [PWA] Service Worker registered: https://mjamiv.github.io/vox2txt/
+orchestrator.html:803 [PWA] New version detected, installing...
+orchestrator.html:837 [PWA] Cache cleared, version: 6
+index.js:427 [RLM] Loaded 23 agents into context store
+query-cache.js:272 [Cache] CLEARED 0 entries
+index.js:433 [RLM] Cache invalidated due to agent change
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+orchestrator.js?v=41:1032 [State] Saved to sessionStorage: Object
+query-cache.js:272 [Cache] CLEARED 0 entries
+index.js:2186 [RLM] Query cache cleared
+orchestrator.js?v=41:2202 [Orchestrator] Chat history and query cache cleared
+query-cache.js:272 [Cache] CLEARED 0 entries
+index.js:2186 [RLM] Query cache cleared
+orchestrator.js?v=41:2202 [Orchestrator] Chat history and query cache cleared
+orchestrator.js?v=41:1697 [Settings] Applied optimization mode config: balanced Object
+orchestrator.js?v=41:485 [Metrics] startPromptGroup: Current Settings: Summarize the key decisions made throughout the me... mode: rlm usesRLM: true
+orchestrator.js?v=41:4996 [Chat] Using RLM pipeline for query
+index.js:490 [RLM] Starting pipeline for query: Summarize the key decisions made throughout the me...
+index.js:496 [RLM] Step 1: Decomposing query...
+index.js:501 [RLM] Decomposed into 5 sub-queries using map-reduce strategy
+index.js:550 [RLM] Step 2: Executing sub-queries...
+sub-executor.js:480 [RLM:map-reduce] map-phase: started
+sub-executor.js:480 [RLM:parallel] pool: started (4 queries, max 4)
+sub-executor.js:480 [RLM:parallel] sq-map-0: executing
+sub-executor.js:480 [RLM:parallel] sq-map-0: Prompt budget (context): 339/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-1: executing
+sub-executor.js:480 [RLM:parallel] sq-map-1: Prompt budget (context): 250/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-2: executing
+sub-executor.js:480 [RLM:parallel] sq-map-2: Prompt budget (context): 289/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-3: executing
+sub-executor.js:480 [RLM:parallel] sq-map-3: Prompt budget (context): 280/10000 tokens (ok).
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Summarize the key de... tokens: 556
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Summarize the key de... tokens: 760
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Summarize the key de... tokens: 786
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Summarize the key de... tokens: 920
+sub-executor.js:480 [RLM:parallel] pool: completed
+sub-executor.js:480 [RLM:map-reduce] map-phase: completed
+sub-executor.js:480 [RLM:map-reduce] reduce-phase: started
+sub-executor.js:480 [RLM:map-reduce] sq-reduce: Prompt budget (reduce): 417/10000 tokens (ok).
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Summarize the key de... tokens: 1340
+sub-executor.js:480 [RLM:map-reduce] reduce-phase: completed
+index.js:568 [RLM] Executed 5 sub-queries in 20459ms
+index.js:578 [RLM] Step 3: Aggregating results...
+index.js:604 [RLM] Pipeline complete in 20476ms
+index.js:2049 [RLM:Focus] Focus episode completed Object
+query-cache.js:237 [Cache] SET key: rlm:agent-1768843503050-15vwolj9v,agent-1768843503... (TTL: 300s)
+index.js:2176 [RLM:Cache] Stored result for query: Summarize the key decisions made through...
+orchestrator.js?v=41:5162 [RLM] Query processed: Object
+orchestrator.js?v=41:720 [Metrics] endPromptGroup called, activePromptGroup: true
+orchestrator.js?v=41:729 [Metrics] Ending prompt group: Current Settings: Summarize the key decisions made throughout the me... with 5 sub-calls
+orchestrator.js?v=41:6619 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=41:6627 [Metrics] Calculated metrics: Object
+orchestrator.js?v=41:6727 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=41:485 [Metrics] startPromptGroup: Current Settings: What were the main blockers discussed across the m... mode: rlm usesRLM: true
+orchestrator.js?v=41:4996 [Chat] Using RLM pipeline for query
+index.js:490 [RLM] Starting pipeline for query: What were the main blockers discussed across the m...
+index.js:496 [RLM] Step 1: Decomposing query...
+index.js:501 [RLM] Decomposed into 6 sub-queries using map-reduce strategy
+index.js:550 [RLM] Step 2: Executing sub-queries...
+sub-executor.js:480 [RLM:map-reduce] map-phase: started
+sub-executor.js:480 [RLM:parallel] pool: started (5 queries, max 4)
+sub-executor.js:480 [RLM:parallel] sq-map-0: executing
+sub-executor.js:480 [RLM:parallel] sq-map-0: Prompt budget (context): 280/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-1: executing
+sub-executor.js:480 [RLM:parallel] sq-map-1: Prompt budget (context): 339/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-2: executing
+sub-executor.js:480 [RLM:parallel] sq-map-2: Prompt budget (context): 289/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-3: executing
+sub-executor.js:480 [RLM:parallel] sq-map-3: Prompt budget (context): 284/10000 tokens (ok).
+index.js:1834 [RLM:ShadowPrompt] Built prompt in shadow mode Object
+index.js:1844 [RLM:ShadowPrompt] Shadow-only telemetry snapshot Object
+index.js:1876 [RLM:ShadowPrompt] No slices retrieved for shadow prompt
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main b... tokens: 1580
+sub-executor.js:480 [RLM:parallel] sq-map-4: executing
+sub-executor.js:480 [RLM:parallel] sq-map-4: Prompt budget (context): 293/10000 tokens (ok).
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main b... tokens: 1530
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main b... tokens: 1606
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main b... tokens: 1679
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main b... tokens: 1644
+sub-executor.js:480 [RLM:parallel] pool: completed
+sub-executor.js:480 [RLM:map-reduce] map-phase: completed
+sub-executor.js:480 [RLM:map-reduce] reduce-phase: started
+sub-executor.js:480 [RLM:map-reduce] sq-reduce: Prompt budget (reduce): 828/10000 tokens (ok).
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main b... tokens: 2055
+sub-executor.js:480 [RLM:map-reduce] reduce-phase: completed
+index.js:568 [RLM] Executed 6 sub-queries in 34407ms
+index.js:578 [RLM] Step 3: Aggregating results...
+index.js:604 [RLM] Pipeline complete in 34429ms
+index.js:2049 [RLM:Focus] Focus episode completed {label: 'RLM pipeline', reason: 'phase_complete', summary: 'RLM pipeline Objective: What were the main blocker…ries in 34407ms. Tool call threshold reached (6).', decisions: 0, actions: 0, …}
+query-cache.js:237 [Cache] SET key: rlm:agent-1768843503050-15vwolj9v,agent-1768843503... (TTL: 300s)
+index.js:2176 [RLM:Cache] Stored result for query: What were the main blockers discussed ac...
+orchestrator.js?v=41:5162 [RLM] Query processed: {strategy: 'map-reduce', subQueries: 6, time: '34429ms'}
+orchestrator.js?v=41:720 [Metrics] endPromptGroup called, activePromptGroup: true
+orchestrator.js?v=41:729 [Metrics] Ending prompt group: Current Settings: What were the main blockers discussed across the m... with 6 sub-calls
+orchestrator.js?v=41:6619 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=41:6627 [Metrics] Calculated metrics: {totalTokens: 14456, promptCount: 2, totalCost: 0.0142995}
+orchestrator.js?v=41:6727 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=41:485 [Metrics] startPromptGroup: Current Settings: List the action items and owners that came out of ... mode: rlm usesRLM: true
+orchestrator.js?v=41:4996 [Chat] Using RLM pipeline for query
+index.js:490 [RLM] Starting pipeline for query: List the action items and owners that came out of ...
+index.js:496 [RLM] Step 1: Decomposing query...
+index.js:501 [RLM] Decomposed into 5 sub-queries using parallel strategy
+index.js:550 [RLM] Step 2: Executing sub-queries...
+sub-executor.js:480 [RLM:parallel] pool: started (5 queries, max 4)
+sub-executor.js:480 [RLM:parallel] sq-0: executing
+sub-executor.js:480 [RLM:parallel] sq-0: Prompt budget (context): 1153/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-1: executing
+sub-executor.js:480 [RLM:parallel] sq-1: Prompt budget (context): 1121/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-2: executing
+sub-executor.js:480 [RLM:parallel] sq-2: Prompt budget (context): 997/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-3: executing
+sub-executor.js:480 [RLM:parallel] sq-3: Prompt budget (context): 1056/10000 tokens (ok).
+index.js:1834 [RLM:ShadowPrompt] Built prompt in shadow mode {mode: 'rlm', retrieved: 0, candidates: 0, redundancyCountSource: 'shadow', tokenEstimate: 169, …}
+index.js:1844 [RLM:ShadowPrompt] Shadow-only telemetry snapshot {promptPreview: '### System\nYou are a helpful meeting assistant.\nUs…(including tariff-driven goods‑price effects). 2.', retrievalStats: {…}, tokenEstimate: 169, tokenBreakdown: Array(3)}
+index.js:1876 [RLM:ShadowPrompt] No slices retrieved for shadow prompt
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: List the action item... tokens: 2615
+sub-executor.js:480 [RLM:parallel] sq-4: executing
+sub-executor.js:480 [RLM:parallel] sq-4: Prompt budget (context): 1120/10000 tokens (ok).
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: List the action item... tokens: 2706
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: List the action item... tokens: 2747
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: List the action item... tokens: 3024
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: List the action item... tokens: 3202
+sub-executor.js:480 [RLM:parallel] pool: completed
+index.js:568 [RLM] Executed 5 sub-queries in 33032ms
+index.js:578 [RLM] Step 3: Aggregating results...
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: List the action item... tokens: 2654
+index.js:604 [RLM] Pipeline complete in 42983ms
+index.js:2049 [RLM:Focus] Focus episode completed {label: 'RLM pipeline', reason: 'phase_complete', summary: 'RLM pipeline Objective: List the action items and …ries in 33032ms. Tool call threshold reached (5).', decisions: 0, actions: 0, …}
+query-cache.js:237 [Cache] SET key: rlm:agent-1768843503050-15vwolj9v,agent-1768843503... (TTL: 300s)
+index.js:2176 [RLM:Cache] Stored result for query: List the action items and owners that ca...
+orchestrator.js?v=41:5162 [RLM] Query processed: {strategy: 'parallel', subQueries: 5, time: '42983ms'}
+orchestrator.js?v=41:720 [Metrics] endPromptGroup called, activePromptGroup: true
+orchestrator.js?v=41:729 [Metrics] Ending prompt group: Current Settings: List the action items and owners that came out of ... with 6 sub-calls
+orchestrator.js?v=41:6619 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=41:6627 [Metrics] Calculated metrics: {totalTokens: 31404, promptCount: 3, totalCost: 0.039245749999999996}
+orchestrator.js?v=41:6727 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=41:485 [Metrics] startPromptGroup: Current Settings: Which risks keep showing up across all meetings. mode: rlm usesRLM: true
+orchestrator.js?v=41:4996 [Chat] Using RLM pipeline for query
+index.js:490 [RLM] Starting pipeline for query: Which risks keep showing up across all meetings....
+index.js:496 [RLM] Step 1: Decomposing query...
+index.js:501 [RLM] Decomposed into 6 sub-queries using map-reduce strategy
+index.js:550 [RLM] Step 2: Executing sub-queries...
+sub-executor.js:480 [RLM:map-reduce] map-phase: started
+sub-executor.js:480 [RLM:parallel] pool: started (5 queries, max 4)
+sub-executor.js:480 [RLM:parallel] sq-map-0: executing
+sub-executor.js:480 [RLM:parallel] sq-map-0: Prompt budget (context): 339/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-1: executing
+sub-executor.js:480 [RLM:parallel] sq-map-1: Prompt budget (context): 293/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-2: executing
+sub-executor.js:480 [RLM:parallel] sq-map-2: Prompt budget (context): 341/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-3: executing
+sub-executor.js:480 [RLM:parallel] sq-map-3: Prompt budget (context): 329/10000 tokens (ok).
+index.js:1834 [RLM:ShadowPrompt] Built prompt in shadow mode {mode: 'rlm', retrieved: 0, candidates: 0, redundancyCountSource: 'shadow', tokenEstimate: 147, …}
+index.js:1844 [RLM:ShadowPrompt] Shadow-only telemetry snapshot {promptPreview: '### System\nYou are a helpful meeting assistant.\nUs…above, so I can’t extract Q3 action items/owners.', retrievalStats: {…}, tokenEstimate: 147, tokenBreakdown: Array(3)}
+index.js:1876 [RLM:ShadowPrompt] No slices retrieved for shadow prompt
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Which risks keep sho... tokens: 2021
+sub-executor.js:480 [RLM:parallel] sq-map-4: executing
+sub-executor.js:480 [RLM:parallel] sq-map-4: Prompt budget (context): 280/10000 tokens (ok).
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Which risks keep sho... tokens: 1965
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Which risks keep sho... tokens: 2075
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Which risks keep sho... tokens: 2178
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Which risks keep sho... tokens: 2163
+sub-executor.js:480 [RLM:parallel] pool: completed
+sub-executor.js:480 [RLM:map-reduce] map-phase: completed
+sub-executor.js:480 [RLM:map-reduce] reduce-phase: started
+sub-executor.js:480 [RLM:map-reduce] sq-reduce: Prompt budget (reduce): 1058/10000 tokens (ok).
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Which risks keep sho... tokens: 2719
+sub-executor.js:480 [RLM:map-reduce] reduce-phase: completed
+index.js:568 [RLM] Executed 6 sub-queries in 32160ms
+index.js:578 [RLM] Step 3: Aggregating results...
+index.js:604 [RLM] Pipeline complete in 32181ms
+index.js:2049 [RLM:Focus] Focus episode completed {label: 'RLM pipeline', reason: 'phase_complete', summary: 'RLM pipeline Objective: Which risks keep showing u…Aggregated sub-query results into final response.', decisions: 0, actions: 0, …}
+query-cache.js:237 [Cache] SET key: rlm:agent-1768843503050-15vwolj9v,agent-1768843503... (TTL: 300s)
+index.js:2176 [RLM:Cache] Stored result for query: Which risks keep showing up across all m...
+orchestrator.js?v=41:5162 [RLM] Query processed: {strategy: 'map-reduce', subQueries: 6, time: '32181ms'}
+orchestrator.js?v=41:720 [Metrics] endPromptGroup called, activePromptGroup: true
+orchestrator.js?v=41:729 [Metrics] Ending prompt group: Current Settings: Which risks keep showing up across all meetings. with 6 sub-calls
+orchestrator.js?v=41:6619 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=41:6627 [Metrics] Calculated metrics: {totalTokens: 44525, promptCount: 4, totalCost: 0.049183}
+orchestrator.js?v=41:6727 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=41:485 [Metrics] startPromptGroup: Current Settings: What were the main concerns with the capital marke... mode: rlm usesRLM: true
+orchestrator.js?v=41:4996 [Chat] Using RLM pipeline for query
+index.js:490 [RLM] Starting pipeline for query: What were the main concerns with the capital marke...
+index.js:496 [RLM] Step 1: Decomposing query...
+index.js:501 [RLM] Decomposed into 5 sub-queries using parallel strategy
+index.js:550 [RLM] Step 2: Executing sub-queries...
+sub-executor.js:480 [RLM:parallel] pool: started (5 queries, max 4)
+sub-executor.js:480 [RLM:parallel] sq-0: executing
+sub-executor.js:480 [RLM:parallel] sq-0: Prompt budget (context): 1106/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-1: executing
+sub-executor.js:480 [RLM:parallel] sq-1: Prompt budget (context): 1097/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-2: executing
+sub-executor.js:480 [RLM:parallel] sq-2: Prompt budget (context): 1452/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-3: executing
+sub-executor.js:480 [RLM:parallel] sq-3: Prompt budget (context): 1236/10000 tokens (ok).
+index.js:1834 [RLM:ShadowPrompt] Built prompt in shadow mode {mode: 'rlm', retrieved: 0, candidates: 0, redundancyCountSource: 'shadow', tokenEstimate: 152, …}
+index.js:1844 [RLM:ShadowPrompt] Shadow-only telemetry snapshot {promptPreview: '### System\nYou are a helpful meeting assistant.\nUs…ion and the commitment to return inflation to 2%.', retrievalStats: {…}, tokenEstimate: 152, tokenBreakdown: Array(3)}
+index.js:1876 [RLM:ShadowPrompt] No slices retrieved for shadow prompt
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main c... tokens: 2943
+sub-executor.js:480 [RLM:parallel] sq-4: executing
+sub-executor.js:480 [RLM:parallel] sq-4: Prompt budget (context): 1043/10000 tokens (ok).
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main c... tokens: 3017
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main c... tokens: 2814
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main c... tokens: 3036
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main c... tokens: 2762
+sub-executor.js:480 [RLM:parallel] pool: completed
+index.js:568 [RLM] Executed 5 sub-queries in 14738ms
+index.js:578 [RLM] Step 3: Aggregating results...
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: What were the main c... tokens: 3236
+index.js:604 [RLM] Pipeline complete in 34546ms
+index.js:2049 [RLM:Focus] Focus episode completed {label: 'RLM pipeline', reason: 'phase_complete', summary: 'RLM pipeline Objective: What were the main concern…ries in 14738ms. Tool call threshold reached (5).', decisions: 0, actions: 0, …}
+query-cache.js:237 [Cache] SET key: rlm:agent-1768843503050-15vwolj9v,agent-1768843503... (TTL: 300s)
+index.js:2176 [RLM:Cache] Stored result for query: What were the main concerns with the cap...
+orchestrator.js?v=41:5162 [RLM] Query processed: {strategy: 'parallel', subQueries: 5, time: '34546ms'}
+orchestrator.js?v=41:720 [Metrics] endPromptGroup called, activePromptGroup: true
+orchestrator.js?v=41:729 [Metrics] Ending prompt group: Current Settings: What were the main concerns with the capital marke... with 6 sub-calls
+orchestrator.js?v=41:6619 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=41:6627 [Metrics] Calculated metrics: {totalTokens: 62333, promptCount: 5, totalCost: 0.07693575}
+orchestrator.js?v=41:6727 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=41:485 [Metrics] startPromptGroup: Current Settings: Highlight any commitments made to external stakeho... mode: rlm usesRLM: true
+orchestrator.js?v=41:4996 [Chat] Using RLM pipeline for query
+index.js:490 [RLM] Starting pipeline for query: Highlight any commitments made to external stakeho...
+index.js:496 [RLM] Step 1: Decomposing query...
+index.js:501 [RLM] Decomposed into 5 sub-queries using map-reduce strategy
+index.js:550 [RLM] Step 2: Executing sub-queries...
+sub-executor.js:480 [RLM:map-reduce] map-phase: started
+sub-executor.js:480 [RLM:parallel] pool: started (4 queries, max 4)
+sub-executor.js:480 [RLM:parallel] sq-map-0: executing
+sub-executor.js:480 [RLM:parallel] sq-map-0: Prompt budget (context): 329/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-1: executing
+sub-executor.js:480 [RLM:parallel] sq-map-1: Prompt budget (context): 272/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-2: executing
+sub-executor.js:480 [RLM:parallel] sq-map-2: Prompt budget (context): 341/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-3: executing
+sub-executor.js:480 [RLM:parallel] sq-map-3: Prompt budget (context): 267/10000 tokens (ok).
+index.js:1834 [RLM:ShadowPrompt] Built prompt in shadow mode {mode: 'rlm', retrieved: 0, candidates: 0, redundancyCountSource: 'shadow', tokenEstimate: 175, …}
+index.js:1844 [RLM:ShadowPrompt] Shadow-only telemetry snapshot {promptPreview: '### System\nYou are a helpful meeting assistant.\nUs…hrough risk), raising *downside growth* and *u...', retrievalStats: {…}, tokenEstimate: 175, tokenBreakdown: Array(3)}
+index.js:1876 [RLM:ShadowPrompt] No slices retrieved for shadow prompt
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Highlight any commit... tokens: 2492
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Highlight any commit... tokens: 2562
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Highlight any commit... tokens: 2676
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Highlight any commit... tokens: 2947
+sub-executor.js:480 [RLM:parallel] pool: completed
+sub-executor.js:480 [RLM:map-reduce] map-phase: completed
+sub-executor.js:480 [RLM:map-reduce] reduce-phase: started
+sub-executor.js:480 [RLM:map-reduce] sq-reduce: Prompt budget (reduce): 815/10000 tokens (ok).
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Highlight any commit... tokens: 3020
+sub-executor.js:480 [RLM:map-reduce] reduce-phase: completed
+index.js:568 [RLM] Executed 5 sub-queries in 26032ms
+index.js:578 [RLM] Step 3: Aggregating results...
+index.js:604 [RLM] Pipeline complete in 26056ms
+index.js:2049 [RLM:Focus] Focus episode completed {label: 'RLM pipeline', reason: 'phase_complete', summary: 'RLM pipeline Objective: Highlight any commitments …ries in 26032ms. Tool call threshold reached (5).', decisions: 0, actions: 0, …}
+query-cache.js:237 [Cache] SET key: rlm:agent-1768843503050-15vwolj9v,agent-1768843503... (TTL: 300s)
+index.js:2176 [RLM:Cache] Stored result for query: Highlight any commitments made to extern...
+orchestrator.js?v=41:5162 [RLM] Query processed: {strategy: 'map-reduce', subQueries: 5, time: '26056ms'}
+orchestrator.js?v=41:720 [Metrics] endPromptGroup called, activePromptGroup: true
+orchestrator.js?v=41:729 [Metrics] Ending prompt group: Current Settings: Highlight any commitments made to external stakeho... with 5 sub-calls
+orchestrator.js?v=41:6619 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=41:6627 [Metrics] Calculated metrics: {totalTokens: 76030, promptCount: 6, totalCost: 0.08781850000000001}
+orchestrator.js?v=41:6727 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=41:485 [Metrics] startPromptGroup: Current Settings: Summarize this conversation with 6 bullets per top... mode: rlm usesRLM: true
+orchestrator.js?v=41:4996 [Chat] Using RLM pipeline for query
+index.js:490 [RLM] Starting pipeline for query: Summarize this conversation with 6 bullets per top...
+index.js:496 [RLM] Step 1: Decomposing query...
+index.js:501 [RLM] Decomposed into 5 sub-queries using map-reduce strategy
+index.js:550 [RLM] Step 2: Executing sub-queries...
+sub-executor.js:480 [RLM:map-reduce] map-phase: started
+sub-executor.js:480 [RLM:parallel] pool: started (4 queries, max 4)
+sub-executor.js:480 [RLM:parallel] sq-map-0: executing
+sub-executor.js:480 [RLM:parallel] sq-map-0: Prompt budget (context): 317/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-1: executing
+sub-executor.js:480 [RLM:parallel] sq-map-1: Prompt budget (context): 339/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-2: executing
+sub-executor.js:480 [RLM:parallel] sq-map-2: Prompt budget (context): 296/10000 tokens (ok).
+sub-executor.js:480 [RLM:parallel] sq-map-3: executing
+sub-executor.js:480 [RLM:parallel] sq-map-3: Prompt budget (context): 284/10000 tokens (ok).
+index.js:1834 [RLM:ShadowPrompt] Built prompt in shadow mode {mode: 'rlm', retrieved: 0, candidates: 0, redundancyCountSource: 'shadow', tokenEstimate: 156, …}
+index.js:1844 [RLM:ShadowPrompt] Shadow-only telemetry snapshot {promptPreview: '### System\nYou are a helpful meeting assistant.\nUs…tive. (Cited in 202312, 202401, 202412 materials.', retrievalStats: {…}, tokenEstimate: 156, tokenBreakdown: Array(3)}
+index.js:1876 [RLM:ShadowPrompt] No slices retrieved for shadow prompt
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Summarize this conve... tokens: 3210
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Summarize this conve... tokens: 3279
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Summarize this conve... tokens: 3276
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Summarize this conve... tokens: 3433
+sub-executor.js:480 [RLM:parallel] pool: completed
+sub-executor.js:480 [RLM:map-reduce] map-phase: completed
+sub-executor.js:480 [RLM:map-reduce] reduce-phase: started
+sub-executor.js:480 [RLM:map-reduce] sq-reduce: Prompt budget (reduce): 1558/10000 tokens (ok).
+orchestrator.js?v=41:753 [Metrics] addAPICallToMetrics: RLM: Summarize this conve... tokens: 4118
+sub-executor.js:480 [RLM:map-reduce] reduce-phase: completed
+index.js:568 [RLM] Executed 5 sub-queries in 30660ms
+index.js:578 [RLM] Step 3: Aggregating results...
+index.js:604 [RLM] Pipeline complete in 30688ms
+index.js:2049 [RLM:Focus] Focus episode completed {label: 'RLM pipeline', reason: 'phase_complete', summary: 'RLM pipeline Objective: Summarize this conversatio…ries in 30660ms. Tool call threshold reached (5).', decisions: 0, actions: 0, …}
+query-cache.js:237 [Cache] SET key: rlm:agent-1768843503050-15vwolj9v,agent-1768843503... (TTL: 300s)
+index.js:2176 [RLM:Cache] Stored result for query: Summarize this conversation with 6 bulle...
+orchestrator.js?v=41:5162 [RLM] Query processed: {strategy: 'map-reduce', subQueries: 5, time: '30688ms'}
+orchestrator.js?v=41:720 [Metrics] endPromptGroup called, activePromptGroup: true
+orchestrator.js?v=41:729 [Metrics] Ending prompt group: Current Settings: Summarize this conversation with 6 bullets per top... with 5 sub-calls
+orchestrator.js?v=41:6619 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=41:6627 [Metrics] Calculated metrics: {totalTokens: 93346, promptCount: 7, totalCost: 0.10211725}
+orchestrator.js?v=41:6727 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=41:1697 [Settings] Applied optimization mode config: balanced {shadowSkipSimpleQueries: true, shadowPromptAsyncTimeoutMs: 2000, maxSubQueries: 5, enableShadowPrompt: true}
