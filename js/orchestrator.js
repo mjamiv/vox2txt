@@ -3125,20 +3125,6 @@ function importTestProgram(programJson) {
     }
 }
 
-/**
- * Show a temporary message on a button then restore original text
- */
-function showTemporaryMessage(button, message, originalText) {
-    if (!button) return;
-    const original = originalText || button.textContent;
-    button.textContent = message;
-    button.disabled = true;
-    setTimeout(() => {
-        button.textContent = original;
-        button.disabled = false;
-    }, 1500);
-}
-
 function getSelectedTestPrompts() {
     return testPromptState.prompts
         .filter(prompt => prompt.selected)
