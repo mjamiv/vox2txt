@@ -34,7 +34,7 @@ export const QueryIntent = {
 export class QueryDecomposer {
     constructor(options = {}) {
         this.options = {
-            maxSubQueries: options.maxSubQueries || 5,
+            maxSubQueries: options.maxSubQueries || 10,
             summaryMaxSubQueries: options.summaryMaxSubQueries || 4,
             minRelevanceScore: options.minRelevanceScore || 2,
             enableLLMDecomposition: options.enableLLMDecomposition !== false,
@@ -78,7 +78,7 @@ export class QueryDecomposer {
         );
 
         // Calculate depth info for progressive depth feature
-        const defaultDepth = this.options.defaultSubQueryDepth || 5;
+        const defaultDepth = this.options.defaultSubQueryDepth || 10;
         const currentDepth = depthOverride ?? Math.min(defaultDepth, stats.activeAgents);
         const depthIncrement = this.options.depthIncrement || 5;
         const depthInfo = {
@@ -200,7 +200,7 @@ export class QueryDecomposer {
         }
 
         // Default: use conservative default (cost-effective) instead of full agent count
-        const defaultDepth = this.options.defaultSubQueryDepth || 5;
+        const defaultDepth = this.options.defaultSubQueryDepth || 10;
         return Math.min(defaultDepth, activeAgentCount, this.options.maxSubQueries);
     }
 
