@@ -52,6 +52,21 @@ Features include multi-meeting orchestration, agent export/import, image OCR wit
   - Per-prompt comparison view shows results from each configuration
   - HTML export includes comparison table and per-config detail tables
 
+- **Test Builder Import/Export:**
+  - CSV import for test prompts: supports `prompt_text`, `prompt`, `text`, or `question` columns
+  - Export Testing Program: saves prompts + configurations as JSON for reuse
+  - Import Test Program: restore saved test programs with prompts and configurations
+  - Removed visual prompt limit ("/ 10") - now shows only selected count
+  - 50-question Memory Degradation Stress Test available in `Testing/` folder
+
+- **Memory Degradation 50-Question Test:**
+  - Located at `Testing/RLM-Memory-Degradation-50-Question-Test.md`
+  - 10 phases testing memory over extended conversations
+  - Specifically designed to evaluate Shadow Mode effectiveness over long time horizons
+  - Proves RLM maintains consistent memory with zero degradation
+  - Includes CSV file for easy import: `Testing/memory-degradation-50-prompts.csv`
+  - Recommended configurations: Direct Chat (control), RLM Standard (SWM), RLM Hybrid
+
 - **Knowledge Base 3D Canvas:**
   - Visual overhaul of the Knowledge Base pane with immersive canvas design
   - Snake-pattern auto-layout: nodes flow left-to-right on odd rows, right-to-left on even rows
@@ -120,6 +135,9 @@ northstar.LM/
 ├── images/
 │   ├── k-northstar-logo.png   # Main app logo (northstar.LM)
 │   └── orchestrator-logo.png  # Robot mascot logo for Orchestrator
+├── Testing/            # Test programs and documentation
+│   ├── RLM-Memory-Degradation-50-Question-Test.md  # Comprehensive memory test
+│   └── memory-degradation-50-prompts.csv           # CSV for easy import
 ├── archive/            # Legacy files (not in active use)
 │   ├── flask-backend/  # Old Flask server code
 │   │   ├── app.py
@@ -694,6 +712,9 @@ Recently completed:
 - ✅ Progressive depth controls: default 10 sub-queries with on-demand expansion
 - ✅ CSV Method column displays specific sub-mode (RLM Standard vs RLM Hybrid)
 - ✅ KB Canvas visual enhancements: animated backgrounds, pulsing glow effects, larger nodes
+- ✅ Test Builder CSV import for bulk prompt loading
+- ✅ Export/Import Testing Program feature for reusable test configurations
+- ✅ 50-question Memory Degradation Stress Test for proving RLM consistency
 
 ## Data Flow: Agent Export/Import
 
