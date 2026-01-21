@@ -261,67 +261,45 @@ Choose how the Orchestrator answers cross-meeting questions:
 
 ### Memory Retention Testing (January 2026)
 
-Comprehensive stress testing reveals **critical memory degradation** in Direct Chat mode for extended conversations, with RLM providing **22x better reliability**.
+Comprehensive stress testing (25, 50, and 100-question tests) validates RLM's ability to maintain conversation context where Direct Chat cannot.
+
+> **Full Report:** [Testing/RLM-Validation-Study-Final-Report.html](Testing/RLM-Validation-Study-Final-Report.html)
 
 #### Key Findings
 
-| Metric | Direct Chat | RLM+SWM | Improvement |
-|--------|-------------|---------|-------------|
-| **25-Prompt Memory Failures** | 5 (20%) | 0 (0%) | 100% reduction |
-| **50-Prompt Memory Failures** | 22 (44%) | 1 (2%) | 95% reduction |
-| **Memory Retention Score** | 56% | 98% | +75% |
-| **Reliability Factor** | Baseline | **22x better** | - |
+| Test | Direct Chat Response Capability | RLM Response Capability | Improvement |
+|------|--------------------------------|------------------------|-------------|
+| **25-Question** | 80% | 100% | +25% |
+| **50-Question** | 35% | 96% | +174% |
+| **100-Question** | 18% | 96% | +433% |
 
-#### Critical Discovery: Memory Cliff
+**Important:** "Response capability" measures whether the system can reference prior conversation context — NOT factual accuracy. Human A/B testing required to verify content accuracy.
 
-Direct Chat exhibits **catastrophic memory failure** after ~35-40 conversation turns:
-- Prompts 1-20: ~95% retention
-- Prompts 21-35: Degradation begins (~80%)
-- Prompts 36-50: **Complete failure** (0-20% retention)
+#### Critical Discovery: Context Window Exhaustion
 
-RLM maintains **98% retention** regardless of conversation length by re-querying source agents each turn.
+Direct Chat loses access to earlier conversation turns by Turn 7-10:
+- **Turns 1-5:** 100% capability (no memory needed)
+- **Turns 6-10:** 40% capability (explicit failures begin)
+- **Turns 11-50:** 10-20% capability
+- **Turns 51-100:** <10% capability
 
-#### Failure Rate by Test Phase (50-Prompt Test)
+RLM maintains **95-96% response capability** through 100+ turns by re-querying source agents.
 
-| Phase | Direct Chat | RLM+SWM |
-|-------|-------------|---------|
-| Foundation (1-5) | 0% | 0% |
-| Cross-Reference (6-20) | 13% | 0% |
-| Precision Recall (21-25) | 60% | 0% |
-| Deep Analysis (26-30) | 0% | 0% |
-| Validation (31-35) | 40% | 20% |
-| Synthesis (36-40) | **100%** | 0% |
-| Memory Traps (41-50) | **100%** | 0% |
+#### What This Test Proves (and Doesn't)
 
-#### Cost Paradox
-
-Despite higher token usage, RLM delivers **lower cost per successful answer**:
-
-| Metric | Direct Chat | RLM+SWM |
-|--------|-------------|---------|
-| Total Cost (50 prompts) | $2.53 | $3.61 |
-| Successful Answers | 28 | 49 |
-| **Cost per Success** | **$0.090** | **$0.074** |
-| Wasted Spend | $1.13 (44%) | $0.07 (2%) |
-
-#### Projected Annual Enterprise Savings
-
-For organizations with 100 analysts running 5 multi-agent analyses per week:
-
-| Metric | Direct Chat (5-question limit) | RLM (unlimited) |
-|--------|--------------------------------|-----------------|
-| Annual API Cost | $124,800 | $93,860 |
-| **API Cost Savings** | - | **$30,940/year (25%)** |
-| Analyst Time Saved | - | **14,300 hours/year** |
-| **Productivity Value** (@ $75/hr) | - | **$1.07M/year** |
-| **Total Annual Value** | - | **$1.1M+** |
+| Proven | Not Proven (Requires Human A/B Testing) |
+|--------|----------------------------------------|
+| RLM maintains conversation context | Factual accuracy of response content |
+| RLM can reference specific prior responses | Completeness of recalled information |
+| RLM correctly identifies trap questions | Quality vs ground truth |
+| Direct Chat loses context by Turn 7-10 | User satisfaction |
 
 #### Recommendations
 
-1. **Default to RLM+SWM** for conversations exceeding 10-15 turns
-2. **Disable Shadow/Focus by default** - adds 5.5% cost without improving retention
-3. **Add conversation-length warning** when Direct Chat approaches 30 turns
-4. **Use Direct Chat only** for quick, single-turn queries or short conversations
+1. **Default to RLM+SWM** for conversations exceeding 5-7 turns
+2. **Human A/B testing** required to verify content accuracy
+3. **Use Direct Chat only** for quick, single-turn queries
+4. **Societies of Thought** (in development) expected to improve synthesis quality
 
 ---
 

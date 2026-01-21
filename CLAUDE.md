@@ -15,6 +15,7 @@ Features include multi-meeting orchestration, agent export/import, image OCR wit
 > **For visual architecture diagrams**, see [README.md](README.md).
 > **For detailed RLM implementation status**, see [RLM_STATUS.md](RLM_STATUS.md).
 > **For Societies of Thought planning**, see [docs/societies-of-thought-implementation-plan.md](docs/societies-of-thought-implementation-plan.md).
+> **For RLM validation testing**, see [Testing/RLM-Validation-Study-Final-Report.html](Testing/RLM-Validation-Study-Final-Report.html).
 
 ## Architecture
 
@@ -47,7 +48,12 @@ northstar.LM/
 ├── images/
 │   ├── k-northstar-logo.png   # Main app logo
 │   └── orchestrator-logo.png  # Robot mascot for Orchestrator
-├── Testing/            # Test programs and documentation
+├── Testing/            # Test programs and validation reports
+│   ├── RLM-Validation-Study-Final-Report.html  # Final peer-reviewed report
+│   ├── 25-question-test/   # 25-question test data
+│   ├── 50-question-test/   # 50-question test data
+│   ├── 100-question-test/  # 100-question test data
+│   └── archive/            # Previous report versions
 ├── archive/            # Legacy files (not deployed)
 └── .github/workflows/deploy.yml  # GitHub Pages deployment
 ```
