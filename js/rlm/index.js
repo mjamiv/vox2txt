@@ -2311,6 +2311,21 @@ Be concise and focus only on information relevant to the question.`;
             this.decomposer.options.maxSubQueries = this.config.maxSubQueries;
             this.decomposer.options.summaryMaxSubQueries = this.config.summaryMaxSubQueries;
             this.decomposer.options.minRelevanceScore = this.config.minRelevanceScore;
+            // SoT settings for decomposer
+            this.decomposer.options.enableSocietiesOfThought = this.config.enableSocietiesOfThought;
+        }
+
+        if (this.executor?.updateOptions) {
+            // SoT settings for executor (debate phase)
+            this.executor.updateOptions({
+                enableDebatePhase: this.config.enableDebatePhase
+            });
+        }
+
+        if (this.aggregator?.options) {
+            // SoT settings for aggregator (conflict detection)
+            this.aggregator.options.enableConflictDetection = this.config.enableConflictDetection;
+            this.aggregator.options.surfaceConflictsInResponse = this.config.enableConflictDetection;
         }
 
         if (this.repl) {

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=49">
+    <link rel="stylesheet" href="css/styles.css?v=50">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a853">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230a0e17' width='32' height='32' rx='6'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23d4a853'%3E⭐%3C/text%3E%3C/svg%3E" type="image/svg+xml">
@@ -336,6 +336,12 @@
                 <button id="export-agent-btn" class="btn-secondary" title="Export analysis as markdown file for Agent Orchestrator">
                     <span>🤖</span> Export Agent
                 </button>
+                <button id="make-agenda-btn" class="btn-secondary" title="Generate an agenda for the next meeting based on this analysis">
+                    <span class="btn-text">📋 Make Agenda</span>
+                    <span class="btn-loader hidden">
+                        <span class="spinner-small"></span>
+                    </span>
+                </button>
                 <button id="new-analysis-btn" class="btn-secondary" title="Start a new analysis (clears current results)">
                     <span>&#10227;</span> New Analysis
                 </button>
@@ -373,6 +379,17 @@
                     </summary>
                     <div class="card-content" id="result-actions">
                         <!-- Action items will be inserted here -->
+                    </div>
+                </details>
+
+                <details class="result-card" id="agenda-section">
+                    <summary class="card-header card-header-collapsible">
+                        <span class="card-icon">📋</span>
+                        <h3>Next Meeting Agenda</h3>
+                        <span class="collapse-toggle">▼</span>
+                    </summary>
+                    <div class="card-content" id="result-agenda">
+                        <p class="muted">Click "Make Agenda" to generate an agenda for your next meeting based on this analysis.</p>
                     </div>
                 </details>
 
@@ -640,7 +657,7 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/app.js?v=49" type="module">
+    <script src="js/app.js?v=50" type="module">
 
     <!-- Service Worker Registration with Auto-Update -->
     <script>

@@ -4,11 +4,15 @@
  * Executes sub-queries in parallel or sequentially based on strategy.
  * Manages concurrency, rate limiting, and depth tracking.
  *
+ * Enhanced with Societies of Thought (SoT) debate phase for complex
+ * analytical queries: MAP -> DEBATE -> REDUCE.
+ *
  * Future RLM expansion: This will support recursive sub-LM calls where
  * a sub-query can spawn its own sub-queries up to maxDepth.
  */
 
 import { getContextStore } from './context-store.js';
+import { PerspectiveRoles } from './perspective-roles.js';
 
 export class SubExecutor {
     constructor(options = {}) {
@@ -23,6 +27,10 @@ export class SubExecutor {
             promptTokenBudget: options.promptTokenBudget || 0,
             promptTokenReserve: options.promptTokenReserve || 0,
             promptTokensForSubQuery: options.promptTokensForSubQuery || null,
+            // Societies of Thought debate phase settings
+            enableDebatePhase: options.enableDebatePhase !== false,
+            debateMinPerspectives: options.debateMinPerspectives || 3,
+            debateTimeout: options.debateTimeout || 30000,
             ...options
         };
 
@@ -79,6 +87,11 @@ export class SubExecutor {
 
                 case 'map-reduce':
                     results = await this._executeMapReduce(subQueries, llmCall, context);
+                    break;
+
+                case 'map-reduce-debate':
+                    // SoT Phase 4: MAP -> DEBATE -> REDUCE
+                    results = await this._executeMapReduceDebate(subQueries, llmCall, context);
                     break;
 
                 case 'iterative':
@@ -269,6 +282,173 @@ export class SubExecutor {
         }
 
         return mapResults;
+    }
+
+    /**
+     * Execute MAP -> DEBATE -> REDUCE strategy (SoT Phase 4)
+     * Adds a debate phase between map and reduce for complex queries
+     * @private
+     */
+    async _executeMapReduceDebate(subQueries, llmCall, context) {
+        // Separate map, debate, and reduce queries
+        const mapQueries = subQueries.filter(sq => sq.type === 'map');
+        const reduceQuery = subQueries.find(sq => sq.type === 'reduce');
+
+        // Execute map phase in parallel
+        this._log('map-reduce-debate', 'map-phase', 'started');
+        const mapResults = await this._executeParallel(mapQueries, llmCall, context);
+        this._log('map-reduce-debate', 'map-phase', 'completed');
+
+        // Filter successful results with perspectives for debate
+        const debateCandidates = mapResults.filter(r =>
+            r.success && r.response && r.perspective?.roleId
+        );
+
+        // Only run debate if we have enough diverse perspectives
+        let debateResults = null;
+        if (this.options.enableDebatePhase &&
+            debateCandidates.length >= this.options.debateMinPerspectives) {
+
+            this._log('map-reduce-debate', 'debate-phase', 'started');
+            debateResults = await this._executeDebate(debateCandidates, llmCall, context);
+            this._log('map-reduce-debate', 'debate-phase', 'completed');
+        }
+
+        // Build reduce context from map results (and optionally debate insights)
+        if (reduceQuery) {
+            this._log('map-reduce-debate', 'reduce-phase', 'started');
+
+            // Build context with perspective labels
+            let mapContext = mapResults
+                .filter(r => r.success && r.response)
+                .map(r => {
+                    const label = r.perspective?.roleLabel || r.agentName || 'Meeting';
+                    return `[${label} - ${r.agentName || 'Source'}]:\n${r.response}`;
+                })
+                .join('\n\n---\n\n');
+
+            // Append debate insights if available
+            if (debateResults && debateResults.insights) {
+                mapContext += `\n\n---\n\n**DEBATE INSIGHTS:**\n${debateResults.insights}`;
+                if (debateResults.tensions.length > 0) {
+                    mapContext += `\n\n**KEY TENSIONS:**\n${debateResults.tensions.map(t => `- ${t}`).join('\n')}`;
+                }
+            }
+
+            const reduceResult = await this._executeWithRetry(
+                () => llmCall(reduceQuery.query, mapContext, context),
+                reduceQuery.id,
+                { timeout: this.options.reduceTimeout }
+            );
+
+            this._log('map-reduce-debate', 'reduce-phase', 'completed');
+
+            return [
+                ...mapResults,
+                ...(debateResults ? [{
+                    queryId: 'debate',
+                    type: 'debate',
+                    response: debateResults.insights,
+                    tensions: debateResults.tensions,
+                    success: true
+                }] : []),
+                {
+                    queryId: reduceQuery.id,
+                    type: 'reduce',
+                    response: reduceResult,
+                    success: true,
+                    isAggregation: true,
+                    hadDebatePhase: !!debateResults
+                }
+            ];
+        }
+
+        return mapResults;
+    }
+
+    /**
+     * Execute debate phase between perspectives (SoT Phase 4)
+     * Pits perspectives against each other to surface tensions
+     * @private
+     */
+    async _executeDebate(candidates, llmCall, context) {
+        // Group by perspective role
+        const byRole = {};
+        candidates.forEach(c => {
+            const role = c.perspective?.roleId || 'default';
+            if (!byRole[role]) byRole[role] = [];
+            byRole[role].push(c);
+        });
+
+        const roles = Object.keys(byRole);
+        const tensions = [];
+        const agreements = [];
+
+        // Generate debate prompts between key opposing perspectives
+        const debatePairs = [
+            ['advocate', 'critic'],
+            ['analyst', 'synthesizer'],
+            ['pragmatist', 'critic']
+        ];
+
+        const debateInsights = [];
+
+        for (const [role1, role2] of debatePairs) {
+            if (byRole[role1] && byRole[role2]) {
+                const view1 = byRole[role1].map(c => c.response).join('\n');
+                const view2 = byRole[role2].map(c => c.response).join('\n');
+
+                const debatePrompt = `You are moderating a structured debate between two analytical perspectives.
+
+**${(PerspectiveRoles[role1.toUpperCase()]?.label || role1)} Position:**
+${view1}
+
+**${(PerspectiveRoles[role2.toUpperCase()]?.label || role2)} Position:**
+${view2}
+
+Identify:
+1. Key points of AGREEMENT between these perspectives
+2. Key points of TENSION or DISAGREEMENT
+3. Which perspective has the stronger evidence
+
+Be concise (3-5 bullet points total).`;
+
+                try {
+                    const debateResult = await this._executeWithRetry(
+                        () => llmCall(debatePrompt, '', context),
+                        `debate-${role1}-vs-${role2}`,
+                        { timeout: this.options.debateTimeout }
+                    );
+
+                    debateInsights.push({
+                        pair: [role1, role2],
+                        insights: debateResult
+                    });
+
+                    // Extract tensions from the response
+                    if (debateResult.toLowerCase().includes('tension') ||
+                        debateResult.toLowerCase().includes('disagree')) {
+                        tensions.push(`${role1} vs ${role2}: See debate notes`);
+                    }
+                } catch (error) {
+                    this._log('debate', `${role1}-vs-${role2}`, `failed: ${error.message}`);
+                }
+            }
+        }
+
+        // Combine insights
+        const combinedInsights = debateInsights.length > 0
+            ? debateInsights.map(d =>
+                `**${d.pair[0]} vs ${d.pair[1]}:**\n${d.insights}`
+            ).join('\n\n')
+            : 'No significant debates could be generated between perspectives.';
+
+        return {
+            insights: combinedInsights,
+            tensions,
+            agreements,
+            debateCount: debateInsights.length
+        };
     }
 
     /**

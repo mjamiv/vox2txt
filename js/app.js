@@ -116,13 +116,44 @@ const PRICING = {
 };
 
 const PROMPTS = {
-    analysisBatchSystem: `You are an expert meeting analyst. Analyze the following meeting transcript and provide a comprehensive analysis in JSON format with these fields:
+    analysisBatchSystem: `You are an expert meeting analyst. Analyze the following meeting transcript and provide a comprehensive analysis in JSON format:
 
 {
-"summary": "A concise abstract paragraph summarizing the meeting. Retain the most important points, providing a coherent and readable summary that helps someone understand the main points without reading the entire text.",
-"keyPoints": "List of main points discussed, separated by newlines. Start each point with a dash (-). These should be the most important ideas, findings, or topics that are crucial to the essence of the discussion.",
-"actionItems": "List of specific tasks or action items that were assigned or discussed, separated by newlines. Start each item with a dash (-). If no action items are found, respond with 'No specific action items identified.'",
-"sentiment": "Overall sentiment of the meeting. Respond with exactly one word: 'Positive', 'Negative', or 'Neutral'."
+  "summary": "A concise abstract paragraph summarizing the meeting. Retain the most important points, providing a coherent and readable summary.",
+
+  "keyPoints": "List of main points discussed, separated by newlines. Start each point with a dash (-). These should be the most important ideas, findings, or topics.",
+
+  "actionItems": "List of specific tasks or action items assigned or discussed, separated by newlines. Start each item with a dash (-). If none found, respond with 'No specific action items identified.'",
+
+  "sentiment": "Overall sentiment: exactly one of 'Positive', 'Negative', or 'Neutral'.",
+
+  "meetingType": "Classify the meeting type. Choose exactly one: 'planning', 'review', 'standup', 'brainstorm', 'decision', 'retrospective', 'report', 'general'.",
+
+  "keyEntities": {
+    "people": ["Names of individuals mentioned (max 10)"],
+    "projects": ["Project or initiative names mentioned (max 5)"],
+    "organizations": ["Teams, departments, or companies mentioned (max 5)"],
+    "products": ["Products, features, or tools mentioned (max 5)"]
+  },
+
+  "temporalContext": {
+    "quarter": "Quarter mentioned (e.g., 'Q4 2025') or null if not specified",
+    "explicitDates": ["Any specific dates mentioned in YYYY-MM-DD format"],
+    "deadlines": ["Deadline descriptions if mentioned"],
+    "timeframe": "Primary focus: 'past' (retrospective), 'present' (status), or 'future' (planning)"
+  },
+
+  "topicTags": ["3-7 lowercase semantic topic tags extracted from content, e.g., 'budget', 'hiring', 'product-launch'"],
+
+  "contentSignals": {
+    "riskMentions": 0,
+    "decisionsMade": 0,
+    "actionsAssigned": 0,
+    "questionsRaised": 0,
+    "conflictIndicators": 0
+  },
+
+  "suggestedPerspective": "Based on content focus, suggest the most appropriate analysis perspective. Choose one: 'analyst' (data-heavy), 'advocate' (opportunity-focused), 'critic' (risk-heavy), 'synthesizer' (pattern-finding), 'historian' (timeline-focused), 'pragmatist' (action-heavy), 'stakeholder' (people-focused)."
 }
 
 Ensure your response is valid JSON only, no additional text.`,
@@ -151,7 +182,22 @@ Format your response as follows:
 3. Finally, summarize what this image appears to be about
 
 Be thorough and capture every piece of text visible in the image.`,
-    audioBriefingSystem: 'You create professional executive audio briefings.'
+    audioBriefingSystem: 'You create professional executive audio briefings.',
+    agendaSystem: `You are an expert meeting facilitator skilled at creating effective meeting agendas.
+Based on the analysis of a previous meeting, create a well-structured agenda for the follow-up meeting.
+
+The agenda should:
+- Address unresolved action items from the previous meeting
+- Include time allocations for each item
+- Prioritize important follow-up discussions
+- Include space for new business
+- Be practical and actionable
+
+Format the agenda in a clear, professional structure with:
+1. Meeting title/topic
+2. Suggested duration
+3. Numbered agenda items with time allocations
+4. Any preparation notes for attendees`
 };
 
 // Metrics tracking for current run
@@ -249,6 +295,11 @@ async function init() {
         resultSummary: document.getElementById('result-summary'),
         resultKeypoints: document.getElementById('result-keypoints'),
         resultActions: document.getElementById('result-actions'),
+        resultAgenda: document.getElementById('result-agenda'),
+        agendaSection: document.getElementById('agenda-section'),
+
+        // Agenda
+        makeAgendaBtn: document.getElementById('make-agenda-btn'),
         
         // Error
         errorSection: document.getElementById('error-section'),
@@ -438,7 +489,10 @@ function setupEventListeners() {
     elements.exportAgentBtn.addEventListener('click', showAgentNameModal);
     elements.importAgentBtn.addEventListener('click', () => elements.agentFileInput.click());
     elements.agentFileInput.addEventListener('change', handleAgentFileSelect);
-    
+
+    // Make Agenda
+    elements.makeAgendaBtn.addEventListener('click', generateAgenda);
+
     // Agent Name Modal
     elements.modalCloseBtn.addEventListener('click', hideAgentNameModal);
     elements.modalCancelBtn.addEventListener('click', hideAgentNameModal);
@@ -1423,14 +1477,38 @@ async function analyzeMeetingBatch(text) {
 
     const response = await callChatAPI(systemPrompt, text, 'Meeting Analysis');
 
+    // Helper to extract SoT metadata with defaults
+    const extractSoTMetadata = (parsed) => ({
+        meetingType: parsed.meetingType || 'general',
+        keyEntities: parsed.keyEntities || {
+            people: [], projects: [], organizations: [], products: []
+        },
+        temporalContext: parsed.temporalContext || null,
+        topicTags: Array.isArray(parsed.topicTags) ? parsed.topicTags : [],
+        contentSignals: parsed.contentSignals || {
+            riskMentions: 0, decisionsMade: 0, actionsAssigned: 0,
+            questionsRaised: 0, conflictIndicators: 0
+        },
+        suggestedPerspective: parsed.suggestedPerspective || null
+    });
+
     try {
         // Try to parse the JSON response
         const parsed = JSON.parse(response);
+        const sotMetadata = extractSoTMetadata(parsed);
         return {
+            // Core fields
             summary: parsed.summary || '',
             keyPoints: parsed.keyPoints || '',
             actionItems: parsed.actionItems || '',
             sentiment: parsed.sentiment || 'Neutral',
+            // SoT metadata fields (top-level for easy access)
+            meetingType: sotMetadata.meetingType,
+            keyEntities: sotMetadata.keyEntities,
+            temporalContext: sotMetadata.temporalContext,
+            topicTags: sotMetadata.topicTags,
+            contentSignals: sotMetadata.contentSignals,
+            suggestedPerspective: sotMetadata.suggestedPerspective,
             _meta: meta
         };
     } catch (error) {
@@ -1441,11 +1519,18 @@ async function analyzeMeetingBatch(text) {
                 const parsed = JSON.parse(jsonMatch[0]);
                 meta.jsonRecovered = true;
                 meta.mode = 'batch-json-extracted';
+                const sotMetadata = extractSoTMetadata(parsed);
                 return {
                     summary: parsed.summary || '',
                     keyPoints: parsed.keyPoints || '',
                     actionItems: parsed.actionItems || '',
                     sentiment: parsed.sentiment || 'Neutral',
+                    meetingType: sotMetadata.meetingType,
+                    keyEntities: sotMetadata.keyEntities,
+                    temporalContext: sotMetadata.temporalContext,
+                    topicTags: sotMetadata.topicTags,
+                    contentSignals: sotMetadata.contentSignals,
+                    suggestedPerspective: sotMetadata.suggestedPerspective,
                     _meta: meta
                 };
             } catch (e) {
@@ -1459,6 +1544,7 @@ async function analyzeMeetingBatch(text) {
                     extractActionItems(text),
                     analyzeSentiment(text)
                 ]);
+                // Fallback mode has no SoT metadata
                 return { summary, keyPoints, actionItems, sentiment, _meta: meta };
             }
         }
@@ -2505,6 +2591,10 @@ function resetForNewAnalysis() {
     if (elements.resultKeypoints) elements.resultKeypoints.innerHTML = '';
     if (elements.resultActions) elements.resultActions.innerHTML = '';
     if (elements.resultTranscript) elements.resultTranscript.innerHTML = '';
+    if (elements.resultAgenda) {
+        elements.resultAgenda.innerHTML = '<p class="muted">Click "Make Agenda" to generate an agenda for your next meeting based on this analysis.</p>';
+    }
+    if (elements.agendaSection) elements.agendaSection.open = false;
     
     // Reset KPI dashboard values
     const kpiSentiment = document.getElementById('kpi-sentiment');
@@ -2688,13 +2778,74 @@ async function textToSpeech(text, voice = 'nova') {
 
 function downloadAudio() {
     if (!generatedAudioUrl) return;
-    
+
     const a = document.createElement('a');
     a.href = generatedAudioUrl;
     a.download = `meeting-briefing-${new Date().toISOString().slice(0, 10)}.mp3`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+}
+
+// ============================================
+// AGENDA GENERATION
+// ============================================
+async function generateAgenda() {
+    if (!state.results) return;
+
+    const btn = elements.makeAgendaBtn;
+    const btnText = btn.querySelector('.btn-text');
+    const btnLoader = btn.querySelector('.btn-loader');
+
+    // Show loading state
+    btnText.classList.add('hidden');
+    btnLoader.classList.remove('hidden');
+    btn.disabled = true;
+
+    try {
+        const agendaPrompt = `Based on the following meeting analysis, create a detailed agenda for the next follow-up meeting.
+
+Meeting Summary:
+${state.results.summary}
+
+Key Points Discussed:
+${state.results.keyPoints}
+
+Action Items:
+${state.results.actionItems}
+
+Overall Sentiment: ${state.results.sentiment}
+
+Create an agenda that:
+1. Opens with a review of action items from this meeting
+2. Addresses any unresolved topics or decisions
+3. Includes time for progress updates on assigned tasks
+4. Allows space for new business
+5. Suggests appropriate meeting duration based on content`;
+
+        const agenda = await callChatAPI(
+            PROMPTS.agendaSystem,
+            agendaPrompt,
+            'Agenda Generation'
+        );
+
+        // Display the agenda in the result card
+        elements.resultAgenda.innerHTML = marked.parse(agenda);
+
+        // Open the agenda section
+        elements.agendaSection.open = true;
+
+        // Update metrics display
+        displayMetrics();
+
+    } catch (error) {
+        console.error('Agenda generation error:', error);
+        showError(error.message || 'Failed to generate agenda.');
+    } finally {
+        btnText.classList.remove('hidden');
+        btnLoader.classList.add('hidden');
+        btn.disabled = false;
+    }
 }
 
 // ============================================
@@ -3506,6 +3657,20 @@ function buildExportPayload(agentName, now, readableDate) {
             sentiment: results.sentiment || '',
             transcript,
             model: GPT_52_MODEL
+        },
+        // SoT metadata for Orchestrator perspective assignment and grouping
+        sotMetadata: {
+            meetingType: results.meetingType || 'general',
+            keyEntities: results.keyEntities || {
+                people: [], projects: [], organizations: [], products: []
+            },
+            temporalContext: results.temporalContext || null,
+            topicTags: Array.isArray(results.topicTags) ? results.topicTags : [],
+            contentSignals: results.contentSignals || {
+                riskMentions: 0, decisionsMade: 0, actionsAssigned: 0,
+                questionsRaised: 0, conflictIndicators: 0
+            },
+            suggestedPerspective: results.suggestedPerspective || null
         },
         kpis: {
             wordsAnalyzed: wordCount,

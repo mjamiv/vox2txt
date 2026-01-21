@@ -4,11 +4,22 @@
  * Analyzes user queries and decomposes them into targeted sub-queries.
  * Each sub-query is designed to be answered by a specific agent or subset.
  *
+ * Enhanced with Societies of Thought (SoT) perspective roles for
+ * diverse cognitive viewpoints during query decomposition.
+ *
  * Future RLM expansion: This will generate executable code that the REPL
  * can run to programmatically query the context store.
  */
 
 import { getContextStore } from './context-store.js';
+import {
+    selectRolesForQuery,
+    assignRolesToAgents,
+    assignPerspectivesToGroups,
+    perspectiveFromGroupType,
+    RoleAssignmentStrategy,
+    PerspectiveRoles
+} from './perspective-roles.js';
 
 /**
  * Query complexity classification
@@ -38,6 +49,11 @@ export class QueryDecomposer {
             summaryMaxSubQueries: options.summaryMaxSubQueries || 4,
             minRelevanceScore: options.minRelevanceScore || 2,
             enableLLMDecomposition: options.enableLLMDecomposition !== false,
+            // Societies of Thought settings
+            enableSocietiesOfThought: options.enableSocietiesOfThought !== false,
+            roleAssignmentStrategy: options.roleAssignmentStrategy || RoleAssignmentStrategy.ROTATING,
+            minAgentsForSoT: options.minAgentsForSoT || 2,
+            minAgentsForGroupDecomposition: options.minAgentsForGroupDecomposition || 6,
             ...options
         };
         this.groups = []; // Groups data from state
@@ -430,6 +446,22 @@ export class QueryDecomposer {
     async _generateSubQueries(query, classification, strategy, relevantAgents, context) {
         const subQueries = [];
 
+        // Check if SoT perspective roles should be applied
+        const enableSoT = this.options.enableSocietiesOfThought &&
+            context.enableSocietiesOfThought !== false &&
+            relevantAgents.length >= this.options.minAgentsForSoT;
+
+        // Select and assign perspective roles if SoT is enabled
+        let roleAssignments = null;
+        if (enableSoT) {
+            const roles = selectRolesForQuery(classification, relevantAgents.length);
+            roleAssignments = assignRolesToAgents(
+                relevantAgents,
+                roles,
+                this.options.roleAssignmentStrategy
+            );
+        }
+
         switch (strategy.type) {
             case 'direct':
                 // Single query to all relevant agents combined
@@ -444,43 +476,59 @@ export class QueryDecomposer {
                 break;
 
             case 'parallel':
-                // One sub-query per relevant agent
+                // One sub-query per relevant agent with perspective roles
                 relevantAgents.forEach((agent, index) => {
+                    const assignment = roleAssignments?.[index];
                     subQueries.push({
                         id: `sq-${index}`,
                         type: 'agent-specific',
-                        query: this._createAgentSpecificQuery(query, agent),
+                        query: this._createRoleAwareQuery(query, agent, assignment?.role),
                         targetAgents: [agent.id],
                         contextLevel: 'standard',
                         priority: 1,
-                        agentName: agent.displayName || agent.title
+                        agentName: agent.displayName || agent.title,
+                        // Include perspective metadata for aggregation
+                        perspective: assignment?.role ? {
+                            roleId: assignment.role.id,
+                            roleLabel: assignment.role.label,
+                            traits: assignment.role.traits
+                        } : null
                     });
                 });
                 break;
 
             case 'map-reduce':
-                // Map phase: query each agent
+                // Map phase: query each agent with perspective roles
                 relevantAgents.forEach((agent, index) => {
+                    const assignment = roleAssignments?.[index];
                     subQueries.push({
                         id: `sq-map-${index}`,
                         type: 'map',
-                        query: this._createMapQuery(query, classification.intent),
+                        query: this._createRoleAwareMapQuery(query, classification.intent, assignment?.role),
                         targetAgents: [agent.id],
                         contextLevel: 'summary', // Lighter context for map phase
                         priority: 1,
-                        agentName: agent.displayName || agent.title
+                        agentName: agent.displayName || agent.title,
+                        perspective: assignment?.role ? {
+                            roleId: assignment.role.id,
+                            roleLabel: assignment.role.label,
+                            traits: assignment.role.traits
+                        } : null
                     });
                 });
 
-                // Reduce phase marker (executed after map results)
+                // Reduce phase with synthesis-aware prompt
                 subQueries.push({
                     id: 'sq-reduce',
                     type: 'reduce',
-                    query: this._createReduceQuery(query, classification.intent),
+                    query: enableSoT
+                        ? this._createSynthesisReduceQuery(query, classification.intent)
+                        : this._createReduceQuery(query, classification.intent),
                     targetAgents: [], // Uses map results, not agent context
                     contextLevel: 'none',
                     priority: 2,
-                    dependsOn: subQueries.filter(sq => sq.type === 'map').map(sq => sq.id)
+                    dependsOn: subQueries.filter(sq => sq.type === 'map').map(sq => sq.id),
+                    perspective: { roleId: 'synthesizer', roleLabel: 'Synthesizer' }
                 });
                 break;
 
@@ -551,6 +599,183 @@ export class QueryDecomposer {
         };
 
         return synthesisPrompts[intent] || `Synthesize the findings to answer: ${originalQuery}`;
+    }
+
+    /**
+     * Create role-aware query for an agent (SoT)
+     * @private
+     */
+    _createRoleAwareQuery(originalQuery, agent, role) {
+        const agentContext = `Regarding the "${agent.displayName || agent.title}" meeting`;
+
+        if (!role) {
+            return `${agentContext}: ${originalQuery}`;
+        }
+
+        return `${agentContext}:
+
+${role.promptPrefix}
+${originalQuery}
+
+Focus on your ${role.label.toLowerCase()} perspective while answering.`;
+    }
+
+    /**
+     * Create role-aware map query (SoT)
+     * @private
+     */
+    _createRoleAwareMapQuery(originalQuery, intent, role) {
+        const baseQuery = this._createMapQuery(originalQuery, intent);
+
+        if (!role) {
+            return baseQuery;
+        }
+
+        return `${role.promptPrefix}
+
+${baseQuery}
+
+Approach this from a ${role.label.toLowerCase()}'s perspective, focusing on: ${role.traits.join(', ')}.`;
+    }
+
+    /**
+     * Create synthesis-focused reduce query with perspective awareness (SoT)
+     * @private
+     */
+    _createSynthesisReduceQuery(originalQuery, intent) {
+        return `You are synthesizing diverse perspectives on: "${originalQuery}"
+
+The responses below come from different analytical perspectives (analyst, advocate, critic, etc.).
+
+Instructions:
+1. Identify points of AGREEMENT across perspectives
+2. Highlight any CONFLICTS or TENSIONS between perspectives
+3. Synthesize a balanced answer that acknowledges multiple viewpoints
+4. Note which perspective(s) each key insight came from
+
+${this._createReduceQuery(originalQuery, intent)}`;
+    }
+
+    /**
+     * Generate group-level sub-queries (SoT Phase 1.5)
+     * @param {string} query - User query
+     * @param {Array} groups - Active groups with agents
+     * @param {Object} classification - Query classification
+     * @param {Object} context - Additional context
+     * @returns {Array|null} Sub-queries at group level, or null to fall back to agent-level
+     */
+    generateGroupLevelSubQueries(query, groups, classification, context) {
+        // Get groups with agents
+        const activeGroups = (groups || []).filter(g =>
+            g.enabled && g.agentIds && g.agentIds.length > 0
+        );
+
+        if (activeGroups.length < 2) {
+            return null; // Fall back to agent-level decomposition
+        }
+
+        const subQueries = [];
+
+        // Assign perspectives to groups
+        const groupAssignments = assignPerspectivesToGroups(activeGroups, classification);
+
+        // Create one sub-query per group
+        groupAssignments.forEach((assignment, index) => {
+            const { group, perspective, source } = assignment;
+
+            subQueries.push({
+                id: `sq-group-${index}`,
+                type: 'group-query',
+                query: this._createGroupPerspectiveQuery(query, group, perspective),
+                targetAgents: group.agentIds,  // All agents in the group
+                targetGroup: {
+                    id: group.id,
+                    name: group.name,
+                    type: group.criteria?.type,
+                    agentCount: group.agentIds.length
+                },
+                contextLevel: 'standard',
+                priority: 1,
+                perspective: {
+                    roleId: perspective.id,
+                    roleLabel: perspective.label,
+                    traits: perspective.traits,
+                    assignmentSource: source
+                }
+            });
+        });
+
+        // Add reduce query for synthesis
+        subQueries.push({
+            id: 'sq-reduce',
+            type: 'reduce',
+            query: this._createGroupSynthesisQuery(query, classification, activeGroups.length),
+            targetAgents: [],
+            contextLevel: 'none',
+            priority: 2,
+            dependsOn: subQueries.filter(sq => sq.type === 'group-query').map(sq => sq.id),
+            perspective: { roleId: 'synthesizer', roleLabel: 'Synthesizer' }
+        });
+
+        return subQueries;
+    }
+
+    /**
+     * Create perspective-aware query for a group (SoT Phase 1.5)
+     * @private
+     */
+    _createGroupPerspectiveQuery(originalQuery, group, perspective) {
+        const groupContext = `Analyzing the "${group.name}" group (${group.agentIds.length} meetings)`;
+
+        return `${groupContext}:
+
+${perspective.promptPrefix}
+${originalQuery}
+
+Consider all meetings in this group collectively. Focus on your ${perspective.label.toLowerCase()} perspective (${perspective.traits.join(', ')}).`;
+    }
+
+    /**
+     * Create synthesis query for group-level results (SoT Phase 1.5)
+     * @private
+     */
+    _createGroupSynthesisQuery(originalQuery, classification, groupCount) {
+        return `You are synthesizing perspectives from ${groupCount} distinct meeting groups.
+
+Each group analyzed the question from a different cognitive perspective.
+
+Original question: "${originalQuery}"
+
+Instructions:
+1. Identify where groups AGREE (consensus across perspectives)
+2. Highlight where groups DISAGREE (conflicting perspectives)
+3. Note which perspective's insights are most relevant to the question
+4. Synthesize a balanced answer that acknowledges the diversity of viewpoints
+5. Cite which group each key insight came from`;
+    }
+
+    /**
+     * Determine whether to use group-level or agent-level decomposition
+     * @param {Array} groups - Available groups
+     * @param {number} agentCount - Total agent count
+     * @param {Object} classification - Query classification
+     * @returns {boolean} True if group decomposition should be used
+     */
+    shouldUseGroupDecomposition(groups, agentCount, classification) {
+        // Use group decomposition if:
+        // 1. Groups exist and have agents
+        // 2. Agent count is high enough to benefit
+        // 3. Query is complex enough to warrant perspectives
+
+        const activeGroups = (groups || []).filter(g =>
+            g.enabled && g.agentIds && g.agentIds.length > 0
+        );
+
+        if (activeGroups.length < 2) return false;  // Need multiple groups
+        if (agentCount < this.options.minAgentsForGroupDecomposition) return false;
+        if (classification.complexity === QueryComplexity.SIMPLE) return false;
+
+        return true;
     }
 
     /**
