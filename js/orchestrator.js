@@ -62,7 +62,12 @@ const state = {
         enableFocusShadow: true,
         enableFocusEpisodes: true,
         enablePromptBudgeting: RLM_CONFIG.enablePromptBudgeting,
-        showMemoryDebug: false
+        showMemoryDebug: false,
+        // Societies of Thought (SoT) settings
+        enableSocietiesOfThought: true,    // Enable diverse perspective assignment
+        enableConflictDetection: true,      // Surface tensions in synthesis
+        enableDebatePhase: false,           // MAP->DEBATE->REDUCE for complex queries (opt-in)
+        enableDiversitySelection: true      // Diversity-aware agent selection
     }
 };
 
@@ -2550,6 +2555,11 @@ function applyRlmFeatureFlags() {
         enableFocusShadow: state.settings.enableFocusShadow,
         enableFocusEpisodes: state.settings.enableFocusEpisodes,
         enablePromptBudgeting: state.settings.enablePromptBudgeting,
+        // Societies of Thought (SoT) settings
+        enableSocietiesOfThought: state.settings.enableSocietiesOfThought,
+        enableConflictDetection: state.settings.enableConflictDetection,
+        enableDebatePhase: state.settings.enableDebatePhase,
+        enableDiversitySelection: state.settings.enableDiversitySelection,
         ...tiering
     });
     // Apply optimization mode overrides (Recommendation D)
@@ -3345,7 +3355,13 @@ function parseAgentFile(content) {
         sentiment: '',
         transcript: '',
         payload: null,
-        extendedContext: ''
+        extendedContext: '',
+        // SoT metadata fields
+        sotMetadata: null,
+        meetingType: 'general',
+        topicTags: [],
+        suggestedPerspective: null,
+        temporalQuarter: null
     };
     
     // Parse YAML frontmatter
@@ -3431,8 +3447,30 @@ function parseAgentFile(content) {
         result.actionItems = analysis.actionItems || result.actionItems;
         result.sentiment = analysis.sentiment || result.sentiment;
         result.transcript = analysis.transcript || result.transcript;
+
+        // Extract SoT metadata from payload
+        const sot = exportPayload.sotMetadata || {};
+        result.sotMetadata = {
+            meetingType: sot.meetingType || 'general',
+            keyEntities: sot.keyEntities || { people: [], projects: [], organizations: [], products: [] },
+            temporalContext: sot.temporalContext || null,
+            topicTags: Array.isArray(sot.topicTags) ? sot.topicTags : [],
+            contentSignals: sot.contentSignals || null,
+            suggestedPerspective: sot.suggestedPerspective || null,
+            // Computed fields for grouping
+            temporalQuarter: sot.temporalContext?.quarter || null,
+            timeframe: sot.temporalContext?.timeframe || null,
+            hasRisks: (sot.contentSignals?.riskMentions || 0) > 2,
+            hasDecisions: (sot.contentSignals?.decisionsMade || 0) > 0,
+            isActionHeavy: (sot.contentSignals?.actionsAssigned || 0) > 3
+        };
+        // Expose key fields at top level for easy access
+        result.meetingType = result.sotMetadata.meetingType;
+        result.topicTags = result.sotMetadata.topicTags;
+        result.suggestedPerspective = result.sotMetadata.suggestedPerspective;
+        result.temporalQuarter = result.sotMetadata.temporalQuarter;
     }
-    
+
     return result;
 }
 
@@ -7089,19 +7127,112 @@ function updateStreamingMessage(streamState, chunk) {
 
 function finalizeStreamingMessage(streamState, fullText, options = {}) {
     if (!streamState?.content) return;
-    const { isError = false } = options;
+    const { isError = false, conflictAnalysis = null, sources = null } = options;
     if (typeof marked !== 'undefined' && !isError) {
         streamState.content.innerHTML = marked.parse(fullText || '');
     } else {
         streamState.content.innerHTML = escapeHtml(fullText || '');
     }
     streamState.container?.classList.toggle('streaming-error', isError);
+
+    // Append conflict summary if conflicts were detected (SoT enhancement)
+    if (conflictAnalysis?.hasConflicts && !isError) {
+        const conflictSummary = renderConflictSummary(conflictAnalysis);
+        if (conflictSummary) {
+            streamState.content.appendChild(conflictSummary);
+        }
+    }
+
+    // Append source badges if perspectives are available (SoT enhancement)
+    if (sources && sources.length > 0 && !isError) {
+        const sourcesWithPerspectives = sources.filter(s => s.perspective);
+        if (sourcesWithPerspectives.length > 0) {
+            const sourceBadges = renderSourcePerspectives(sourcesWithPerspectives);
+            if (sourceBadges) {
+                streamState.content.appendChild(sourceBadges);
+            }
+        }
+    }
+
     elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
     saveState();
     updateContextGauge();
 
     // Return the container for depth controls attachment
     return streamState.container;
+}
+
+/**
+ * Render conflict summary section (SoT Phase 5)
+ * @param {Object} conflictAnalysis - Analysis from ConflictDetector
+ * @returns {HTMLElement} Conflict summary element
+ */
+function renderConflictSummary(conflictAnalysis) {
+    if (!conflictAnalysis?.hasConflicts || conflictAnalysis.conflicts.length === 0) {
+        return null;
+    }
+
+    const container = document.createElement('div');
+    container.className = 'conflict-summary';
+
+    const header = document.createElement('div');
+    header.className = 'conflict-summary-header';
+    header.innerHTML = `<span class="conflict-summary-icon">\u26a1</span>Detected Tensions`;
+    container.appendChild(header);
+
+    const list = document.createElement('ul');
+    list.className = 'conflict-list';
+    conflictAnalysis.conflicts.slice(0, 3).forEach(conflict => {
+        const li = document.createElement('li');
+        li.textContent = `${conflict.source1.perspective} (${conflict.source1.agentName}) differs from ${conflict.source2.perspective} (${conflict.source2.agentName})`;
+        list.appendChild(li);
+    });
+    container.appendChild(list);
+
+    if (conflictAnalysis.conflictThemes?.length > 0) {
+        const tags = document.createElement('div');
+        tags.className = 'conflict-theme-tags';
+        conflictAnalysis.conflictThemes.forEach(theme => {
+            const tag = document.createElement('span');
+            tag.className = 'conflict-theme-tag';
+            tag.textContent = theme;
+            tags.appendChild(tag);
+        });
+        container.appendChild(tags);
+    }
+
+    return container;
+}
+
+/**
+ * Render source perspective badges (SoT Phase 5)
+ * @param {Array} sources - Array of { agentName, perspective }
+ * @returns {HTMLElement} Source badges element
+ */
+function renderSourcePerspectives(sources) {
+    if (!sources || sources.length === 0) return null;
+
+    const container = document.createElement('div');
+    container.className = 'source-perspectives';
+    container.style.marginTop = '12px';
+    container.style.paddingTop = '8px';
+    container.style.borderTop = '1px solid rgba(255,255,255,0.1)';
+    container.style.fontSize = '0.75rem';
+    container.style.color = 'var(--text-muted)';
+
+    const label = document.createElement('span');
+    label.textContent = 'Perspectives: ';
+    container.appendChild(label);
+
+    sources.forEach(source => {
+        const badge = document.createElement('span');
+        badge.className = `perspective-badge ${source.perspective?.toLowerCase() || ''}`;
+        badge.textContent = source.perspective || 'default';
+        badge.title = source.agentName || 'Unknown source';
+        container.appendChild(badge);
+    });
+
+    return container;
 }
 
 /**

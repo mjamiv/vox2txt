@@ -148,6 +148,86 @@ export class ContextStore {
     }
 
     /**
+     * Query agents with diversity consideration (SoT Phase 3)
+     * Ensures diverse agent types are selected to avoid over-representation
+     * @param {string} query - Search query
+     * @param {Object} options - Query options
+     * @returns {Array} Ranked agents with diversity bonus
+     */
+    queryAgentsWithDiversity(query, options = {}) {
+        const {
+            maxResults = 5,
+            minScore = 0,
+            diversityWeight = 0.3,  // How much to weight diversity vs relevance
+            diversityFields = ['sourceType', 'meetingType', 'temporalQuarter'],  // Fields to diversify on
+            activeOnly = true,
+            agentFilter = null,
+            groupFilter = null
+        } = options;
+
+        // Get initial relevance-ranked results (more than needed)
+        const candidates = this.queryAgents(query, {
+            maxResults: maxResults * 3,  // Get extra candidates
+            minScore,
+            activeOnly,
+            agentFilter,
+            groupFilter
+        });
+
+        if (candidates.length <= maxResults) {
+            return candidates;
+        }
+
+        // Apply diversity re-ranking
+        const selected = [];
+        const seenValues = {};
+        diversityFields.forEach(field => {
+            seenValues[field] = new Set();
+        });
+
+        // Greedy selection with diversity penalty
+        const remaining = [...candidates];
+
+        while (selected.length < maxResults && remaining.length > 0) {
+            let bestIdx = 0;
+            let bestScore = -Infinity;
+
+            remaining.forEach((agent, idx) => {
+                // Calculate diversity bonus
+                let diversityBonus = 0;
+                diversityFields.forEach(field => {
+                    const value = agent[field] || agent.sotMetadata?.[field];
+                    if (value && !seenValues[field].has(value)) {
+                        diversityBonus += diversityWeight / diversityFields.length;
+                    }
+                });
+
+                // Combined score = relevance + diversity
+                const relevance = agent._relevanceScore || 1;
+                const normalizedRelevance = relevance / (candidates[0]?._relevanceScore || 1);
+                const combinedScore = normalizedRelevance * (1 - diversityWeight) + diversityBonus;
+
+                if (combinedScore > bestScore) {
+                    bestScore = combinedScore;
+                    bestIdx = idx;
+                }
+            });
+
+            // Add best candidate
+            const chosen = remaining.splice(bestIdx, 1)[0];
+            selected.push({ ...chosen, _diversityScore: bestScore });
+
+            // Update seen values
+            diversityFields.forEach(field => {
+                const value = chosen[field] || chosen.sotMetadata?.[field];
+                if (value) seenValues[field].add(value);
+            });
+        }
+
+        return selected;
+    }
+
+    /**
      * Calculate relevance score for an agent
      * @private
      */

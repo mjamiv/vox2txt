@@ -5703,6 +5703,188 @@ details[open] .about-toggle {
     50% { opacity: 1; }
 }
 
+/* ============================================
+   Societies of Thought (SoT) UI Enhancements
+   ============================================ */
+
+/* Perspective badges in responses */
+.perspective-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 6px;
+    background: rgba(212, 168, 83, 0.15);
+    color: var(--accent-primary);
+    border: 1px solid rgba(212, 168, 83, 0.25);
+}
+
+.perspective-badge.analyst {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+    border-color: rgba(96, 165, 250, 0.3);
+}
+
+.perspective-badge.advocate {
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+    border-color: rgba(74, 222, 128, 0.3);
+}
+
+.perspective-badge.critic {
+    background: rgba(251, 146, 60, 0.15);
+    color: #fb923c;
+    border-color: rgba(251, 146, 60, 0.3);
+}
+
+.perspective-badge.synthesizer {
+    background: rgba(167, 139, 250, 0.15);
+    color: #a78bfa;
+    border-color: rgba(167, 139, 250, 0.3);
+}
+
+.perspective-badge.historian {
+    background: rgba(192, 132, 252, 0.15);
+    color: #c084fc;
+    border-color: rgba(192, 132, 252, 0.3);
+}
+
+.perspective-badge.pragmatist {
+    background: rgba(34, 211, 238, 0.15);
+    color: #22d3ee;
+    border-color: rgba(34, 211, 238, 0.3);
+}
+
+.perspective-badge.stakeholder {
+    background: rgba(244, 114, 182, 0.15);
+    color: #f472b6;
+    border-color: rgba(244, 114, 182, 0.3);
+}
+
+/* Conflict summary section in responses */
+.conflict-summary {
+    margin: 12px 0;
+    padding: 10px 14px;
+    background: rgba(251, 146, 60, 0.08);
+    border-left: 3px solid #fb923c;
+    border-radius: 0 6px 6px 0;
+}
+
+.conflict-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #fb923c;
+    font-size: 0.85rem;
+}
+
+.conflict-summary-icon {
+    font-size: 1rem;
+}
+
+.conflict-list {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+.conflict-list li {
+    margin: 4px 0;
+    line-height: 1.4;
+}
+
+.conflict-theme-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.conflict-theme-tag {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    background: rgba(251, 146, 60, 0.12);
+    color: #fb923c;
+}
+
+/* Agreement section in responses */
+.agreement-summary {
+    margin: 12px 0;
+    padding: 10px 14px;
+    background: rgba(74, 222, 128, 0.08);
+    border-left: 3px solid #4ade80;
+    border-radius: 0 6px 6px 0;
+}
+
+.agreement-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #4ade80;
+    font-size: 0.85rem;
+}
+
+/* Perspective source attribution in chat */
+.source-perspective {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+.source-perspective::before {
+    content: '\2022';
+    margin: 0 4px;
+}
+
+/* Debate phase indicator in thinking steps */
+.thinking-step.debate .step-text {
+    color: #f59e0b; /* Amber for debates */
+}
+
+.thinking-step.debate .step-icon {
+    color: #f59e0b;
+}
+
+/* SoT metadata display on agent nodes */
+.agent-sot-metadata {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.agent-sot-tag {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(212, 168, 83, 0.1);
+    color: var(--text-muted);
+}
+
+.agent-sot-tag.meeting-type {
+    background: rgba(96, 165, 250, 0.12);
+    color: #60a5fa;
+}
+
+.agent-sot-tag.topic {
+    background: rgba(167, 139, 250, 0.12);
+    color: #a78bfa;
+}
+
 /* Chat Input Area */
 .chatbot-input-area {
     padding: var(--space-md) var(--space-lg) var(--space-lg);

@@ -4,9 +4,14 @@
  * Merges results from parallel sub-queries into a coherent final response.
  * Handles conflict resolution, deduplication, and synthesis.
  *
+ * Enhanced with Societies of Thought (SoT) conflict detection for
+ * surfacing disagreements between perspectives during synthesis.
+ *
  * Future RLM expansion: This will support hierarchical aggregation from
  * recursive sub-calls at different depths.
  */
+
+import { createConflictDetector } from './conflict-detector.js';
 
 export class ResponseAggregator {
     constructor(options = {}) {
@@ -17,8 +22,19 @@ export class ResponseAggregator {
             enableEarlyStop: options.enableEarlyStop ?? true,
             earlyStopMaxResults: options.earlyStopMaxResults || 2,
             earlyStopSimilarity: options.earlyStopSimilarity || 0.85,
+            // Societies of Thought conflict detection settings
+            enableConflictDetection: options.enableConflictDetection !== false,
+            surfaceConflictsInResponse: options.surfaceConflictsInResponse !== false,
+            conflictDetectionThreshold: options.conflictDetectionThreshold || 0.6,
             ...options
         };
+
+        // Initialize conflict detector if enabled
+        this.conflictDetector = this.options.enableConflictDetection
+            ? createConflictDetector({
+                agreementThreshold: this.options.conflictDetectionThreshold
+            })
+            : null;
     }
 
     /**
@@ -129,14 +145,38 @@ export class ResponseAggregator {
      * @private
      */
     async _llmAggregate(results, originalQuery, classification, llmCall, context, executionResult, decomposition) {
-        // Build context from all results
+        // Analyze for conflicts before synthesis (SoT enhancement)
+        let conflictContext = '';
+        let conflictAnalysis = null;
+
+        if (this.conflictDetector && this.options.enableConflictDetection) {
+            conflictAnalysis = this.conflictDetector.analyze(
+                results.map(r => ({
+                    response: r.response,
+                    agentName: r.agentName,
+                    perspective: r.perspective
+                }))
+            );
+
+            if (conflictAnalysis.hasConflicts && this.options.surfaceConflictsInResponse) {
+                conflictContext = this.conflictDetector.formatForSynthesis(conflictAnalysis);
+            }
+        }
+
+        // Build context from all results (with perspective labels if available)
         const resultsContext = results.map((r, i) => {
             const source = r.agentName || `Source ${i + 1}`;
-            return `[${source}]:\n${r.response}`;
+            const perspective = r.perspective?.roleLabel ? ` [${r.perspective.roleLabel}]` : '';
+            return `[${source}${perspective}]:\n${r.response}`;
         }).join('\n\n---\n\n');
 
-        // Build synthesis prompt based on intent
-        const synthesisPrompt = this._buildSynthesisPrompt(originalQuery, classification);
+        // Build synthesis prompt (includes conflict context if present)
+        const synthesisPrompt = this._buildEnhancedSynthesisPrompt(
+            originalQuery,
+            classification,
+            conflictContext,
+            conflictAnalysis
+        );
 
         try {
             const synthesizedResponse = await llmCall(
@@ -151,8 +191,10 @@ export class ResponseAggregator {
                 aggregationType: 'llm-synthesis',
                 sources: results.map(r => ({
                     agentName: r.agentName,
-                    queryId: r.queryId
+                    queryId: r.queryId,
+                    perspective: r.perspective?.roleLabel
                 })),
+                conflictAnalysis,  // Include conflict analysis in result for UI
                 metadata: this._buildMetadata(executionResult, decomposition)
             };
         } catch (error) {
@@ -185,6 +227,43 @@ Instructions:
         };
 
         return basePrompt + (intentSpecific[classification?.intent] || '');
+    }
+
+    /**
+     * Build enhanced synthesis prompt with conflict awareness (SoT)
+     * @private
+     */
+    _buildEnhancedSynthesisPrompt(originalQuery, classification, conflictContext, conflictAnalysis) {
+        let prompt = `You are synthesizing diverse perspectives to answer: "${originalQuery}"
+
+The responses below come from different analytical perspectives analyzing meeting data.
+
+Instructions:
+- Combine information coherently from all perspectives
+- IMPORTANT: If perspectives disagree, acknowledge the disagreement explicitly
+- Present the strongest argument from each side before synthesizing
+- Be concise but comprehensive
+- Cite which meeting/perspective insights came from
+- Use bullet points for lists`;
+
+        // Add intent-specific guidance
+        const intentSpecific = {
+            'factual': '\n- Focus on factual consensus; note any factual disagreements',
+            'comparative': '\n- Highlight how different perspectives view the comparison',
+            'aggregative': '\n- Compile items, noting if any perspective flagged concerns',
+            'analytical': '\n- Present the analytical tension before your synthesis',
+            'temporal': '\n- Note if perspectives disagree on timeline or causation'
+        };
+
+        prompt += intentSpecific[classification?.intent] || '';
+
+        // Add conflict context if present
+        if (conflictContext) {
+            prompt += `\n\n---\n${conflictContext}`;
+            prompt += '\n\nAddress these tensions explicitly in your response.';
+        }
+
+        return prompt;
     }
 
     /**
