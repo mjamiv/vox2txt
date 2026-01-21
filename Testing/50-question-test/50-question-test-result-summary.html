@@ -1,0 +1,1479 @@
+
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>northstar.LM Multi-Config Test Report</title>
+            <style>
+                body { font-family: 'Source Sans 3', Arial, sans-serif; margin: 32px; color: #0a0e17; }
+                h1 { color: #b17d1b; margin-bottom: 8px; }
+                h2 { margin-top: 32px; color: #0a0e17; border-bottom: 2px solid #d4a853; padding-bottom: 8px; }
+                .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin: 24px 0; }
+                .summary-card { padding: 16px; border-radius: 12px; border: 1px solid #e0d6c3; background: #f8f4ee; }
+                table { width: 100%; border-collapse: collapse; margin-top: 16px; margin-bottom: 32px; }
+                th, td { text-align: left; border-bottom: 1px solid #e0d6c3; padding: 12px; vertical-align: top; }
+                th { background: #f1e9dc; }
+                .comparison-section { background: #fef9f0; padding: 24px; border-radius: 12px; margin: 24px 0; border: 1px solid #d4a853; }
+            </style>
+        </head>
+        <body>
+            <h1>northstar.LM Multi-Configuration Test Report</h1>
+            <p>Generated 1/20/2026, 10:04:52 AM</p>
+            <p><strong>Prompt set:</strong> Custom selection</p>
+            <p>This report compares 3 configuration(s) across 50 prompt(s).</p>
+
+            <div class="summary">
+                <div class="summary-card">
+                    <strong>Configurations</strong>
+                    <div>3</div>
+                </div>
+                <div class="summary-card">
+                    <strong>Prompts</strong>
+                    <div>50</div>
+                </div>
+                <div class="summary-card">
+                    <strong>Total Runs</strong>
+                    <div>150</div>
+                </div>
+                <div class="summary-card">
+                    <strong>Total Tokens</strong>
+                    <div>6,579,981</div>
+                </div>
+                <div class="summary-card">
+                    <strong>Total Cost</strong>
+                    <div>$9.9523</div>
+                </div>
+            </div>
+
+            <div class="comparison-section">
+                <h2 style="margin-top: 0; border: none;">Configuration Comparison</h2>
+                
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Direct Chat</th><th>RLM+SWM</th><th>RLM+Focus+Shadow</th>
+                    
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Tokens</strong></td><td>1,180,658</td><td>2,562,673</td><td>2,836,650</td></tr>
+                <tr><td><strong>Cost</strong></td><td>$2.5258</td><td>$3.6120</td><td>$3.8146</td></tr>
+                <tr><td><strong>Avg Time</strong></td><td>16.5s</td><td>1m 31s</td><td>2m 10s</td></tr>
+                <tr><td><strong>Errors</strong></td><td>0</td><td>0</td><td>0</td></tr>
+            </tbody>
+        </table>
+    
+            </div>
+
+            
+            <h2>Configuration 1: Direct Chat</h2>
+            <p><strong>Settings:</strong> Model: GPT-5.2 • Effort: none • RLM: Off • RLM Auto: Off • Shadow Prompt: Off • Retrieval Prompt: Off • Focus Shadow: Off • Focus Episodes: Off • Prompt Guardrails: Off • Memory Debug: Off</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Prompt</th>
+                        <th>Tokens</th>
+                        <th>Cost</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                <tr>
+                    <td>1</td>
+                    <td>What are the main topics discussed across all loaded meetings? List them with one sentence of context each.</td>
+                    <td>21,210</td>
+                    <td>$0.0447</td>
+                    <td>16.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>2</td>
+                    <td>Who are the key decision-makers mentioned in these meetings? For each person, note their role and at least one decision they influenced.</td>
+                    <td>22,420</td>
+                    <td>$0.0543</td>
+                    <td>25.1s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>3</td>
+                    <td>List all explicit decisions made across the meetings. Format as: Decision | Meeting Source | Stakeholders Affected</td>
+                    <td>23,434</td>
+                    <td>$0.0604</td>
+                    <td>26.1s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>4</td>
+                    <td>What action items were assigned? For each, include: Task | Owner | Deadline (if mentioned) | Meeting Source</td>
+                    <td>23,868</td>
+                    <td>$0.0636</td>
+                    <td>23.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>5</td>
+                    <td>What risks or concerns were raised across the meetings? Categorize them by severity: Critical, High, Medium, Low.</td>
+                    <td>22,692</td>
+                    <td>$0.0493</td>
+                    <td>21.0s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>6</td>
+                    <td>Looking at the topics you listed in response #1, which topic appeared most frequently across meetings?</td>
+                    <td>22,618</td>
+                    <td>$0.0417</td>
+                    <td>4.5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>7</td>
+                    <td>From the decision-makers in response #2, which person was involved in the most decisions?</td>
+                    <td>22,435</td>
+                    <td>$0.0426</td>
+                    <td>6.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>8</td>
+                    <td>Of the decisions you listed in response #3, which one has the broadest stakeholder impact?</td>
+                    <td>22,573</td>
+                    <td>$0.0424</td>
+                    <td>5.4s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>9</td>
+                    <td>Looking at the action items from response #4, are there any that depend on other action items? Identify any dependencies.</td>
+                    <td>22,445</td>
+                    <td>$0.0445</td>
+                    <td>9.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>10</td>
+                    <td>From the risks you categorized in response #5, what patterns do you see across the 'Critical' and 'High' risks?</td>
+                    <td>22,796</td>
+                    <td>$0.0500</td>
+                    <td>19.4s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>11</td>
+                    <td>Create a timeline of key events mentioned across the meetings. Start with the earliest date and work forward.</td>
+                    <td>23,345</td>
+                    <td>$0.0571</td>
+                    <td>27.5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>12</td>
+                    <td>Cross-reference the decision-makers from response #2 with the action items from response #4. Which person has the most action items assigned to them?</td>
+                    <td>22,708</td>
+                    <td>$0.0429</td>
+                    <td>6.0s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>13</td>
+                    <td>Looking back at the risks from response #5 and the decisions from response #3, are there any decisions that directly address the Critical risks?</td>
+                    <td>23,012</td>
+                    <td>$0.0469</td>
+                    <td>14.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>14</td>
+                    <td>Based on the topics from response #1 and the timeline from response #11, which topics evolved the most over time?</td>
+                    <td>23,164</td>
+                    <td>$0.0526</td>
+                    <td>21.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>15</td>
+                    <td>Combine the insights from responses #6, #7, and #8 to identify the single most impactful element discussed across all meetings.</td>
+                    <td>23,721</td>
+                    <td>$0.0467</td>
+                    <td>8.0s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>16</td>
+                    <td>Using responses #1-5 as your foundation, create a one-paragraph executive summary of all meetings.</td>
+                    <td>23,685</td>
+                    <td>$0.0456</td>
+                    <td>9.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>17</td>
+                    <td>Compare the 'most frequent topic' from response #6 with the 'broadest stakeholder impact decision' from response #8. How are they related?</td>
+                    <td>22,979</td>
+                    <td>$0.0455</td>
+                    <td>10.1s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>18</td>
+                    <td>Based on the timeline from response #11 and the action item dependencies from response #9, which action items are time-critical?</td>
+                    <td>23,055</td>
+                    <td>$0.0483</td>
+                    <td>12.5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>19</td>
+                    <td>Synthesize responses #10, #13, and #15 to create a risk mitigation priority list.</td>
+                    <td>23,235</td>
+                    <td>$0.0528</td>
+                    <td>18.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>20</td>
+                    <td>Looking at responses #2, #4, #7, and #12, create a 'stakeholder accountability matrix' showing who owns what.</td>
+                    <td>23,650</td>
+                    <td>$0.0535</td>
+                    <td>20.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>21</td>
+                    <td>In response #3, you listed decisions in a specific format. What was the FIRST decision you listed?</td>
+                    <td>22,684</td>
+                    <td>$0.0403</td>
+                    <td>1.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>22</td>
+                    <td>In response #5, how many risks did you categorize as 'Critical'? Name them.</td>
+                    <td>22,245</td>
+                    <td>$0.0403</td>
+                    <td>2.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>23</td>
+                    <td>What was the EXACT format you used for action items in response #4?</td>
+                    <td>22,254</td>
+                    <td>$0.0399</td>
+                    <td>1.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>24</td>
+                    <td>In response #2, what role did you assign to the FIRST decision-maker you listed?</td>
+                    <td>22,986</td>
+                    <td>$0.0416</td>
+                    <td>2.4s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>25</td>
+                    <td>In response #11, what was the EARLIEST date on your timeline and what event was associated with it?</td>
+                    <td>22,325</td>
+                    <td>$0.0408</td>
+                    <td>2.7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>26</td>
+                    <td>What external market factors are mentioned or implied in the meetings? Provide detailed analysis.</td>
+                    <td>26,202</td>
+                    <td>$0.0702</td>
+                    <td>42.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>27</td>
+                    <td>If you were to predict future outcomes based solely on these meetings, what would be your top 5 predictions with confidence levels?</td>
+                    <td>25,157</td>
+                    <td>$0.0539</td>
+                    <td>14.7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>28</td>
+                    <td>Analyze the communication patterns between meeting participants. Who drives discussions vs. who responds?</td>
+                    <td>24,018</td>
+                    <td>$0.0566</td>
+                    <td>27.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>29</td>
+                    <td>What operational metrics or KPIs are referenced? Create a metrics dashboard outline.</td>
+                    <td>26,246</td>
+                    <td>$0.0694</td>
+                    <td>37.1s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>30</td>
+                    <td>Identify any gaps in the meeting discussions - what important topics should have been covered but weren't?</td>
+                    <td>25,562</td>
+                    <td>$0.0572</td>
+                    <td>21.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>31</td>
+                    <td>Go back to your response #1. Are all the topics you listed still accurate? Confirm or correct.</td>
+                    <td>24,958</td>
+                    <td>$0.0509</td>
+                    <td>11.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>32</td>
+                    <td>In response #6, you identified the most frequent topic. Has anything in our subsequent discussion changed your answer?</td>
+                    <td>24,671</td>
+                    <td>$0.0464</td>
+                    <td>6.7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>33</td>
+                    <td>Recall the stakeholder impact analysis from response #8. Does the prediction analysis from response #27 support or contradict it?</td>
+                    <td>23,312</td>
+                    <td>$0.0463</td>
+                    <td>9.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>34</td>
+                    <td>Compare your executive summary from response #16 with the gaps you identified in response #30. Is the summary still complete?</td>
+                    <td>24,964</td>
+                    <td>$0.0510</td>
+                    <td>14.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>35</td>
+                    <td>Looking at your timeline from response #11 and predictions from response #27, are the predictions consistent with the historical pattern?</td>
+                    <td>22,857</td>
+                    <td>$0.0448</td>
+                    <td>7.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>36</td>
+                    <td>Create a comprehensive report combining: topics (#1), decisions (#3), risks (#5), timeline (#11), executive summary (#16), and predictions (#27).</td>
+                    <td>26,256</td>
+                    <td>$0.0762</td>
+                    <td>50.5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>37</td>
+                    <td>Using responses #2, #4, #7, #12, #20, and #28, create a complete stakeholder analysis with roles, responsibilities, and communication patterns.</td>
+                    <td>24,671</td>
+                    <td>$0.0642</td>
+                    <td>38.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>38</td>
+                    <td>Combine the risk analysis (#5, #10, #13, #19) with the gap analysis (#30) to create a comprehensive risk register.</td>
+                    <td>25,297</td>
+                    <td>$0.0772</td>
+                    <td>1m 10s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>39</td>
+                    <td>Using responses #9, #18, #20, and #29, create an operational dashboard showing action items, dependencies, owners, and metrics.</td>
+                    <td>24,850</td>
+                    <td>$0.0609</td>
+                    <td>36.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>40</td>
+                    <td>Synthesize ALL numbered responses (1-39) into a single-page meeting intelligence briefing with key takeaways.</td>
+                    <td>26,268</td>
+                    <td>$0.0697</td>
+                    <td>42.1s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>41</td>
+                    <td>You mentioned a specific risk rating in response #5. Did you categorize anything as 'EXTREME'? If so, what?</td>
+                    <td>22,861</td>
+                    <td>$0.0419</td>
+                    <td>3.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>42</td>
+                    <td>In response #20, you created a stakeholder accountability matrix. Was 'John Smith' included as an owner?</td>
+                    <td>23,487</td>
+                    <td>$0.0429</td>
+                    <td>6.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>43</td>
+                    <td>Looking at your predictions in response #27, did you assign any prediction a confidence level above 90%?</td>
+                    <td>22,662</td>
+                    <td>$0.0407</td>
+                    <td>2.0s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>44</td>
+                    <td>In your response #25, you mentioned the earliest date from response #11. What was that date again?</td>
+                    <td>22,565</td>
+                    <td>$0.0408</td>
+                    <td>3.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>45</td>
+                    <td>You've now given 44 responses. In response #16, how many words was your executive summary?</td>
+                    <td>24,275</td>
+                    <td>$0.0432</td>
+                    <td>1.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>46</td>
+                    <td>List the FIRST item you mentioned in each of responses #1, #2, #3, #4, and #5.</td>
+                    <td>24,374</td>
+                    <td>$0.0451</td>
+                    <td>5.0s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>47</td>
+                    <td>Compare your initial risk assessment (#5) with your comprehensive risk register (#38). What changed?</td>
+                    <td>23,309</td>
+                    <td>$0.0485</td>
+                    <td>18.4s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>48</td>
+                    <td>In response #21, you told me the first decision from response #3. In response #44, you recalled a date from response #25 which came from response #11. Trace this chain and verify all links are accurate.</td>
+                    <td>24,318</td>
+                    <td>$0.0501</td>
+                    <td>15.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>49</td>
+                    <td>How many total responses have you given that specifically mentioned 'stakeholder'? List the response numbers.</td>
+                    <td>23,478</td>
+                    <td>$0.0434</td>
+                    <td>6.1s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>50</td>
+                    <td>Final question: Summarize this entire conversation in exactly 10 bullet points, with each bullet referencing at least 3 different response numbers.</td>
+                    <td>22,501</td>
+                    <td>$0.0461</td>
+                    <td>12.0s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                </tbody>
+            </table>
+        
+
+            <h2>Configuration 2: RLM+SWM</h2>
+            <p><strong>Settings:</strong> Model: GPT-5.2 • Effort: none • RLM: On • RLM Auto: Off • Shadow Prompt: Off • Retrieval Prompt: On • Focus Shadow: Off • Focus Episodes: Off • Prompt Guardrails: On • Memory Debug: Off</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Prompt</th>
+                        <th>Tokens</th>
+                        <th>Cost</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                <tr>
+                    <td>1</td>
+                    <td>What are the main topics discussed across all loaded meetings? List them with one sentence of context each.</td>
+                    <td>9,946</td>
+                    <td>$0.0122</td>
+                    <td>39.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>2</td>
+                    <td>Who are the key decision-makers mentioned in these meetings? For each person, note their role and at least one decision they influenced.</td>
+                    <td>22,801</td>
+                    <td>$0.0391</td>
+                    <td>54.0s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>3</td>
+                    <td>List all explicit decisions made across the meetings. Format as: Decision | Meeting Source | Stakeholders Affected</td>
+                    <td>48,497</td>
+                    <td>$0.0796</td>
+                    <td>2m 5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>4</td>
+                    <td>What action items were assigned? For each, include: Task | Owner | Deadline (if mentioned) | Meeting Source</td>
+                    <td>28,340</td>
+                    <td>$0.0496</td>
+                    <td>1m 7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>5</td>
+                    <td>What risks or concerns were raised across the meetings? Categorize them by severity: Critical, High, Medium, Low.</td>
+                    <td>29,322</td>
+                    <td>$0.0263</td>
+                    <td>1m 12s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>6</td>
+                    <td>Looking at the topics you listed in response #1, which topic appeared most frequently across meetings?</td>
+                    <td>24,053</td>
+                    <td>$0.0149</td>
+                    <td>28.0s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>7</td>
+                    <td>From the decision-makers in response #2, which person was involved in the most decisions?</td>
+                    <td>26,064</td>
+                    <td>$0.0198</td>
+                    <td>26.5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>8</td>
+                    <td>Of the decisions you listed in response #3, which one has the broadest stakeholder impact?</td>
+                    <td>26,463</td>
+                    <td>$0.0201</td>
+                    <td>24.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>9</td>
+                    <td>Looking at the action items from response #4, are there any that depend on other action items? Identify any dependencies.</td>
+                    <td>38,170</td>
+                    <td>$0.0440</td>
+                    <td>1m 31s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>10</td>
+                    <td>From the risks you categorized in response #5, what patterns do you see across the 'Critical' and 'High' risks?</td>
+                    <td>27,218</td>
+                    <td>$0.0180</td>
+                    <td>39.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>11</td>
+                    <td>Create a timeline of key events mentioned across the meetings. Start with the earliest date and work forward.</td>
+                    <td>93,023</td>
+                    <td>$0.1454</td>
+                    <td>3m 0s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>12</td>
+                    <td>Cross-reference the decision-makers from response #2 with the action items from response #4. Which person has the most action items assigned to them?</td>
+                    <td>35,284</td>
+                    <td>$0.0358</td>
+                    <td>58.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>13</td>
+                    <td>Looking back at the risks from response #5 and the decisions from response #3, are there any decisions that directly address the Critical risks?</td>
+                    <td>32,826</td>
+                    <td>$0.0361</td>
+                    <td>47.0s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>14</td>
+                    <td>Based on the topics from response #1 and the timeline from response #11, which topics evolved the most over time?</td>
+                    <td>33,450</td>
+                    <td>$0.0418</td>
+                    <td>58.7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>15</td>
+                    <td>Combine the insights from responses #6, #7, and #8 to identify the single most impactful element discussed across all meetings.</td>
+                    <td>26,553</td>
+                    <td>$0.0159</td>
+                    <td>55.5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>16</td>
+                    <td>Using responses #1-5 as your foundation, create a one-paragraph executive summary of all meetings.</td>
+                    <td>17,286</td>
+                    <td>$0.0110</td>
+                    <td>24.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>17</td>
+                    <td>Compare the 'most frequent topic' from response #6 with the 'broadest stakeholder impact decision' from response #8. How are they related?</td>
+                    <td>30,170</td>
+                    <td>$0.0281</td>
+                    <td>41.1s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>18</td>
+                    <td>Based on the timeline from response #11 and the action item dependencies from response #9, which action items are time-critical?</td>
+                    <td>36,320</td>
+                    <td>$0.0396</td>
+                    <td>55.7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>19</td>
+                    <td>Synthesize responses #10, #13, and #15 to create a risk mitigation priority list.</td>
+                    <td>41,489</td>
+                    <td>$0.0550</td>
+                    <td>1m 6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>20</td>
+                    <td>Looking at responses #2, #4, #7, and #12, create a 'stakeholder accountability matrix' showing who owns what.</td>
+                    <td>51,698</td>
+                    <td>$0.0744</td>
+                    <td>1m 30s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>21</td>
+                    <td>In response #3, you listed decisions in a specific format. What was the FIRST decision you listed?</td>
+                    <td>32,094</td>
+                    <td>$0.0220</td>
+                    <td>28.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>22</td>
+                    <td>In response #5, how many risks did you categorize as 'Critical'? Name them.</td>
+                    <td>30,670</td>
+                    <td>$0.0167</td>
+                    <td>18.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>23</td>
+                    <td>What was the EXACT format you used for action items in response #4?</td>
+                    <td>32,401</td>
+                    <td>$0.0243</td>
+                    <td>27.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>24</td>
+                    <td>In response #2, what role did you assign to the FIRST decision-maker you listed?</td>
+                    <td>31,746</td>
+                    <td>$0.0185</td>
+                    <td>17.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>25</td>
+                    <td>In response #11, what was the EARLIEST date on your timeline and what event was associated with it?</td>
+                    <td>37,240</td>
+                    <td>$0.0265</td>
+                    <td>34.7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>26</td>
+                    <td>What external market factors are mentioned or implied in the meetings? Provide detailed analysis.</td>
+                    <td>58,459</td>
+                    <td>$0.0525</td>
+                    <td>1m 23s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>27</td>
+                    <td>If you were to predict future outcomes based solely on these meetings, what would be your top 5 predictions with confidence levels?</td>
+                    <td>43,122</td>
+                    <td>$0.0496</td>
+                    <td>1m 1s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>28</td>
+                    <td>Analyze the communication patterns between meeting participants. Who drives discussions vs. who responds?</td>
+                    <td>43,394</td>
+                    <td>$0.0555</td>
+                    <td>1m 12s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>29</td>
+                    <td>What operational metrics or KPIs are referenced? Create a metrics dashboard outline.</td>
+                    <td>204,859</td>
+                    <td>$0.3970</td>
+                    <td>3m 9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>30</td>
+                    <td>Identify any gaps in the meeting discussions - what important topics should have been covered but weren't?</td>
+                    <td>54,759</td>
+                    <td>$0.0983</td>
+                    <td>1m 30s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>31</td>
+                    <td>Go back to your response #1. Are all the topics you listed still accurate? Confirm or correct.</td>
+                    <td>39,798</td>
+                    <td>$0.0273</td>
+                    <td>1m 18s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>32</td>
+                    <td>In response #6, you identified the most frequent topic. Has anything in our subsequent discussion changed your answer?</td>
+                    <td>35,804</td>
+                    <td>$0.0265</td>
+                    <td>30.5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>33</td>
+                    <td>Recall the stakeholder impact analysis from response #8. Does the prediction analysis from response #27 support or contradict it?</td>
+                    <td>33,671</td>
+                    <td>$0.0205</td>
+                    <td>37.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>34</td>
+                    <td>Compare your executive summary from response #16 with the gaps you identified in response #30. Is the summary still complete?</td>
+                    <td>23,616</td>
+                    <td>$0.0293</td>
+                    <td>36.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>35</td>
+                    <td>Looking at your timeline from response #11 and predictions from response #27, are the predictions consistent with the historical pattern?</td>
+                    <td>33,835</td>
+                    <td>$0.0203</td>
+                    <td>41.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>36</td>
+                    <td>Create a comprehensive report combining: topics (#1), decisions (#3), risks (#5), timeline (#11), executive summary (#16), and predictions (#27).</td>
+                    <td>55,991</td>
+                    <td>$0.0818</td>
+                    <td>1m 50s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>37</td>
+                    <td>Using responses #2, #4, #7, #12, #20, and #28, create a complete stakeholder analysis with roles, responsibilities, and communication patterns.</td>
+                    <td>124,607</td>
+                    <td>$0.2178</td>
+                    <td>23m 6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>38</td>
+                    <td>Combine the risk analysis (#5, #10, #13, #19) with the gap analysis (#30) to create a comprehensive risk register.</td>
+                    <td>215,278</td>
+                    <td>$0.5612</td>
+                    <td>3m 7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>39</td>
+                    <td>Using responses #9, #18, #20, and #29, create an operational dashboard showing action items, dependencies, owners, and metrics.</td>
+                    <td>210,460</td>
+                    <td>$0.4932</td>
+                    <td>3m 9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>40</td>
+                    <td>Synthesize ALL numbered responses (1-39) into a single-page meeting intelligence briefing with key takeaways.</td>
+                    <td>100,534</td>
+                    <td>$0.1462</td>
+                    <td>2m 49s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>41</td>
+                    <td>You mentioned a specific risk rating in response #5. Did you categorize anything as 'EXTREME'? If so, what?</td>
+                    <td>4,559</td>
+                    <td><$0.01</td>
+                    <td>6.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>42</td>
+                    <td>In response #20, you created a stakeholder accountability matrix. Was 'John Smith' included as an owner?</td>
+                    <td>34,867</td>
+                    <td>$0.0200</td>
+                    <td>19.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>43</td>
+                    <td>Looking at your predictions in response #27, did you assign any prediction a confidence level above 90%?</td>
+                    <td>39,314</td>
+                    <td>$0.0247</td>
+                    <td>26.7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>44</td>
+                    <td>In your response #25, you mentioned the earliest date from response #11. What was that date again?</td>
+                    <td>38,853</td>
+                    <td>$0.0213</td>
+                    <td>19.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>45</td>
+                    <td>You've now given 44 responses. In response #16, how many words was your executive summary?</td>
+                    <td>20,888</td>
+                    <td><$0.01</td>
+                    <td>18.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>46</td>
+                    <td>List the FIRST item you mentioned in each of responses #1, #2, #3, #4, and #5.</td>
+                    <td>89,813</td>
+                    <td>$0.1190</td>
+                    <td>1m 24s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>47</td>
+                    <td>Compare your initial risk assessment (#5) with your comprehensive risk register (#38). What changed?</td>
+                    <td>44,522</td>
+                    <td>$0.0399</td>
+                    <td>49.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>48</td>
+                    <td>In response #21, you told me the first decision from response #3. In response #44, you recalled a date from response #25 which came from response #11. Trace this chain and verify all links are accurate.</td>
+                    <td>43,600</td>
+                    <td>$0.0282</td>
+                    <td>1m 3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>49</td>
+                    <td>How many total responses have you given that specifically mentioned 'stakeholder'? List the response numbers.</td>
+                    <td>48,470</td>
+                    <td>$0.0397</td>
+                    <td>49.4s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>50</td>
+                    <td>Final question: Summarize this entire conversation in exactly 10 bullet points, with each bullet referencing at least 3 different response numbers.</td>
+                    <td>76,476</td>
+                    <td>$0.1175</td>
+                    <td>1m 35s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                </tbody>
+            </table>
+        
+
+            <h2>Configuration 3: RLM+Focus+Shadow</h2>
+            <p><strong>Settings:</strong> Model: GPT-5.2 • Effort: none • RLM: On • RLM Auto: Off • Shadow Prompt: On • Retrieval Prompt: On • Focus Shadow: On • Focus Episodes: On • Prompt Guardrails: On • Memory Debug: On</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Prompt</th>
+                        <th>Tokens</th>
+                        <th>Cost</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                <tr>
+                    <td>1</td>
+                    <td>What are the main topics discussed across all loaded meetings? List them with one sentence of context each.</td>
+                    <td>33,959</td>
+                    <td>$0.0587</td>
+                    <td>1m 24s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>2</td>
+                    <td>Who are the key decision-makers mentioned in these meetings? For each person, note their role and at least one decision they influenced.</td>
+                    <td>28,417</td>
+                    <td>$0.0407</td>
+                    <td>55.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>3</td>
+                    <td>List all explicit decisions made across the meetings. Format as: Decision | Meeting Source | Stakeholders Affected</td>
+                    <td>46,332</td>
+                    <td>$0.0742</td>
+                    <td>1m 38s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>4</td>
+                    <td>What action items were assigned? For each, include: Task | Owner | Deadline (if mentioned) | Meeting Source</td>
+                    <td>37,517</td>
+                    <td>$0.0587</td>
+                    <td>1m 15s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>5</td>
+                    <td>What risks or concerns were raised across the meetings? Categorize them by severity: Critical, High, Medium, Low.</td>
+                    <td>41,918</td>
+                    <td>$0.0395</td>
+                    <td>1m 35s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>6</td>
+                    <td>Looking at the topics you listed in response #1, which topic appeared most frequently across meetings?</td>
+                    <td>26,837</td>
+                    <td>$0.0168</td>
+                    <td>34.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>7</td>
+                    <td>From the decision-makers in response #2, which person was involved in the most decisions?</td>
+                    <td>30,079</td>
+                    <td>$0.0243</td>
+                    <td>40.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>8</td>
+                    <td>Of the decisions you listed in response #3, which one has the broadest stakeholder impact?</td>
+                    <td>30,430</td>
+                    <td>$0.0234</td>
+                    <td>32.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>9</td>
+                    <td>Looking at the action items from response #4, are there any that depend on other action items? Identify any dependencies.</td>
+                    <td>48,289</td>
+                    <td>$0.0583</td>
+                    <td>1m 13s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>10</td>
+                    <td>From the risks you categorized in response #5, what patterns do you see across the 'Critical' and 'High' risks?</td>
+                    <td>32,794</td>
+                    <td>$0.0212</td>
+                    <td>58.1s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>11</td>
+                    <td>Create a timeline of key events mentioned across the meetings. Start with the earliest date and work forward.</td>
+                    <td>53,746</td>
+                    <td>$0.0573</td>
+                    <td>2m 12s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>12</td>
+                    <td>Cross-reference the decision-makers from response #2 with the action items from response #4. Which person has the most action items assigned to them?</td>
+                    <td>34,818</td>
+                    <td>$0.0340</td>
+                    <td>51.8s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>13</td>
+                    <td>Looking back at the risks from response #5 and the decisions from response #3, are there any decisions that directly address the Critical risks?</td>
+                    <td>37,940</td>
+                    <td>$0.0447</td>
+                    <td>50.5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>14</td>
+                    <td>Based on the topics from response #1 and the timeline from response #11, which topics evolved the most over time?</td>
+                    <td>39,204</td>
+                    <td>$0.0379</td>
+                    <td>48.7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>15</td>
+                    <td>Combine the insights from responses #6, #7, and #8 to identify the single most impactful element discussed across all meetings.</td>
+                    <td>33,403</td>
+                    <td>$0.0190</td>
+                    <td>49.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>16</td>
+                    <td>Using responses #1-5 as your foundation, create a one-paragraph executive summary of all meetings.</td>
+                    <td>20,501</td>
+                    <td>$0.0110</td>
+                    <td>23.1s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>17</td>
+                    <td>Compare the 'most frequent topic' from response #6 with the 'broadest stakeholder impact decision' from response #8. How are they related?</td>
+                    <td>38,733</td>
+                    <td>$0.0362</td>
+                    <td>52.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>18</td>
+                    <td>Based on the timeline from response #11 and the action item dependencies from response #9, which action items are time-critical?</td>
+                    <td>51,981</td>
+                    <td>$0.0495</td>
+                    <td>1m 16s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>19</td>
+                    <td>Synthesize responses #10, #13, and #15 to create a risk mitigation priority list.</td>
+                    <td>99,169</td>
+                    <td>$0.1509</td>
+                    <td>1m 55s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>20</td>
+                    <td>Looking at responses #2, #4, #7, and #12, create a 'stakeholder accountability matrix' showing who owns what.</td>
+                    <td>58,907</td>
+                    <td>$0.0832</td>
+                    <td>1m 51s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>21</td>
+                    <td>In response #3, you listed decisions in a specific format. What was the FIRST decision you listed?</td>
+                    <td>36,252</td>
+                    <td>$0.0234</td>
+                    <td>27.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>22</td>
+                    <td>In response #5, how many risks did you categorize as 'Critical'? Name them.</td>
+                    <td>34,786</td>
+                    <td>$0.0177</td>
+                    <td>18.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>23</td>
+                    <td>What was the EXACT format you used for action items in response #4?</td>
+                    <td>39,074</td>
+                    <td>$0.0319</td>
+                    <td>41.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>24</td>
+                    <td>In response #2, what role did you assign to the FIRST decision-maker you listed?</td>
+                    <td>35,778</td>
+                    <td>$0.0195</td>
+                    <td>17.4s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>25</td>
+                    <td>In response #11, what was the EARLIEST date on your timeline and what event was associated with it?</td>
+                    <td>37,686</td>
+                    <td>$0.0225</td>
+                    <td>25.5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>26</td>
+                    <td>What external market factors are mentioned or implied in the meetings? Provide detailed analysis.</td>
+                    <td>42,249</td>
+                    <td>$0.0281</td>
+                    <td>48m 55s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>27</td>
+                    <td>If you were to predict future outcomes based solely on these meetings, what would be your top 5 predictions with confidence levels?</td>
+                    <td>46,745</td>
+                    <td>$0.0462</td>
+                    <td>1m 7s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>28</td>
+                    <td>Analyze the communication patterns between meeting participants. Who drives discussions vs. who responds?</td>
+                    <td>47,934</td>
+                    <td>$0.0568</td>
+                    <td>1m 24s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>29</td>
+                    <td>What operational metrics or KPIs are referenced? Create a metrics dashboard outline.</td>
+                    <td>191,939</td>
+                    <td>$0.3545</td>
+                    <td>3m 41s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>30</td>
+                    <td>Identify any gaps in the meeting discussions - what important topics should have been covered but weren't?</td>
+                    <td>48,024</td>
+                    <td>$0.0570</td>
+                    <td>1m 5s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>31</td>
+                    <td>Go back to your response #1. Are all the topics you listed still accurate? Confirm or correct.</td>
+                    <td>43,061</td>
+                    <td>$0.0288</td>
+                    <td>1m 1s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>32</td>
+                    <td>In response #6, you identified the most frequent topic. Has anything in our subsequent discussion changed your answer?</td>
+                    <td>39,194</td>
+                    <td>$0.0286</td>
+                    <td>31.3s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>33</td>
+                    <td>Recall the stakeholder impact analysis from response #8. Does the prediction analysis from response #27 support or contradict it?</td>
+                    <td>38,551</td>
+                    <td>$0.0224</td>
+                    <td>37.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>34</td>
+                    <td>Compare your executive summary from response #16 with the gaps you identified in response #30. Is the summary still complete?</td>
+                    <td>24,831</td>
+                    <td>$0.0278</td>
+                    <td>27.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>35</td>
+                    <td>Looking at your timeline from response #11 and predictions from response #27, are the predictions consistent with the historical pattern?</td>
+                    <td>44,978</td>
+                    <td>$0.0243</td>
+                    <td>1m 29s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>36</td>
+                    <td>Create a comprehensive report combining: topics (#1), decisions (#3), risks (#5), timeline (#11), executive summary (#16), and predictions (#27).</td>
+                    <td>66,308</td>
+                    <td>$0.1263</td>
+                    <td>2m 6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>37</td>
+                    <td>Using responses #2, #4, #7, #12, #20, and #28, create a complete stakeholder analysis with roles, responsibilities, and communication patterns.</td>
+                    <td>130,836</td>
+                    <td>$0.2204</td>
+                    <td>2m 56s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>38</td>
+                    <td>Combine the risk analysis (#5, #10, #13, #19) with the gap analysis (#30) to create a comprehensive risk register.</td>
+                    <td>235,859</td>
+                    <td>$0.5812</td>
+                    <td>3m 6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>39</td>
+                    <td>Using responses #9, #18, #20, and #29, create an operational dashboard showing action items, dependencies, owners, and metrics.</td>
+                    <td>216,539</td>
+                    <td>$0.4582</td>
+                    <td>3m 9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>40</td>
+                    <td>Synthesize ALL numbered responses (1-39) into a single-page meeting intelligence briefing with key takeaways.</td>
+                    <td>117,922</td>
+                    <td>$0.2270</td>
+                    <td>2m 31s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>41</td>
+                    <td>You mentioned a specific risk rating in response #5. Did you categorize anything as 'EXTREME'? If so, what?</td>
+                    <td>4,735</td>
+                    <td><$0.01</td>
+                    <td>5.4s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>42</td>
+                    <td>In response #20, you created a stakeholder accountability matrix. Was 'John Smith' included as an owner?</td>
+                    <td>37,125</td>
+                    <td>$0.0237</td>
+                    <td>22.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>43</td>
+                    <td>Looking at your predictions in response #27, did you assign any prediction a confidence level above 90%?</td>
+                    <td>40,485</td>
+                    <td>$0.0233</td>
+                    <td>18.2s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>44</td>
+                    <td>In your response #25, you mentioned the earliest date from response #11. What was that date again?</td>
+                    <td>40,284</td>
+                    <td>$0.0232</td>
+                    <td>21.6s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>45</td>
+                    <td>You've now given 44 responses. In response #16, how many words was your executive summary?</td>
+                    <td>22,099</td>
+                    <td><$0.01</td>
+                    <td>12.9s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>46</td>
+                    <td>List the FIRST item you mentioned in each of responses #1, #2, #3, #4, and #5.</td>
+                    <td>78,273</td>
+                    <td>$0.0869</td>
+                    <td>1m 31s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>47</td>
+                    <td>Compare your initial risk assessment (#5) with your comprehensive risk register (#38). What changed?</td>
+                    <td>51,732</td>
+                    <td>$0.0444</td>
+                    <td>1m 28s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>48</td>
+                    <td>In response #21, you told me the first decision from response #3. In response #44, you recalled a date from response #25 which came from response #11. Trace this chain and verify all links are accurate.</td>
+                    <td>52,196</td>
+                    <td>$0.0354</td>
+                    <td>1m 39s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>49</td>
+                    <td>How many total responses have you given that specifically mentioned 'stakeholder'? List the response numbers.</td>
+                    <td>63,336</td>
+                    <td>$0.0482</td>
+                    <td>1m 55s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                <tr>
+                    <td>50</td>
+                    <td>Final question: Summarize this entire conversation in exactly 10 bullet points, with each bullet referencing at least 3 different response numbers.</td>
+                    <td>102,865</td>
+                    <td>$0.1775</td>
+                    <td>1m 36s</td>
+                    <td>Complete</td>
+                </tr>
+            
+                </tbody>
+            </table>
+        
+        </body>
+        </html>
+    
