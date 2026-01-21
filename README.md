@@ -6,6 +6,7 @@
 
 ## Contents
 - [RLM Evaluation Report](#rlm-evaluation-report)
+  - [Memory Retention Testing (January 2026)](#memory-retention-testing-january-2026)
 
 ## Overview
 
@@ -258,7 +259,71 @@ Choose how the Orchestrator answers cross-meeting questions:
 
 ## RLM Evaluation Report
 
-[Download the PDF report](sandbox:/mnt/data/RLM_Evaluation_Report.pdf)
+### Memory Retention Testing (January 2026)
+
+Comprehensive stress testing reveals **critical memory degradation** in Direct Chat mode for extended conversations, with RLM providing **22x better reliability**.
+
+#### Key Findings
+
+| Metric | Direct Chat | RLM+SWM | Improvement |
+|--------|-------------|---------|-------------|
+| **25-Prompt Memory Failures** | 5 (20%) | 0 (0%) | 100% reduction |
+| **50-Prompt Memory Failures** | 22 (44%) | 1 (2%) | 95% reduction |
+| **Memory Retention Score** | 56% | 98% | +75% |
+| **Reliability Factor** | Baseline | **22x better** | - |
+
+#### Critical Discovery: Memory Cliff
+
+Direct Chat exhibits **catastrophic memory failure** after ~35-40 conversation turns:
+- Prompts 1-20: ~95% retention
+- Prompts 21-35: Degradation begins (~80%)
+- Prompts 36-50: **Complete failure** (0-20% retention)
+
+RLM maintains **98% retention** regardless of conversation length by re-querying source agents each turn.
+
+#### Failure Rate by Test Phase (50-Prompt Test)
+
+| Phase | Direct Chat | RLM+SWM |
+|-------|-------------|---------|
+| Foundation (1-5) | 0% | 0% |
+| Cross-Reference (6-20) | 13% | 0% |
+| Precision Recall (21-25) | 60% | 0% |
+| Deep Analysis (26-30) | 0% | 0% |
+| Validation (31-35) | 40% | 20% |
+| Synthesis (36-40) | **100%** | 0% |
+| Memory Traps (41-50) | **100%** | 0% |
+
+#### Cost Paradox
+
+Despite higher token usage, RLM delivers **lower cost per successful answer**:
+
+| Metric | Direct Chat | RLM+SWM |
+|--------|-------------|---------|
+| Total Cost (50 prompts) | $2.53 | $3.61 |
+| Successful Answers | 28 | 49 |
+| **Cost per Success** | **$0.090** | **$0.074** |
+| Wasted Spend | $1.13 (44%) | $0.07 (2%) |
+
+#### Projected Annual Enterprise Savings
+
+For organizations with 100 analysts running 5 multi-agent analyses per week:
+
+| Metric | Direct Chat (5-question limit) | RLM (unlimited) |
+|--------|--------------------------------|-----------------|
+| Annual API Cost | $124,800 | $93,860 |
+| **API Cost Savings** | - | **$30,940/year (25%)** |
+| Analyst Time Saved | - | **14,300 hours/year** |
+| **Productivity Value** (@ $75/hr) | - | **$1.07M/year** |
+| **Total Annual Value** | - | **$1.1M+** |
+
+#### Recommendations
+
+1. **Default to RLM+SWM** for conversations exceeding 10-15 turns
+2. **Disable Shadow/Focus by default** - adds 5.5% cost without improving retention
+3. **Add conversation-length warning** when Direct Chat approaches 30 turns
+4. **Use Direct Chat only** for quick, single-turn queries or short conversations
+
+---
 
 ### January 18, 2026 Update (full-bigger-newer run)
 

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=67">
+    <link rel="stylesheet" href="css/styles.css?v=71">
     <!-- Pyodide is loaded lazily in the REPL Web Worker for Python execution -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a853">
@@ -118,9 +118,25 @@
                                 <stop offset="50%" style="stop-color:#d4a853;stop-opacity:0.8" />
                                 <stop offset="100%" style="stop-color:#d4a853;stop-opacity:0.3" />
                             </linearGradient>
+                            <!-- Cyan gradient for inter-group connections -->
+                            <linearGradient id="intergroup-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:0.5" />
+                                <stop offset="50%" style="stop-color:#06b6d4;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#22d3ee;stop-opacity:0.5" />
+                            </linearGradient>
                             <filter id="conn-glow" x="-50%" y="-50%" width="200%" height="200%">
                                 <feGaussianBlur stdDeviation="3" result="blur" />
                                 <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                            </filter>
+                            <!-- Stronger cyan glow for inter-group connections -->
+                            <filter id="intergroup-glow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur stdDeviation="4" result="blur" />
+                                <feFlood flood-color="#22d3ee" flood-opacity="0.5" />
+                                <feComposite in2="blur" operator="in" />
+                                <feMerge>
+                                    <feMergeNode />
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
                             </filter>
                         </defs>
                     </svg>
@@ -136,6 +152,7 @@
 
                     <!-- Canvas controls -->
                     <div class="kb-canvas-controls">
+                        <button class="kb-control-btn" id="kb-group-agents" title="Organize agents into groups">📁 Group</button>
                         <button class="kb-control-btn" id="kb-auto-layout" title="Auto-arrange nodes">⚡ Layout</button>
                     </div>
                 </div>
@@ -566,6 +583,17 @@
                         <button class="btn-secondary btn-sm" id="export-test-program-btn" title="Export prompts and configurations for reuse">Export Program</button>
                     </div>
                 </div>
+
+                <!-- Group Filter for Test Runs -->
+                <div class="test-group-filter hidden" id="test-group-filter-container">
+                    <label class="test-group-label">Filter by Group:</label>
+                    <select id="test-group-filter" class="test-group-select" multiple>
+                        <option value="all" selected>All Agents</option>
+                        <!-- Group options populated by JS -->
+                    </select>
+                    <p class="test-group-note">Select groups to restrict test queries to specific agents.</p>
+                </div>
+
                 <div class="test-prompt-list" id="test-prompt-list">
                     <!-- Prompt rows injected by JS -->
                 </div>
@@ -720,6 +748,180 @@
         </div>
     </div>
 
+    <!-- Agent Grouping Modal -->
+    <div id="grouping-modal" class="modal-overlay hidden">
+        <div class="modal-container grouping-modal-container">
+            <div class="modal-header">
+                <h3>📁 Organize Agents into Groups</h3>
+                <button class="modal-close" id="grouping-close-btn">&times;</button>
+            </div>
+            <div class="modal-body grouping-modal-body">
+                <!-- Step indicator -->
+                <div class="grouping-steps" id="grouping-steps">
+                    <div class="grouping-step active" data-step="1">
+                        <span class="step-number">1</span>
+                        <span class="step-label">Method</span>
+                    </div>
+                    <div class="grouping-step-line"></div>
+                    <div class="grouping-step" data-step="2">
+                        <span class="step-number">2</span>
+                        <span class="step-label">Configure</span>
+                    </div>
+                    <div class="grouping-step-line"></div>
+                    <div class="grouping-step" data-step="3">
+                        <span class="step-number">3</span>
+                        <span class="step-label">Review</span>
+                    </div>
+                </div>
+
+                <!-- Step 1: Choose Method -->
+                <div class="grouping-step-content" id="grouping-step-1">
+                    <p class="step-intro">How would you like to organize your agents?</p>
+                    <div class="grouping-method-grid">
+                        <button class="grouping-method-btn" data-method="temporal">
+                            <span class="method-icon">📅</span>
+                            <span class="method-name">By Date/Quarter</span>
+                            <span class="method-desc">Group by time period (month, quarter, year)</span>
+                        </button>
+                        <button class="grouping-method-btn" data-method="thematic">
+                            <span class="method-icon">🏷️</span>
+                            <span class="method-name">By Topic/Theme</span>
+                            <span class="method-desc">AI analyzes content to identify common themes</span>
+                        </button>
+                        <button class="grouping-method-btn" data-method="source">
+                            <span class="method-icon">📤</span>
+                            <span class="method-name">By Source Type</span>
+                            <span class="method-desc">Group by input method (audio, PDF, image, text)</span>
+                        </button>
+                        <button class="grouping-method-btn" data-method="custom">
+                            <span class="method-icon">✏️</span>
+                            <span class="method-name">Custom Grouping</span>
+                            <span class="method-desc">Describe criteria, AI creates groups</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Configure (content varies by method) -->
+                <div class="grouping-step-content hidden" id="grouping-step-2">
+                    <!-- Temporal configuration -->
+                    <div class="grouping-config hidden" id="config-temporal">
+                        <p class="config-intro">Select time granularity for grouping:</p>
+                        <div class="config-options">
+                            <label class="config-option">
+                                <input type="radio" name="temporal-granularity" value="month" checked>
+                                <span class="option-label">By Month</span>
+                                <span class="option-desc">e.g., "January 2026", "February 2026"</span>
+                            </label>
+                            <label class="config-option">
+                                <input type="radio" name="temporal-granularity" value="quarter">
+                                <span class="option-label">By Quarter</span>
+                                <span class="option-desc">e.g., "Q4 2025", "Q1 2026"</span>
+                            </label>
+                            <label class="config-option">
+                                <input type="radio" name="temporal-granularity" value="year">
+                                <span class="option-label">By Year</span>
+                                <span class="option-desc">e.g., "2025", "2026"</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Thematic configuration -->
+                    <div class="grouping-config hidden" id="config-thematic">
+                        <p class="config-intro">How many groups should AI identify?</p>
+                        <div class="config-options">
+                            <label class="config-option">
+                                <input type="radio" name="thematic-count" value="auto" checked>
+                                <span class="option-label">Auto-detect</span>
+                                <span class="option-desc">Let AI determine optimal number of themes</span>
+                            </label>
+                            <label class="config-option">
+                                <input type="radio" name="thematic-count" value="2">
+                                <span class="option-label">2 Groups</span>
+                            </label>
+                            <label class="config-option">
+                                <input type="radio" name="thematic-count" value="3">
+                                <span class="option-label">3 Groups</span>
+                            </label>
+                            <label class="config-option">
+                                <input type="radio" name="thematic-count" value="4">
+                                <span class="option-label">4 Groups</span>
+                            </label>
+                            <label class="config-option">
+                                <input type="radio" name="thematic-count" value="5">
+                                <span class="option-label">5 Groups</span>
+                            </label>
+                        </div>
+                        <p class="config-note">AI will analyze summaries to identify common themes.</p>
+                    </div>
+
+                    <!-- Source configuration -->
+                    <div class="grouping-config hidden" id="config-source">
+                        <p class="config-intro">Preview of source types found:</p>
+                        <div class="source-preview" id="source-preview">
+                            <!-- Populated by JS -->
+                        </div>
+                        <p class="config-note">Agents will be grouped by their input source type.</p>
+                    </div>
+
+                    <!-- Custom configuration -->
+                    <div class="grouping-config hidden" id="config-custom">
+                        <p class="config-intro">Describe how you want to group your agents:</p>
+                        <textarea id="custom-criteria-input"
+                                  class="custom-criteria-textarea"
+                                  placeholder="e.g., 'Group by project name' or 'Separate internal meetings from client meetings' or 'Group by team (engineering, sales, marketing)'"
+                                  rows="3"></textarea>
+                        <p class="config-note">AI will interpret your criteria and create appropriate groups.</p>
+                    </div>
+
+                    <!-- Processing indicator -->
+                    <div class="grouping-processing hidden" id="grouping-processing">
+                        <div class="processing-spinner"></div>
+                        <p class="processing-text">Analyzing agents and creating groups...</p>
+                    </div>
+                </div>
+
+                <!-- Step 3: Review & Apply -->
+                <div class="grouping-step-content hidden" id="grouping-step-3">
+                    <p class="step-intro">Review proposed groups:</p>
+                    <div class="grouping-preview" id="grouping-preview">
+                        <!-- Populated by JS with group cards -->
+                    </div>
+                    <p class="preview-note">You can edit group names before applying.</p>
+                </div>
+
+                <!-- Error message -->
+                <p class="grouping-error hidden" id="grouping-error"></p>
+            </div>
+            <div class="modal-footer grouping-modal-footer">
+                <button class="btn-secondary" id="grouping-back-btn" disabled>Back</button>
+                <button class="btn-primary" id="grouping-next-btn">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Existing Groups Management Modal -->
+    <div id="groups-manage-modal" class="modal-overlay hidden">
+        <div class="modal-container groups-manage-container">
+            <div class="modal-header">
+                <h3>📁 Manage Groups</h3>
+                <button class="modal-close" id="groups-manage-close-btn">&times;</button>
+            </div>
+            <div class="modal-body groups-manage-body">
+                <div class="groups-list" id="groups-list">
+                    <!-- Populated by JS -->
+                </div>
+                <div class="groups-empty hidden" id="groups-empty">
+                    <p>No groups created yet.</p>
+                    <button class="btn-primary" id="create-new-group-btn">Create First Group</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-text-danger" id="clear-all-groups-btn">Clear All Groups</button>
+                <button class="btn-secondary" id="groups-manage-done-btn">Done</button>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <p>&copy; 2026 northstar.LM | Agent Orchestrator</p>
         <p class="credits">
@@ -804,7 +1006,7 @@
             });
         })();
     </script>
-    <script src="js/orchestrator.js?v=43" type="module"></script>
+    <script src="js/orchestrator.js?v=50" type="module"></script>
 
     <!-- Service Worker Registration with Deferred Update -->
     <script>

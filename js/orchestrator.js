@@ -30,6 +30,8 @@ const MAX_AGENTS = 25;
 const state = {
     apiKey: '',
     agents: [],  // In-memory storage (session-only)
+    groups: [],  // Agent groups for organization
+    activeGroupFilter: null,  // Selected group IDs for filtering (null = all)
     insights: null,
     chatHistory: [],
     signalState: {
@@ -1004,7 +1006,40 @@ function initElements() {
         // Test Configurations (multi-config support)
         testConfigList: document.getElementById('test-config-list'),
         testConfigCount: document.getElementById('test-config-count'),
-        addConfigBtn: document.getElementById('add-config-btn')
+        addConfigBtn: document.getElementById('add-config-btn'),
+
+        // Grouping Modal
+        kbGroupAgentsBtn: document.getElementById('kb-group-agents'),
+        groupingModal: document.getElementById('grouping-modal'),
+        groupingCloseBtn: document.getElementById('grouping-close-btn'),
+        groupingBackBtn: document.getElementById('grouping-back-btn'),
+        groupingNextBtn: document.getElementById('grouping-next-btn'),
+        groupingSteps: document.getElementById('grouping-steps'),
+        groupingStep1: document.getElementById('grouping-step-1'),
+        groupingStep2: document.getElementById('grouping-step-2'),
+        groupingStep3: document.getElementById('grouping-step-3'),
+        configTemporal: document.getElementById('config-temporal'),
+        configThematic: document.getElementById('config-thematic'),
+        configSource: document.getElementById('config-source'),
+        configCustom: document.getElementById('config-custom'),
+        sourcePreview: document.getElementById('source-preview'),
+        customCriteriaInput: document.getElementById('custom-criteria-input'),
+        groupingProcessing: document.getElementById('grouping-processing'),
+        groupingPreview: document.getElementById('grouping-preview'),
+        groupingError: document.getElementById('grouping-error'),
+
+        // Groups Management Modal
+        groupsManageModal: document.getElementById('groups-manage-modal'),
+        groupsManageCloseBtn: document.getElementById('groups-manage-close-btn'),
+        groupsManageDoneBtn: document.getElementById('groups-manage-done-btn'),
+        groupsList: document.getElementById('groups-list'),
+        groupsEmpty: document.getElementById('groups-empty'),
+        createNewGroupBtn: document.getElementById('create-new-group-btn'),
+        clearAllGroupsBtn: document.getElementById('clear-all-groups-btn'),
+
+        // Test Group Filter
+        testGroupFilterContainer: document.getElementById('test-group-filter-container'),
+        testGroupFilter: document.getElementById('test-group-filter')
     };
 }
 
@@ -1014,6 +1049,7 @@ function initElements() {
 
 const STORAGE_KEYS = {
     AGENTS: 'orch_agents',
+    GROUPS: 'orch_groups',
     CHAT_HISTORY: 'orch_chat_history',
     INSIGHTS: 'orch_insights',
     SIGNAL_STATE: 'orch_signal_state',
@@ -1022,6 +1058,1240 @@ const STORAGE_KEYS = {
     MEMORY_INDEX: 'orch_memory_index',
     PROMPT_COUNTER: 'orch_prompt_counter'
 };
+
+// Groups localStorage key (persists across sessions)
+const GROUPS_STORAGE_KEY = 'northstar.LM_groups';
+const MAX_GROUPS = 10;
+
+// ============================================
+// Group Management Functions
+// ============================================
+
+/**
+ * Group data structure:
+ * {
+ *     id: 'group-' + timestamp + '-' + randomId,
+ *     name: string,              // Display name (e.g., "Q4 2025 Meetings")
+ *     description: string,       // Optional description
+ *     color: string,             // Hex color for visual ID (e.g., "#4ade80")
+ *     icon: string,              // Emoji icon (e.g., "📅")
+ *     createdAt: ISO8601,
+ *     createdBy: 'auto' | 'manual',
+ *     criteria: {
+ *         type: 'temporal' | 'thematic' | 'source' | 'custom',
+ *         parameters: object
+ *     },
+ *     agentIds: string[],        // Agent IDs in this group
+ *     enabled: boolean           // Include in queries by default
+ * }
+ */
+
+const GROUP_COLORS = [
+    '#4ade80', // Green
+    '#60a5fa', // Blue
+    '#f472b6', // Pink
+    '#fbbf24', // Yellow
+    '#a78bfa', // Purple
+    '#f87171', // Red
+    '#2dd4bf', // Teal
+    '#fb923c', // Orange
+    '#818cf8', // Indigo
+    '#34d399'  // Emerald
+];
+
+const GROUP_ICONS = ['📁', '📅', '🏷️', '📊', '🎯', '⭐', '📋', '💡', '🔗', '📝'];
+
+let groupIdCounter = 0;
+
+/**
+ * Generate a unique group ID
+ */
+function generateGroupId() {
+    return `group-${Date.now()}-${++groupIdCounter}-${Math.random().toString(36).substring(2, 7)}`;
+}
+
+/**
+ * Get the next available color for a new group
+ */
+function getNextGroupColor() {
+    const usedColors = new Set(state.groups.map(g => g.color));
+    return GROUP_COLORS.find(c => !usedColors.has(c)) || GROUP_COLORS[state.groups.length % GROUP_COLORS.length];
+}
+
+/**
+ * Get the next available icon for a new group
+ */
+function getNextGroupIcon() {
+    const usedIcons = new Set(state.groups.map(g => g.icon));
+    return GROUP_ICONS.find(i => !usedIcons.has(i)) || GROUP_ICONS[state.groups.length % GROUP_ICONS.length];
+}
+
+/**
+ * Create a new group
+ * @param {Object} options - Group options
+ * @returns {Object} The created group
+ */
+function createGroup(options = {}) {
+    if (state.groups.length >= MAX_GROUPS) {
+        console.warn('[Groups] Maximum number of groups reached:', MAX_GROUPS);
+        return null;
+    }
+
+    const group = {
+        id: generateGroupId(),
+        name: options.name || `Group ${state.groups.length + 1}`,
+        description: options.description || '',
+        color: options.color || getNextGroupColor(),
+        icon: options.icon || getNextGroupIcon(),
+        createdAt: new Date().toISOString(),
+        createdBy: options.createdBy || 'manual',
+        criteria: options.criteria || { type: 'custom', parameters: {} },
+        agentIds: options.agentIds || [],
+        enabled: options.enabled !== false
+    };
+
+    state.groups.push(group);
+    saveGroups();
+    console.log('[Groups] Created group:', group.name, 'with', group.agentIds.length, 'agents');
+    return group;
+}
+
+/**
+ * Update an existing group
+ * @param {string} groupId - Group ID to update
+ * @param {Object} updates - Properties to update
+ * @returns {Object|null} Updated group or null if not found
+ */
+function updateGroup(groupId, updates) {
+    const group = state.groups.find(g => g.id === groupId);
+    if (!group) {
+        console.warn('[Groups] Group not found:', groupId);
+        return null;
+    }
+
+    // Validate name uniqueness if updating name
+    if (updates.name && updates.name !== group.name) {
+        const nameExists = state.groups.some(g => g.id !== groupId && g.name.toLowerCase() === updates.name.toLowerCase());
+        if (nameExists) {
+            console.warn('[Groups] Group name already exists:', updates.name);
+            return null;
+        }
+    }
+
+    Object.assign(group, updates);
+    saveGroups();
+    console.log('[Groups] Updated group:', group.name);
+    return group;
+}
+
+/**
+ * Delete a group
+ * @param {string} groupId - Group ID to delete
+ * @returns {boolean} Whether the group was deleted
+ */
+function deleteGroup(groupId) {
+    const index = state.groups.findIndex(g => g.id === groupId);
+    if (index === -1) {
+        console.warn('[Groups] Group not found:', groupId);
+        return false;
+    }
+
+    const group = state.groups[index];
+
+    // Remove group reference from agents
+    group.agentIds.forEach(agentId => {
+        const agent = state.agents.find(a => a.id === agentId);
+        if (agent) {
+            agent.groupId = null;
+        }
+    });
+
+    state.groups.splice(index, 1);
+    saveGroups();
+    saveState(); // Also save agents since we modified groupId
+    console.log('[Groups] Deleted group:', group.name);
+    return true;
+}
+
+/**
+ * Get a group by ID
+ * @param {string} groupId - Group ID
+ * @returns {Object|null} Group or null if not found
+ */
+function getGroup(groupId) {
+    return state.groups.find(g => g.id === groupId) || null;
+}
+
+/**
+ * Get all groups
+ * @param {Object} options - Filter options
+ * @returns {Array} Array of groups
+ */
+function getGroups(options = {}) {
+    let groups = [...state.groups];
+
+    if (options.enabledOnly) {
+        groups = groups.filter(g => g.enabled);
+    }
+
+    if (options.sortBy === 'name') {
+        groups.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (options.sortBy === 'created') {
+        groups.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    }
+
+    return groups;
+}
+
+/**
+ * Add an agent to a group
+ * @param {string} agentId - Agent ID
+ * @param {string} groupId - Group ID
+ * @returns {boolean} Whether the agent was added
+ */
+function addAgentToGroup(agentId, groupId) {
+    const group = state.groups.find(g => g.id === groupId);
+    const agent = state.agents.find(a => a.id === agentId);
+
+    if (!group || !agent) {
+        console.warn('[Groups] Group or agent not found');
+        return false;
+    }
+
+    // Remove from previous group if any
+    if (agent.groupId && agent.groupId !== groupId) {
+        removeAgentFromGroup(agentId);
+    }
+
+    // Add to new group
+    if (!group.agentIds.includes(agentId)) {
+        group.agentIds.push(agentId);
+    }
+    agent.groupId = groupId;
+
+    saveGroups();
+    saveState();
+    console.log('[Groups] Added agent', agent.displayName, 'to group', group.name);
+    return true;
+}
+
+/**
+ * Remove an agent from its group
+ * @param {string} agentId - Agent ID
+ * @returns {boolean} Whether the agent was removed from a group
+ */
+function removeAgentFromGroup(agentId) {
+    const agent = state.agents.find(a => a.id === agentId);
+    if (!agent || !agent.groupId) {
+        return false;
+    }
+
+    const group = state.groups.find(g => g.id === agent.groupId);
+    if (group) {
+        const index = group.agentIds.indexOf(agentId);
+        if (index !== -1) {
+            group.agentIds.splice(index, 1);
+        }
+    }
+
+    agent.groupId = null;
+    saveGroups();
+    saveState();
+    console.log('[Groups] Removed agent from group');
+    return true;
+}
+
+/**
+ * Ungroup an agent (called when agent is dragged out of group container)
+ * @param {string} agentId - Agent ID
+ * @param {string} oldGroupId - The group the agent was in
+ */
+function ungroupAgent(agentId, oldGroupId) {
+    console.log(`[Groups] Ungrouping agent ${agentId} from group ${oldGroupId}`);
+
+    // Remove agent from group
+    const removed = removeAgentFromGroup(agentId);
+    if (!removed) return;
+
+    // Cleanup empty groups
+    cleanupEmptyGroups();
+
+    // Update canvas to reflect changes
+    updateAgentsListCanvas();
+
+    console.log('[Groups] Agent successfully ungrouped');
+}
+
+/**
+ * Get agents in a specific group
+ * @param {string} groupId - Group ID
+ * @returns {Array} Array of agents in the group
+ */
+function getAgentsInGroup(groupId) {
+    const group = state.groups.find(g => g.id === groupId);
+    if (!group) return [];
+
+    return state.agents.filter(a => group.agentIds.includes(a.id));
+}
+
+/**
+ * Get ungrouped agents
+ * @returns {Array} Array of agents without a group
+ */
+function getUngroupedAgents() {
+    return state.agents.filter(a => !a.groupId);
+}
+
+/**
+ * Check if a group name is unique
+ * @param {string} name - Group name to check
+ * @param {string} excludeId - Group ID to exclude from check (for updates)
+ * @returns {boolean} Whether the name is unique
+ */
+function isGroupNameUnique(name, excludeId = null) {
+    return !state.groups.some(g => g.id !== excludeId && g.name.toLowerCase() === name.trim().toLowerCase());
+}
+
+/**
+ * Clear all groups
+ */
+function clearAllGroups() {
+    // Remove groupId from all agents
+    state.agents.forEach(agent => {
+        agent.groupId = null;
+    });
+
+    state.groups = [];
+    saveGroups();
+    saveState();
+    console.log('[Groups] Cleared all groups');
+}
+
+/**
+ * Clean up empty groups (called after agent removal)
+ */
+function cleanupEmptyGroups() {
+    const emptyGroups = state.groups.filter(g => g.agentIds.length === 0);
+    if (emptyGroups.length === 0) return;
+
+    emptyGroups.forEach(group => {
+        console.log('[Groups] Auto-removing empty group:', group.name);
+        deleteGroup(group.id);
+    });
+}
+
+/**
+ * Validate and sync group-agent references
+ * Called after loading state to ensure consistency
+ */
+function syncGroupAgentReferences() {
+    // Build set of valid agent IDs
+    const validAgentIds = new Set(state.agents.map(a => a.id));
+
+    // Remove invalid agent IDs from groups
+    state.groups.forEach(group => {
+        group.agentIds = group.agentIds.filter(id => validAgentIds.has(id));
+    });
+
+    // Ensure agent.groupId matches group membership
+    state.agents.forEach(agent => {
+        if (agent.groupId) {
+            const group = state.groups.find(g => g.id === agent.groupId);
+            if (!group || !group.agentIds.includes(agent.id)) {
+                agent.groupId = null;
+            }
+        }
+    });
+
+    // Clean up empty groups
+    cleanupEmptyGroups();
+}
+
+/**
+ * Save groups to localStorage (persists across sessions)
+ */
+function saveGroups() {
+    try {
+        localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(state.groups));
+        console.log('[Groups] Saved', state.groups.length, 'groups to localStorage');
+    } catch (error) {
+        console.warn('[Groups] Failed to save groups:', error.message);
+    }
+}
+
+/**
+ * Load groups from localStorage
+ */
+function loadGroups() {
+    try {
+        const saved = localStorage.getItem(GROUPS_STORAGE_KEY);
+        if (saved) {
+            state.groups = JSON.parse(saved);
+            console.log('[Groups] Loaded', state.groups.length, 'groups from localStorage');
+        }
+    } catch (error) {
+        console.warn('[Groups] Failed to load groups:', error.message);
+        state.groups = [];
+    }
+}
+
+// ============================================
+// Grouping Wizard Controller
+// ============================================
+
+const groupingWizard = {
+    currentStep: 1,
+    selectedMethod: null,
+    proposedGroups: [],
+    isProcessing: false
+};
+
+/**
+ * Open the grouping modal
+ */
+function openGroupingModal() {
+    // Check minimum agents requirement
+    if (state.agents.length < 2) {
+        showError('You need at least 2 agents to create groups.');
+        return;
+    }
+
+    // If groups already exist, show manage modal instead
+    if (state.groups.length > 0) {
+        openGroupsManageModal();
+        return;
+    }
+
+    // Reset wizard state
+    groupingWizard.currentStep = 1;
+    groupingWizard.selectedMethod = null;
+    groupingWizard.proposedGroups = [];
+    groupingWizard.isProcessing = false;
+
+    // Reset UI
+    updateGroupingStepIndicator(1);
+    showGroupingStep(1);
+    hideGroupingError();
+
+    // Reset method selection
+    document.querySelectorAll('.grouping-method-btn').forEach(btn => btn.classList.remove('selected'));
+
+    // Reset button states
+    elements.groupingBackBtn.disabled = true;
+    elements.groupingNextBtn.textContent = 'Next';
+    elements.groupingNextBtn.disabled = false;
+
+    // Show modal
+    elements.groupingModal.classList.remove('hidden');
+}
+
+/**
+ * Close the grouping modal
+ */
+function closeGroupingModal() {
+    elements.groupingModal.classList.add('hidden');
+    groupingWizard.isProcessing = false;
+}
+
+/**
+ * Open the groups management modal
+ */
+function openGroupsManageModal() {
+    renderGroupsManageList();
+    elements.groupsManageModal.classList.remove('hidden');
+}
+
+/**
+ * Close the groups management modal
+ */
+function closeGroupsManageModal() {
+    elements.groupsManageModal.classList.add('hidden');
+}
+
+/**
+ * Render the groups management list
+ */
+function renderGroupsManageList() {
+    if (state.groups.length === 0) {
+        elements.groupsList.innerHTML = '';
+        elements.groupsEmpty.classList.remove('hidden');
+        return;
+    }
+
+    elements.groupsEmpty.classList.add('hidden');
+
+    elements.groupsList.innerHTML = state.groups.map(group => `
+        <div class="group-manage-card" data-group-id="${group.id}" style="border-left-color: ${group.color}">
+            <span class="group-manage-icon">${group.icon}</span>
+            <div class="group-manage-info">
+                <div class="group-manage-name">${escapeHtml(group.name)}</div>
+                <div class="group-manage-meta">${group.agentIds.length} agent${group.agentIds.length !== 1 ? 's' : ''}</div>
+            </div>
+            <div class="group-manage-actions">
+                <button class="group-action-btn edit-group" data-group-id="${group.id}" title="Edit name">Edit</button>
+                <button class="group-action-btn delete delete-group" data-group-id="${group.id}" title="Delete group">Delete</button>
+            </div>
+        </div>
+    `).join('');
+
+    // Add event listeners
+    elements.groupsList.querySelectorAll('.edit-group').forEach(btn => {
+        btn.addEventListener('click', () => editGroupName(btn.dataset.groupId));
+    });
+
+    elements.groupsList.querySelectorAll('.delete-group').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (confirm('Delete this group? Agents will become ungrouped.')) {
+                deleteGroup(btn.dataset.groupId);
+                renderGroupsManageList();
+                updateUI();
+            }
+        });
+    });
+}
+
+/**
+ * Edit a group's name via prompt
+ */
+function editGroupName(groupId) {
+    const group = getGroup(groupId);
+    if (!group) return;
+
+    const newName = prompt('Enter new group name:', group.name);
+    if (newName && newName.trim()) {
+        if (!isGroupNameUnique(newName, groupId)) {
+            alert('A group with this name already exists.');
+            return;
+        }
+        updateGroup(groupId, { name: newName.trim() });
+        renderGroupsManageList();
+        updateUI();
+    }
+}
+
+/**
+ * Update the step indicator UI
+ */
+function updateGroupingStepIndicator(step) {
+    document.querySelectorAll('.grouping-step').forEach((el, index) => {
+        const stepNum = index + 1;
+        el.classList.remove('active', 'completed');
+        if (stepNum < step) {
+            el.classList.add('completed');
+        } else if (stepNum === step) {
+            el.classList.add('active');
+        }
+    });
+}
+
+/**
+ * Show a specific step content
+ */
+function showGroupingStep(step) {
+    elements.groupingStep1.classList.toggle('hidden', step !== 1);
+    elements.groupingStep2.classList.toggle('hidden', step !== 2);
+    elements.groupingStep3.classList.toggle('hidden', step !== 3);
+
+    // Update button states
+    elements.groupingBackBtn.disabled = step === 1;
+
+    if (step === 3) {
+        elements.groupingNextBtn.textContent = 'Apply Groups';
+    } else {
+        elements.groupingNextBtn.textContent = 'Next';
+    }
+}
+
+/**
+ * Show a specific configuration panel
+ */
+function showConfigPanel(method) {
+    elements.configTemporal.classList.add('hidden');
+    elements.configThematic.classList.add('hidden');
+    elements.configSource.classList.add('hidden');
+    elements.configCustom.classList.add('hidden');
+    elements.groupingProcessing.classList.add('hidden');
+
+    if (method === 'temporal') {
+        elements.configTemporal.classList.remove('hidden');
+    } else if (method === 'thematic') {
+        elements.configThematic.classList.remove('hidden');
+    } else if (method === 'source') {
+        populateSourcePreview();
+        elements.configSource.classList.remove('hidden');
+    } else if (method === 'custom') {
+        elements.configCustom.classList.remove('hidden');
+    }
+}
+
+/**
+ * Populate the source type preview
+ */
+function populateSourcePreview() {
+    const sourceCounts = {};
+    state.agents.forEach(agent => {
+        const source = agent.sourceType || 'unknown';
+        sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+    });
+
+    const sourceIcons = {
+        'audio': '🎤',
+        'video': '🎥',
+        'pdf': '📄',
+        'image': '📷',
+        'text': '📝',
+        'url': '🌐',
+        'unknown': '📋'
+    };
+
+    elements.sourcePreview.innerHTML = Object.entries(sourceCounts)
+        .map(([source, count]) => `
+            <span class="source-tag">
+                ${sourceIcons[source] || '📋'} ${source}
+                <span class="count">${count}</span>
+            </span>
+        `).join('');
+}
+
+/**
+ * Show/hide the processing indicator
+ */
+function showGroupingProcessing(show) {
+    groupingWizard.isProcessing = show;
+    elements.groupingProcessing.classList.toggle('hidden', !show);
+
+    // Hide config panels when processing
+    if (show) {
+        elements.configTemporal.classList.add('hidden');
+        elements.configThematic.classList.add('hidden');
+        elements.configSource.classList.add('hidden');
+        elements.configCustom.classList.add('hidden');
+    }
+
+    elements.groupingNextBtn.disabled = show;
+    elements.groupingBackBtn.disabled = show;
+}
+
+/**
+ * Show grouping error
+ */
+function showGroupingError(message) {
+    elements.groupingError.textContent = message;
+    elements.groupingError.classList.remove('hidden');
+}
+
+/**
+ * Hide grouping error
+ */
+function hideGroupingError() {
+    elements.groupingError.classList.add('hidden');
+}
+
+/**
+ * Handle method selection
+ */
+function selectGroupingMethod(method) {
+    groupingWizard.selectedMethod = method;
+
+    // Update UI
+    document.querySelectorAll('.grouping-method-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.method === method);
+    });
+}
+
+/**
+ * Handle next button click
+ */
+async function handleGroupingNext() {
+    hideGroupingError();
+
+    if (groupingWizard.currentStep === 1) {
+        // Step 1 -> Step 2: Validate method selection
+        if (!groupingWizard.selectedMethod) {
+            showGroupingError('Please select a grouping method.');
+            return;
+        }
+
+        groupingWizard.currentStep = 2;
+        updateGroupingStepIndicator(2);
+        showGroupingStep(2);
+        showConfigPanel(groupingWizard.selectedMethod);
+
+    } else if (groupingWizard.currentStep === 2) {
+        // Step 2 -> Step 3: Process and show preview
+        await processGrouping();
+
+    } else if (groupingWizard.currentStep === 3) {
+        // Step 3: Apply groups
+        applyProposedGroups();
+    }
+}
+
+/**
+ * Handle back button click
+ */
+function handleGroupingBack() {
+    if (groupingWizard.currentStep === 2) {
+        groupingWizard.currentStep = 1;
+        updateGroupingStepIndicator(1);
+        showGroupingStep(1);
+    } else if (groupingWizard.currentStep === 3) {
+        groupingWizard.currentStep = 2;
+        updateGroupingStepIndicator(2);
+        showGroupingStep(2);
+        showConfigPanel(groupingWizard.selectedMethod);
+    }
+}
+
+/**
+ * Process grouping based on selected method
+ */
+async function processGrouping() {
+    const method = groupingWizard.selectedMethod;
+
+    // Validate method-specific inputs
+    if (method === 'custom') {
+        const criteria = elements.customCriteriaInput.value.trim();
+        if (criteria.length < 10) {
+            showGroupingError('Please provide more detailed criteria (at least 10 characters).');
+            return;
+        }
+    }
+
+    showGroupingProcessing(true);
+
+    try {
+        let proposedGroups = [];
+
+        if (method === 'temporal') {
+            const granularity = document.querySelector('input[name="temporal-granularity"]:checked')?.value || 'quarter';
+            proposedGroups = groupByTemporal(state.agents, granularity);
+        } else if (method === 'source') {
+            proposedGroups = groupBySourceType(state.agents);
+        } else if (method === 'thematic') {
+            const countValue = document.querySelector('input[name="thematic-count"]:checked')?.value || 'auto';
+            const targetCount = countValue === 'auto' ? null : parseInt(countValue);
+            proposedGroups = await groupByThematic(state.agents, targetCount);
+        } else if (method === 'custom') {
+            const criteria = elements.customCriteriaInput.value.trim();
+            proposedGroups = await groupByCustomCriteria(state.agents, criteria);
+        }
+
+        if (proposedGroups.length === 0) {
+            showGroupingError('Could not create any groups with the selected method. Try a different approach.');
+            showGroupingProcessing(false);
+            showConfigPanel(method);
+            return;
+        }
+
+        groupingWizard.proposedGroups = proposedGroups;
+        renderGroupPreview(proposedGroups);
+
+        groupingWizard.currentStep = 3;
+        updateGroupingStepIndicator(3);
+        showGroupingStep(3);
+
+    } catch (error) {
+        console.error('[Grouping] Error:', error);
+        showGroupingError('An error occurred while creating groups: ' + error.message);
+        showConfigPanel(method);
+    } finally {
+        showGroupingProcessing(false);
+    }
+}
+
+/**
+ * Render the group preview
+ */
+function renderGroupPreview(groups) {
+    elements.groupingPreview.innerHTML = groups.map((group, index) => `
+        <div class="group-preview-card" data-group-index="${index}" style="border-left-color: ${group.color}">
+            <span class="group-preview-icon">${group.icon}</span>
+            <div class="group-preview-content">
+                <input type="text"
+                       class="group-preview-name-input"
+                       value="${escapeHtml(group.name)}"
+                       data-group-index="${index}" />
+                <div class="group-preview-agents">${group.agentIds.length} agent${group.agentIds.length !== 1 ? 's' : ''}:</div>
+                <div class="group-preview-agent-list">
+                    ${group.agentIds.map(id => {
+                        const agent = state.agents.find(a => a.id === id);
+                        return agent ? `<span class="agent-chip" title="${escapeHtml(agent.displayName)}">${escapeHtml(agent.displayName)}</span>` : '';
+                    }).join('')}
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    // Update group names on input change
+    elements.groupingPreview.querySelectorAll('.group-preview-name-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const index = parseInt(e.target.dataset.groupIndex);
+            if (groupingWizard.proposedGroups[index]) {
+                groupingWizard.proposedGroups[index].name = e.target.value.trim() || `Group ${index + 1}`;
+            }
+        });
+    });
+}
+
+/**
+ * Apply the proposed groups
+ */
+function applyProposedGroups() {
+    // Validate unique names
+    const names = groupingWizard.proposedGroups.map(g => g.name.toLowerCase());
+    if (new Set(names).size !== names.length) {
+        showGroupingError('Group names must be unique. Please rename duplicate groups.');
+        return;
+    }
+
+    // Clear existing groups
+    clearAllGroups();
+
+    // Create groups
+    groupingWizard.proposedGroups.forEach(proposed => {
+        const group = createGroup({
+            name: proposed.name,
+            color: proposed.color,
+            icon: proposed.icon,
+            criteria: proposed.criteria,
+            createdBy: 'auto',
+            agentIds: proposed.agentIds
+        });
+
+        if (group) {
+            // Update agent references
+            proposed.agentIds.forEach(agentId => {
+                const agent = state.agents.find(a => a.id === agentId);
+                if (agent) {
+                    agent.groupId = group.id;
+                }
+            });
+        }
+    });
+
+    saveGroups();
+    saveState();
+    closeGroupingModal();
+    updateUI();
+
+    console.log('[Grouping] Applied', state.groups.length, 'groups');
+}
+
+/**
+ * Setup grouping modal event listeners
+ */
+function setupGroupingEventListeners() {
+    // Open modal button
+    if (elements.kbGroupAgentsBtn) {
+        elements.kbGroupAgentsBtn.addEventListener('click', openGroupingModal);
+    }
+
+    // Close button
+    if (elements.groupingCloseBtn) {
+        elements.groupingCloseBtn.addEventListener('click', closeGroupingModal);
+    }
+
+    // Back/Next buttons
+    if (elements.groupingBackBtn) {
+        elements.groupingBackBtn.addEventListener('click', handleGroupingBack);
+    }
+    if (elements.groupingNextBtn) {
+        elements.groupingNextBtn.addEventListener('click', handleGroupingNext);
+    }
+
+    // Method selection buttons
+    document.querySelectorAll('.grouping-method-btn').forEach(btn => {
+        btn.addEventListener('click', () => selectGroupingMethod(btn.dataset.method));
+    });
+
+    // Close modal on backdrop click
+    if (elements.groupingModal) {
+        elements.groupingModal.addEventListener('click', (e) => {
+            if (e.target === elements.groupingModal) {
+                closeGroupingModal();
+            }
+        });
+    }
+
+    // Groups management modal
+    if (elements.groupsManageCloseBtn) {
+        elements.groupsManageCloseBtn.addEventListener('click', closeGroupsManageModal);
+    }
+    if (elements.groupsManageDoneBtn) {
+        elements.groupsManageDoneBtn.addEventListener('click', closeGroupsManageModal);
+    }
+    if (elements.clearAllGroupsBtn) {
+        elements.clearAllGroupsBtn.addEventListener('click', () => {
+            if (confirm('Clear all groups? This cannot be undone.')) {
+                clearAllGroups();
+                renderGroupsManageList();
+                updateUI();
+            }
+        });
+    }
+    if (elements.createNewGroupBtn) {
+        elements.createNewGroupBtn.addEventListener('click', () => {
+            closeGroupsManageModal();
+            // Reset to show grouping wizard for fresh groups
+            state.groups = [];
+            openGroupingModal();
+        });
+    }
+
+    // Close management modal on backdrop click
+    if (elements.groupsManageModal) {
+        elements.groupsManageModal.addEventListener('click', (e) => {
+            if (e.target === elements.groupsManageModal) {
+                closeGroupsManageModal();
+            }
+        });
+    }
+}
+
+// ============================================
+// Grouping Algorithms
+// ============================================
+
+/**
+ * Group agents by temporal criteria (date/quarter/year)
+ * @param {Array} agents - Array of agents
+ * @param {string} granularity - 'month', 'quarter', or 'year'
+ * @returns {Array} Proposed groups
+ */
+function groupByTemporal(agents, granularity = 'quarter') {
+    const groups = {};
+
+    agents.forEach(agent => {
+        let key;
+        let date = parseAgentDate(agent.date);
+
+        if (!date) {
+            key = 'Unknown Date';
+        } else if (granularity === 'month') {
+            key = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+        } else if (granularity === 'quarter') {
+            const quarter = Math.ceil((date.getMonth() + 1) / 3);
+            key = `Q${quarter} ${date.getFullYear()}`;
+        } else if (granularity === 'year') {
+            key = String(date.getFullYear());
+        }
+
+        if (!groups[key]) {
+            groups[key] = [];
+        }
+        groups[key].push(agent.id);
+    });
+
+    // Convert to proposed groups format
+    return Object.entries(groups).map(([name, agentIds], index) => ({
+        name,
+        agentIds,
+        color: GROUP_COLORS[index % GROUP_COLORS.length],
+        icon: '📅',
+        criteria: { type: 'temporal', parameters: { granularity } }
+    }));
+}
+
+/**
+ * Parse agent date string into Date object
+ * @param {string} dateStr - Date string from agent
+ * @returns {Date|null} Parsed date or null
+ */
+function parseAgentDate(dateStr) {
+    if (!dateStr) return null;
+
+    try {
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+            return date;
+        }
+
+        // Try common formats
+        const formats = [
+            /(\w+)\s+(\d{1,2}),?\s+(\d{4})/,  // "Jan 15, 2026" or "January 15 2026"
+            /(\d{1,2})\/(\d{1,2})\/(\d{4})/,   // "1/15/2026"
+            /(\d{4})-(\d{2})-(\d{2})/          // "2026-01-15"
+        ];
+
+        for (const format of formats) {
+            const match = dateStr.match(format);
+            if (match) {
+                const parsed = new Date(dateStr);
+                if (!isNaN(parsed.getTime())) {
+                    return parsed;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('[Grouping] Failed to parse date:', dateStr, e);
+    }
+
+    return null;
+}
+
+/**
+ * Group agents by source type
+ * @param {Array} agents - Array of agents
+ * @returns {Array} Proposed groups
+ */
+function groupBySourceType(agents) {
+    const groups = {};
+    const sourceNames = {
+        'audio': 'Audio Recordings',
+        'video': 'Video Content',
+        'pdf': 'PDF Documents',
+        'image': 'Image Files',
+        'text': 'Text Input',
+        'url': 'Web Content',
+        'unknown': 'Other Sources'
+    };
+
+    const sourceIcons = {
+        'audio': '🎤',
+        'video': '🎥',
+        'pdf': '📄',
+        'image': '📷',
+        'text': '📝',
+        'url': '🌐',
+        'unknown': '📋'
+    };
+
+    agents.forEach(agent => {
+        const source = agent.sourceType || 'unknown';
+        if (!groups[source]) {
+            groups[source] = [];
+        }
+        groups[source].push(agent.id);
+    });
+
+    return Object.entries(groups).map(([source, agentIds], index) => ({
+        name: sourceNames[source] || `${source} Sources`,
+        agentIds,
+        color: GROUP_COLORS[index % GROUP_COLORS.length],
+        icon: sourceIcons[source] || '📋',
+        criteria: { type: 'source', parameters: { sourceType: source } }
+    }));
+}
+
+/**
+ * Group agents by thematic similarity (LLM-assisted)
+ * @param {Array} agents - Array of agents
+ * @param {number|null} targetCount - Target number of groups (null for auto)
+ * @returns {Promise<Array>} Proposed groups
+ */
+async function groupByThematic(agents, targetCount = null) {
+    if (!state.apiKey) {
+        throw new Error('API key required for thematic grouping');
+    }
+
+    // Adjust context size based on number of agents to avoid token limits
+    const maxAgents = 25;
+    const agentsToProcess = agents.slice(0, maxAgents);
+    const summaryLength = agentsToProcess.length > 15 ? 200 : agentsToProcess.length > 10 ? 300 : 500;
+    const keyPointsLength = agentsToProcess.length > 15 ? 100 : agentsToProcess.length > 10 ? 150 : 300;
+
+    // Build context from agent summaries with adaptive truncation
+    const agentSummaries = agentsToProcess.map((agent, idx) => ({
+        id: agent.id,
+        name: agent.displayName,
+        summary: (agent.summary || '').substring(0, summaryLength),
+        keyPoints: (agent.keyPoints || '').substring(0, keyPointsLength)
+    }));
+
+    const countInstruction = targetCount
+        ? `Create exactly ${targetCount} groups.`
+        : `Create 2-5 groups based on the natural clustering of themes.`;
+
+    const systemPrompt = `You are analyzing meeting summaries to identify common themes and group them appropriately.
+${countInstruction}
+Each group should have a clear, descriptive name.
+Every agent must be assigned to exactly one group.
+IMPORTANT: You MUST respond with valid JSON only.`;
+
+    const userPrompt = `Analyze these ${agentSummaries.length} meeting summaries and group them by common themes:
+
+${agentSummaries.map(a => `[${a.id}] ${a.name}: ${a.summary}`).join('\n')}
+
+Respond ONLY with this JSON format (no other text):
+{"groups":[{"name":"Theme Name","agentIds":["id1","id2"]}]}`;
+
+    try {
+        console.log('[Grouping Thematic] Calling API with', agents.length, 'agents');
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${state.apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-5-mini',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                max_completion_tokens: 2000,
+                response_format: { type: 'json_object' }
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[Grouping Thematic] API error response:', response.status, errorText);
+            throw new Error(`API error: ${response.status} - ${errorText.substring(0, 100)}`);
+        }
+
+        const data = await response.json();
+        console.log('[Grouping Thematic] API response:', data);
+
+        // Check for API errors in response body
+        if (data.error) {
+            throw new Error(`API error: ${data.error.message || JSON.stringify(data.error)}`);
+        }
+
+        const content = data.choices?.[0]?.message?.content;
+
+        if (!content) {
+            console.error('[Grouping Thematic] Empty content. Full response:', JSON.stringify(data, null, 2));
+            throw new Error('Empty response from API - check console for details');
+        }
+
+        const result = JSON.parse(content);
+        console.log('[Grouping Thematic] Parsed result:', result);
+
+        if (!result.groups || !Array.isArray(result.groups)) {
+            throw new Error('Invalid response format - expected { groups: [...] }');
+        }
+
+        // Validate and format groups
+        const validAgentIds = new Set(agents.map(a => a.id));
+
+        return result.groups.map((group, index) => ({
+            name: group.name || `Theme ${index + 1}`,
+            agentIds: (group.agentIds || []).filter(id => validAgentIds.has(id)),
+            color: GROUP_COLORS[index % GROUP_COLORS.length],
+            icon: '🏷️',
+            criteria: { type: 'thematic', parameters: { targetCount } }
+        })).filter(g => g.agentIds.length > 0);
+
+    } catch (error) {
+        console.error('[Grouping] Thematic grouping failed:', error);
+        throw error;
+    }
+}
+
+/**
+ * Group agents by custom criteria (LLM-assisted)
+ * @param {Array} agents - Array of agents
+ * @param {string} criteria - User-provided criteria description
+ * @returns {Promise<Array>} Proposed groups
+ */
+async function groupByCustomCriteria(agents, criteria) {
+    if (!state.apiKey) {
+        throw new Error('API key required for custom grouping');
+    }
+
+    // Adjust context size based on number of agents to avoid token limits
+    const maxAgents = 25;
+    const agentsToProcess = agents.slice(0, maxAgents);
+    const summaryLength = agentsToProcess.length > 15 ? 150 : agentsToProcess.length > 10 ? 250 : 400;
+
+    // Build context from agent summaries with adaptive truncation
+    const agentSummaries = agentsToProcess.map((agent, idx) => ({
+        id: agent.id,
+        name: agent.displayName,
+        date: agent.date || 'Unknown',
+        sourceType: agent.sourceType || 'unknown',
+        summary: (agent.summary || '').substring(0, summaryLength)
+    }));
+
+    const systemPrompt = `You are organizing meeting agents into groups based on user-specified criteria.
+Create groups according to the user's instructions.
+Each group should have a clear, descriptive name.
+Every agent must be assigned to exactly one group.
+If the criteria don't clearly apply to all agents, create a "Miscellaneous" group for the remainder.
+IMPORTANT: You MUST respond with valid JSON only.`;
+
+    const userPrompt = `Group these ${agentSummaries.length} agents by: "${criteria}"
+
+${agentSummaries.map(a => `[${a.id}] ${a.name} (${a.date}, ${a.sourceType}): ${a.summary}`).join('\n')}
+
+Respond ONLY with this JSON format (no other text):
+{"groups":[{"name":"Group Name","agentIds":["id1","id2"]}]}`;
+
+    try {
+        console.log('[Grouping Custom] Calling API with criteria:', criteria);
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${state.apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-5-mini',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                max_completion_tokens: 2000,
+                response_format: { type: 'json_object' }
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[Grouping Custom] API error response:', response.status, errorText);
+            throw new Error(`API error: ${response.status} - ${errorText.substring(0, 100)}`);
+        }
+
+        const data = await response.json();
+        console.log('[Grouping Custom] API response:', data);
+
+        // Check for API errors in response body
+        if (data.error) {
+            throw new Error(`API error: ${data.error.message || JSON.stringify(data.error)}`);
+        }
+
+        // Check for finish_reason issues
+        const finishReason = data.choices?.[0]?.finish_reason;
+        if (finishReason === 'length') {
+            console.warn('[Grouping Custom] Response was truncated due to length');
+        }
+
+        const content = data.choices?.[0]?.message?.content;
+
+        if (!content) {
+            console.error('[Grouping Custom] Empty content. Full response:', JSON.stringify(data, null, 2));
+            throw new Error('Empty response from API - check console for details');
+        }
+
+        const result = JSON.parse(content);
+        console.log('[Grouping Custom] Parsed result:', result);
+
+        if (!result.groups || !Array.isArray(result.groups)) {
+            throw new Error('Invalid response format - expected { groups: [...] }');
+        }
+
+        // Validate and format groups
+        const validAgentIds = new Set(agents.map(a => a.id));
+
+        return result.groups.map((group, index) => ({
+            name: group.name || `Group ${index + 1}`,
+            agentIds: (group.agentIds || []).filter(id => validAgentIds.has(id)),
+            color: GROUP_COLORS[index % GROUP_COLORS.length],
+            icon: '✏️',
+            criteria: { type: 'custom', parameters: { criteria } }
+        })).filter(g => g.agentIds.length > 0);
+
+    } catch (error) {
+        console.error('[Grouping Custom] Failed:', error);
+        throw error;
+    }
+}
+
+// ============================================
+// State Persistence (sessionStorage)
+// ============================================
 
 /**
  * Save state to sessionStorage
@@ -1355,15 +2625,19 @@ function init() {
     initElements();
     loadApiKey();
     loadSettings();
+    loadGroups(); // Load groups from localStorage (persists across sessions)
 
     // Restore state from sessionStorage if available
     const restored = restoreState();
     if (restored) {
         console.log('[Init] State restored from previous session');
+        // Sync group-agent references after restoring agents
+        syncGroupAgentReferences();
     }
 
     initKBCanvas();
     setupEventListeners();
+    setupGroupingEventListeners();
     updateSettingsUI();
     applyRlmFeatureFlags();
     updateUI();
@@ -1400,6 +2674,10 @@ function initKBCanvas() {
 
     kbCanvas.onRename = (agentId, index, newName) => {
         updateAgentName(index, newName);
+    };
+
+    kbCanvas.onUngroupAgent = (agentId, oldGroupId) => {
+        ungroupAgent(agentId, oldGroupId);
     };
 
     console.log('[KBCanvas] Initialized successfully');
@@ -2163,7 +3441,16 @@ function parseAgentFile(content) {
 // ============================================
 
 function removeAgent(index) {
+    const agent = state.agents[index];
+    if (agent) {
+        // Remove agent from its group if assigned
+        if (agent.groupId) {
+            removeAgentFromGroup(agent.id);
+        }
+    }
     state.agents.splice(index, 1);
+    // Clean up any empty groups after agent removal
+    cleanupEmptyGroups();
     updateUI();
 }
 
@@ -2175,6 +3462,9 @@ function clearAllAgents() {
     resetMetrics();
     rlmPipeline.reset(); // Reset RLM pipeline state
     clearSavedState(); // Clear sessionStorage
+
+    // Clear groups (agents are gone, so groups have no members)
+    clearAllGroups();
 
     // Clear the 3D canvas
     if (kbCanvas) {
@@ -2264,12 +3554,16 @@ function updateUI() {
 }
 
 /**
- * Sync agents to the RLM context store
- * This keeps the RLM pipeline in sync with the current agent state
+ * Sync agents and groups to the RLM context store
+ * This keeps the RLM pipeline in sync with the current agent and group state
  */
 function syncAgentsToRLM() {
     try {
         rlmPipeline.loadAgents(state.agents);
+        // Also sync groups for group-aware queries
+        if (rlmPipeline.setGroups) {
+            rlmPipeline.setGroups(state.groups);
+        }
     } catch (error) {
         console.warn('[RLM] Failed to sync agents:', error.message);
     }
@@ -2309,6 +3603,9 @@ function updateAgentsList() {
  * Update agents list using 3D Canvas
  */
 function updateAgentsListCanvas() {
+    // Update groups data in canvas (just stores, doesn't render yet)
+    kbCanvas.setGroups(state.groups);
+
     // Get current node IDs in canvas
     const canvasIds = new Set(kbCanvas.nodes.keys());
     const agentIds = new Set(state.agents.map(a => a.id));
@@ -2330,6 +3627,9 @@ function updateAgentsListCanvas() {
             kbCanvas.addNode(agent, agent.position);
         }
     });
+
+    // Now that nodes are added, refresh group containers
+    kbCanvas.refreshGroupContainers();
 
     // Update connections after all nodes are positioned
     kbCanvas.updateConnections();
@@ -2892,10 +4192,55 @@ function openTestPromptingModal() {
     initializeTestConfigurations();
     renderTestPromptList();
     renderTestConfigurations();
+    populateTestGroupFilter();
     setTestPromptError('');
     if (elements.testPromptingModal) {
         elements.testPromptingModal.classList.remove('hidden');
     }
+}
+
+/**
+ * Populate the test group filter with available groups
+ */
+function populateTestGroupFilter() {
+    if (!elements.testGroupFilter || !elements.testGroupFilterContainer) return;
+
+    // Show/hide based on whether groups exist
+    if (state.groups.length === 0) {
+        elements.testGroupFilterContainer.classList.add('hidden');
+        return;
+    }
+
+    elements.testGroupFilterContainer.classList.remove('hidden');
+
+    // Clear existing options (except "All Agents")
+    elements.testGroupFilter.innerHTML = '<option value="all" selected>All Agents</option>';
+
+    // Add group options
+    state.groups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.id;
+        option.textContent = `${group.icon} ${group.name} (${group.agentIds.length} agents)`;
+        elements.testGroupFilter.appendChild(option);
+    });
+}
+
+/**
+ * Get selected group IDs from test filter
+ * @returns {Array|null} Array of group IDs or null for all
+ */
+function getTestGroupFilter() {
+    if (!elements.testGroupFilter) return null;
+
+    const selectedOptions = Array.from(elements.testGroupFilter.selectedOptions);
+    const values = selectedOptions.map(opt => opt.value);
+
+    // If "all" is selected or nothing selected, return null (no filter)
+    if (values.includes('all') || values.length === 0) {
+        return null;
+    }
+
+    return values;
 }
 
 function closeTestPromptingModal() {
