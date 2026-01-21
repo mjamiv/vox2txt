@@ -716,6 +716,29 @@ Recently completed:
 - ✅ Export/Import Testing Program feature for reusable test configurations
 - ✅ 50-question Memory Degradation Stress Test for proving RLM consistency
 
+**Planned: Societies of Thought (SoT) Enhancements**
+
+Based on ["Reasoning Models Generate Societies of Thought"](https://arxiv.org/abs/2601.10825) (Kim et al., 2026), a multi-phase enhancement to leverage diverse cognitive perspectives:
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 0. Agent Builder SoT Metadata | Extract meetingType, keyEntities, topicTags, contentSignals, suggestedPerspective during analysis | Planned |
+| 1. Cognitive Perspective Roles | Define analyst, advocate, critic, synthesizer, historian, pragmatist, stakeholder roles | Planned |
+| 1.5. Group Integration | Map agent groups to perspectives, enable group-level sub-queries | Planned |
+| 2. Conflict Detection | Surface disagreements between perspectives in synthesis | Planned |
+| 3. Diversity Selection | Diversity-weighted agent selection to avoid over-representation | Planned |
+| 4. Debate Phase | MAP→DEBATE→REDUCE for complex analytical queries | Planned |
+| 5. UI Enhancements | Perspective badges, conflict summaries in responses | Planned |
+| 6. Settings Toggle | User controls for SoT features | Planned |
+
+**Key Benefits:**
+- Groups as perspective containers (40-60% token savings for 15+ agents)
+- Pre-computed perspective hints from Agent Builder analysis
+- Inter-group conflict detection for richer synthesis
+- Backward compatible with existing agents
+
+See detailed plan: `docs/societies-of-thought-implementation-plan.md`
+
 ## Data Flow: Agent Export/Import
 
 ```mermaid
@@ -858,6 +881,14 @@ const state = {
 - Only active (enabled) agents are used for chat and insights generation
 - Custom robot mascot branding in header (`images/orchestrator-logo.png`)
 - **Model Settings Panel**: Select model (GPT-5.2, GPT-5-mini, GPT-5-nano), configure effort level, toggle RLM
+- **Agent Grouping System**:
+  - Organize agents into named groups with colors and icons
+  - Auto-grouping methods: temporal (by date), thematic (AI-clustered), source type, custom criteria
+  - Groups stored in localStorage, persist across sessions
+  - Visual group containers on KB Canvas with drag-to-regroup
+  - Groups sync to RLM via `syncAgentsToRLM()` for group-aware queries
+  - Key functions: `createGroup()`, `groupByThematic()`, `groupByTemporal()`, `getAgentsInGroup()`
+  - Max 10 groups supported
 - **Enhanced Metrics System**:
   - Per-prompt detailed logging with response storage
   - Confidence tracking via logprobs (GPT-5.2 with effort='none' only)
