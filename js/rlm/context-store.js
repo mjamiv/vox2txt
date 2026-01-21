@@ -115,11 +115,25 @@ export class ContextStore {
         const {
             maxResults = 5,
             activeOnly = true,
-            minScore = 0
+            minScore = 0,
+            agentFilter = null, // Array of agent IDs to restrict to (for group filtering)
+            groupFilter = null  // Array of group IDs (alternative to agentFilter)
         } = options;
 
         const queryKeywords = this._extractKeywords(query.toLowerCase());
-        const candidates = activeOnly ? this.getActiveAgents() : Array.from(this.agents.values());
+        let candidates = activeOnly ? this.getActiveAgents() : Array.from(this.agents.values());
+
+        // Apply agent filter if specified (from group filtering)
+        if (agentFilter && Array.isArray(agentFilter) && agentFilter.length > 0) {
+            const filterSet = new Set(agentFilter);
+            candidates = candidates.filter(agent => filterSet.has(agent.id));
+        }
+
+        // Apply group filter if specified
+        if (groupFilter && Array.isArray(groupFilter) && groupFilter.length > 0) {
+            const groupSet = new Set(groupFilter);
+            candidates = candidates.filter(agent => agent.groupId && groupSet.has(agent.groupId));
+        }
 
         const scored = candidates.map(agent => {
             const score = this._calculateRelevanceScore(agent, queryKeywords, query.toLowerCase());
