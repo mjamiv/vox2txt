@@ -451,6 +451,17 @@ If the information is not available in the provided context, say so briefly.`;
     }
 
     /**
+     * Set groups data for group-aware queries
+     * @param {Array} groups - Groups array from orchestrator state
+     */
+    setGroups(groups) {
+        if (this.decomposer && this.decomposer.setGroups) {
+            this.decomposer.setGroups(groups);
+            console.log(`[RLM] Loaded ${groups.length} groups into decomposer`);
+        }
+    }
+
+    /**
      * Process a user query through the RLM pipeline
      * @param {string} query - User's natural language query
      * @param {Function} llmCall - Function to call LLM

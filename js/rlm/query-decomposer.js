@@ -40,6 +40,15 @@ export class QueryDecomposer {
             enableLLMDecomposition: options.enableLLMDecomposition !== false,
             ...options
         };
+        this.groups = []; // Groups data from state
+    }
+
+    /**
+     * Set groups data for reference detection
+     * @param {Array} groups - Array of group objects
+     */
+    setGroups(groups) {
+        this.groups = groups || [];
     }
 
     /**
@@ -55,15 +64,30 @@ export class QueryDecomposer {
         // Classify the query
         const classification = this._classifyQuery(query);
 
+        // Detect group references
+        const groupReferences = this.detectGroupReferences(query);
+        classification.groupReferences = groupReferences.matchedGroups;
+        classification.usesGroups = groupReferences.hasGroupReferences;
+        classification.groupFilterIds = groupReferences.groupFilterIds;
+        classification.isGroupComparison = groupReferences.isGroupComparison;
+
         // Extract depth override from context (for "Go Deeper" feature)
         const depthOverride = context.depthOverride ?? null;
 
         // Get relevant agents - uses conservative default or depth override
+        // If group filter specified, restrict to those agents
         const maxResults = this._resolveMaxResults(classification, stats.activeAgents, depthOverride);
-        const relevantAgents = store.queryAgents(query, {
+        let queryOptions = {
             maxResults,
             minScore: this.options.minRelevanceScore
-        });
+        };
+
+        // Apply group filter if groups are referenced
+        if (groupReferences.hasGroupReferences && groupReferences.groupFilterIds.length > 0) {
+            queryOptions.agentFilter = this.getAgentIdsForGroups(groupReferences.groupFilterIds);
+        }
+
+        const relevantAgents = store.queryAgents(query, queryOptions);
 
         // Determine decomposition strategy
         const strategy = this._determineStrategy(classification, relevantAgents, stats);
@@ -246,6 +270,100 @@ export class QueryDecomposer {
         if (/\bopen question(s)?\b|\bunknowns?\b/i.test(query)) tags.push('open_question');
         if (/\bsummary|overview\b/i.test(query)) tags.push('episode');
         return [...new Set(tags)];
+    }
+
+    /**
+     * Detect group references in the query
+     * @param {string} query - User query
+     * @returns {Object} Group reference info
+     */
+    detectGroupReferences(query) {
+        if (!this.groups || this.groups.length === 0) {
+            return {
+                hasGroupReferences: false,
+                matchedGroups: [],
+                groupFilterIds: [],
+                isGroupComparison: false
+            };
+        }
+
+        const lowerQuery = query.toLowerCase();
+        const matchedGroups = [];
+
+        // Check for direct group name matches
+        for (const group of this.groups) {
+            const groupNameLower = group.name.toLowerCase();
+            // Match exact name or close variations
+            if (lowerQuery.includes(groupNameLower)) {
+                matchedGroups.push(group);
+                continue;
+            }
+
+            // Match temporal patterns like "Q4 2025" or "Q1 group"
+            const temporalMatch = groupNameLower.match(/^q(\d)\s+(\d{4})$/i);
+            if (temporalMatch) {
+                const quarterPattern = new RegExp(`q${temporalMatch[1]}\\s*(group|meetings?)?`, 'i');
+                if (quarterPattern.test(lowerQuery)) {
+                    matchedGroups.push(group);
+                }
+            }
+
+            // Match month names
+            const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+                               'july', 'august', 'september', 'october', 'november', 'december'];
+            for (const month of monthNames) {
+                if (groupNameLower.includes(month) && lowerQuery.includes(month)) {
+                    matchedGroups.push(group);
+                    break;
+                }
+            }
+        }
+
+        // Detect group comparison patterns
+        const comparisonPatterns = [
+            /compare\s+(.+?)\s+(?:with|to|and|vs\.?)\s+(.+)/i,
+            /(.+?)\s+versus\s+(.+)/i,
+            /(.+?)\s+vs\.?\s+(.+)/i,
+            /difference\s+between\s+(.+?)\s+and\s+(.+)/i
+        ];
+
+        let isGroupComparison = false;
+        for (const pattern of comparisonPatterns) {
+            if (pattern.test(query) && matchedGroups.length >= 2) {
+                isGroupComparison = true;
+                break;
+            }
+        }
+
+        // Also detect "group" keyword
+        if (/\bgroup(s)?\b/i.test(query) && matchedGroups.length > 0) {
+            isGroupComparison = isGroupComparison || /\bcompare|versus|vs\.?|between\b/i.test(query);
+        }
+
+        return {
+            hasGroupReferences: matchedGroups.length > 0,
+            matchedGroups: [...new Set(matchedGroups)],
+            groupFilterIds: [...new Set(matchedGroups.map(g => g.id))],
+            isGroupComparison
+        };
+    }
+
+    /**
+     * Get agent IDs for a set of groups
+     * @param {Array} groupIds - Array of group IDs
+     * @returns {Array} Array of agent IDs
+     */
+    getAgentIdsForGroups(groupIds) {
+        if (!groupIds || groupIds.length === 0) return [];
+
+        const agentIds = new Set();
+        for (const groupId of groupIds) {
+            const group = this.groups.find(g => g.id === groupId);
+            if (group && group.agentIds) {
+                group.agentIds.forEach(id => agentIds.add(id));
+            }
+        }
+        return [...agentIds];
     }
 
     /**
