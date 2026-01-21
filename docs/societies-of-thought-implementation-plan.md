@@ -8,6 +8,73 @@ This document outlines a detailed implementation plan for incorporating insights
 
 **Current State:** The RLM already implements external multi-agent decomposition via parallel sub-queries. This plan enhances that architecture to leverage perspective diversity and conflict resolution.
 
+**Key Integration Point:** The existing **Agent Grouping** system (temporal, thematic, source-based, custom) provides a natural foundation for perspective assignment. Groups already represent semantic/temporal clusters that can map to distinct cognitive perspectives.
+
+---
+
+## Agent Grouping Integration
+
+The orchestrator's grouping system offers three integration strategies with Societies of Thought:
+
+### Strategy A: Groups as Perspective Containers (Recommended)
+
+Each group becomes a unified "perspective" in the SoT framework:
+
+| Group Type | Default Perspective | Rationale |
+|------------|---------------------|-----------|
+| `temporal` | Historian | Focus on evolution over time |
+| `thematic` | Synthesizer | Already semantically clustered |
+| `source` | Analyst | Objective data source analysis |
+| `custom` | Varies by criteria | User-defined focus |
+
+**Benefits:**
+- Reduces sub-query count (1 per group vs 1 per agent)
+- Leverages existing semantic clustering
+- Natural inter-group conflict detection
+
+### Strategy B: Group-Level Then Agent-Level Decomposition
+
+Two-tier query decomposition:
+1. **Group Level**: Each group provides a unified perspective
+2. **Agent Level**: For complex queries, drill into specific agents within a group
+
+**Best for:** Large agent counts (15+) where per-agent queries are expensive
+
+### Strategy C: Adaptive Perspective from Group Metadata
+
+Use group metadata to inform perspective assignment:
+
+```javascript
+function perspectiveFromGroup(group) {
+    // Use group criteria type
+    switch (group.criteria?.type) {
+        case 'temporal':
+            return PerspectiveRoles.HISTORIAN;
+        case 'thematic':
+            return PerspectiveRoles.SYNTHESIZER;
+        case 'source':
+            return PerspectiveRoles.ANALYST;
+        case 'custom':
+            // Infer from criteria parameters or name
+            if (/risk|issue|problem/i.test(group.name)) {
+                return PerspectiveRoles.CRITIC;
+            }
+            if (/action|task|todo/i.test(group.name)) {
+                return PerspectiveRoles.PRAGMATIST;
+            }
+            return PerspectiveRoles.ANALYST;
+        default:
+            return null; // Use rotating assignment
+    }
+}
+```
+
+### Recommended Approach: Hybrid
+
+1. **If groups exist**: Use Strategy A (group-as-perspective)
+2. **For ungrouped agents**: Use rotating perspective assignment
+3. **For single-group scenarios**: Fall back to per-agent perspectives within the group
+
 ---
 
 ## Implementation Phases
@@ -365,6 +432,349 @@ export const RLM_CONFIG = {
     minAgentsForSoT: 2,                        // Minimum agents to enable SoT
     includePerspectiveInResponse: true,        // Show perspective labels in aggregated response
 };
+```
+
+---
+
+### Phase 1.5: Group-Aware Perspective Assignment
+**Priority: High | Complexity: Medium | Files: 3**
+
+#### Objective
+Leverage existing agent groups as natural perspective boundaries, enabling group-level sub-queries and automatic perspective assignment based on group metadata.
+
+#### 1.5.1 Extend Perspective Roles with Group Mapping
+
+**File: `js/rlm/perspective-roles.js` (MODIFY)**
+
+Add group-to-perspective mapping:
+
+```javascript
+/**
+ * Map group criteria type to default perspective
+ * @param {Object} group - Group object with criteria
+ * @returns {Object|null} Perspective role or null for default assignment
+ */
+export function perspectiveFromGroupType(group) {
+    if (!group?.criteria?.type) return null;
+
+    const typeMapping = {
+        'temporal': PerspectiveRoles.HISTORIAN,
+        'thematic': PerspectiveRoles.SYNTHESIZER,
+        'source': PerspectiveRoles.ANALYST,
+        'custom': null // Infer from name/description
+    };
+
+    const mapped = typeMapping[group.criteria.type];
+    if (mapped) return mapped;
+
+    // For custom groups, infer from name
+    const name = (group.name || '').toLowerCase();
+    const description = (group.description || '').toLowerCase();
+    const text = `${name} ${description}`;
+
+    if (/risk|issue|problem|blocker|concern/i.test(text)) {
+        return PerspectiveRoles.CRITIC;
+    }
+    if (/action|task|todo|next step|implement/i.test(text)) {
+        return PerspectiveRoles.PRAGMATIST;
+    }
+    if (/stakeholder|team|customer|impact/i.test(text)) {
+        return PerspectiveRoles.STAKEHOLDER;
+    }
+    if (/timeline|history|evolution|progress/i.test(text)) {
+        return PerspectiveRoles.HISTORIAN;
+    }
+
+    return null; // Use rotating assignment
+}
+
+/**
+ * Assign perspectives to groups
+ * @param {Array} groups - Array of group objects
+ * @param {Object} classification - Query classification
+ * @returns {Array} Groups with assigned perspectives
+ */
+export function assignPerspectivesToGroups(groups, classification) {
+    const assignments = [];
+    const usedPerspectives = new Set();
+
+    // First pass: assign based on group type
+    groups.forEach(group => {
+        const perspective = perspectiveFromGroupType(group);
+        if (perspective && !usedPerspectives.has(perspective.id)) {
+            assignments.push({ group, perspective, source: 'group-type' });
+            usedPerspectives.add(perspective.id);
+        } else {
+            assignments.push({ group, perspective: null, source: 'pending' });
+        }
+    });
+
+    // Second pass: fill in missing perspectives with rotating assignment
+    const availablePerspectives = [
+        PerspectiveRoles.ANALYST,
+        PerspectiveRoles.ADVOCATE,
+        PerspectiveRoles.CRITIC,
+        PerspectiveRoles.SYNTHESIZER
+    ].filter(p => !usedPerspectives.has(p.id));
+
+    let perspectiveIndex = 0;
+    assignments.forEach(assignment => {
+        if (!assignment.perspective) {
+            assignment.perspective = availablePerspectives[perspectiveIndex % availablePerspectives.length];
+            assignment.source = 'rotating';
+            perspectiveIndex++;
+        }
+    });
+
+    return assignments;
+}
+```
+
+#### 1.5.2 Add Group-Level Query Decomposition
+
+**File: `js/rlm/query-decomposer.js` (MODIFY)**
+
+Add group-aware decomposition strategy:
+
+```javascript
+// Import group perspective functions
+import { assignPerspectivesToGroups, perspectiveFromGroupType } from './perspective-roles.js';
+
+/**
+ * Decompose query using group-level perspectives
+ * @param {string} query - User query
+ * @param {Array} groups - Active groups with agents
+ * @param {Object} classification - Query classification
+ * @param {Object} context - Additional context
+ * @returns {Array} Sub-queries at group level
+ */
+_generateGroupLevelSubQueries(query, groups, classification, context) {
+    const subQueries = [];
+
+    // Get groups with agents
+    const activeGroups = groups.filter(g =>
+        g.enabled && g.agentIds && g.agentIds.length > 0
+    );
+
+    if (activeGroups.length === 0) {
+        return null; // Fall back to agent-level decomposition
+    }
+
+    // Assign perspectives to groups
+    const groupAssignments = assignPerspectivesToGroups(activeGroups, classification);
+
+    // Create one sub-query per group
+    groupAssignments.forEach((assignment, index) => {
+        const { group, perspective, source } = assignment;
+
+        subQueries.push({
+            id: `sq-group-${index}`,
+            type: 'group-query',
+            query: this._createGroupPerspectiveQuery(query, group, perspective),
+            targetAgents: group.agentIds,  // All agents in the group
+            targetGroup: {
+                id: group.id,
+                name: group.name,
+                type: group.criteria?.type,
+                agentCount: group.agentIds.length
+            },
+            contextLevel: 'standard',
+            priority: 1,
+            perspective: {
+                roleId: perspective.id,
+                roleLabel: perspective.label,
+                traits: perspective.traits,
+                assignmentSource: source
+            }
+        });
+    });
+
+    // Add reduce query
+    subQueries.push({
+        id: 'sq-reduce',
+        type: 'reduce',
+        query: this._createGroupSynthesisQuery(query, classification, activeGroups.length),
+        targetAgents: [],
+        contextLevel: 'none',
+        priority: 2,
+        dependsOn: subQueries.filter(sq => sq.type === 'group-query').map(sq => sq.id)
+    });
+
+    return subQueries;
+}
+
+/**
+ * Create perspective-aware query for a group
+ * @private
+ */
+_createGroupPerspectiveQuery(originalQuery, group, perspective) {
+    const groupContext = `Analyzing the "${group.name}" group (${group.agentIds.length} meetings)`;
+
+    return `${groupContext}:
+
+${perspective.promptPrefix}
+${originalQuery}
+
+Consider all meetings in this group collectively. Focus on your ${perspective.label.toLowerCase()} perspective (${perspective.traits.join(', ')}).`;
+}
+
+/**
+ * Create synthesis query for group-level results
+ * @private
+ */
+_createGroupSynthesisQuery(originalQuery, classification, groupCount) {
+    return `You are synthesizing perspectives from ${groupCount} distinct meeting groups.
+
+Each group analyzed the question from a different cognitive perspective.
+
+Original question: "${originalQuery}"
+
+Instructions:
+1. Identify where groups AGREE (consensus across perspectives)
+2. Highlight where groups DISAGREE (conflicting perspectives)
+3. Note which perspective's insights are most relevant to the question
+4. Synthesize a balanced answer that acknowledges the diversity of viewpoints
+5. Cite which group each key insight came from`;
+}
+
+/**
+ * Determine whether to use group-level or agent-level decomposition
+ * @private
+ */
+_shouldUseGroupDecomposition(groups, agentCount, classification) {
+    // Use group decomposition if:
+    // 1. Groups exist and have agents
+    // 2. Agent count is high enough to benefit
+    // 3. Query is complex enough to warrant perspectives
+
+    const activeGroups = (groups || []).filter(g =>
+        g.enabled && g.agentIds && g.agentIds.length > 0
+    );
+
+    if (activeGroups.length < 2) return false;  // Need multiple groups
+    if (agentCount < 6) return false;           // Not enough agents to justify
+    if (classification.complexity === 'simple') return false;
+
+    return true;
+}
+```
+
+#### 1.5.3 Update RLM Pipeline to Use Groups
+
+**File: `js/rlm/index.js` (MODIFY)**
+
+Add group handling:
+
+```javascript
+// Add groups storage
+this.groups = [];
+
+/**
+ * Set groups for group-aware queries
+ * @param {Array} groups - Array of group objects
+ */
+setGroups(groups) {
+    this.groups = groups || [];
+    console.log(`[RLM] Loaded ${this.groups.length} groups`);
+}
+
+/**
+ * Get active groups with their agents
+ * @returns {Array} Groups with agent details
+ */
+getActiveGroups() {
+    return this.groups.filter(g => g.enabled);
+}
+
+// In process() method, check for group decomposition
+async process(query, context = {}) {
+    // ... existing code ...
+
+    // Check if group-level decomposition should be used
+    const activeGroups = this.getActiveGroups();
+    const activeAgentCount = this.contextStore.getActiveAgents().length;
+
+    const useGroupDecomposition = this.decomposer._shouldUseGroupDecomposition(
+        activeGroups,
+        activeAgentCount,
+        classification
+    );
+
+    if (useGroupDecomposition) {
+        // Use group-level sub-queries
+        const groupSubQueries = this.decomposer._generateGroupLevelSubQueries(
+            query,
+            activeGroups,
+            classification,
+            context
+        );
+
+        if (groupSubQueries) {
+            decomposition.subQueries = groupSubQueries;
+            decomposition.strategy = {
+                type: 'group-parallel',
+                reason: 'Using group-level perspectives for multi-group query',
+                parallelization: true,
+                estimatedCalls: activeGroups.length + 1
+            };
+        }
+    }
+
+    // ... rest of existing code ...
+}
+```
+
+#### 1.5.4 Handle Group Context in Sub-Executor
+
+**File: `js/rlm/sub-executor.js` (MODIFY)**
+
+Add group-query handling:
+
+```javascript
+/**
+ * Execute group-level query (combines context from all agents in group)
+ * @private
+ */
+async _executeGroupQuery(query, llmCall, context) {
+    const store = getContextStore();
+
+    // Get combined context for all agents in the group
+    const agentIds = query.targetAgents;
+    const groupContext = store.getCombinedContext(agentIds, 'standard');
+
+    this._log('group-query', query.id, `executing for group "${query.targetGroup?.name}" (${agentIds.length} agents)`);
+
+    const result = await this._executeWithRetry(
+        () => llmCall(query.query, groupContext, context),
+        query.id
+    );
+
+    return {
+        queryId: query.id,
+        type: query.type,
+        response: result,
+        targetAgents: query.targetAgents,
+        targetGroup: query.targetGroup,
+        perspective: query.perspective,
+        success: true
+    };
+}
+
+// In _executeParallel, handle group-query type
+async _executeParallel(subQueries, llmCall, context) {
+    // ... existing code ...
+
+    // Handle group queries
+    const groupQueries = subQueries.filter(sq => sq.type === 'group-query');
+    if (groupQueries.length > 0) {
+        const groupResults = await Promise.all(
+            groupQueries.map(q => this._executeGroupQuery(q, llmCall, context))
+        );
+        results.push(...groupResults);
+    }
+
+    // ... rest of existing code ...
+}
 ```
 
 ---
@@ -1183,10 +1593,10 @@ function renderSoTSettings() {
 
 | Module | Test Cases |
 |--------|------------|
-| `perspective-roles.js` | Role selection by intent, role assignment strategies, role cycling |
+| `perspective-roles.js` | Role selection by intent, role assignment strategies, role cycling, **group-to-perspective mapping**, **perspectiveFromGroupType()** |
 | `conflict-detector.js` | Conflict identification, agreement detection, threshold tuning |
-| `query-decomposer.js` | Role-aware query generation, debate query creation |
-| `aggregator.js` | Conflict-aware synthesis prompt, perspective attribution |
+| `query-decomposer.js` | Role-aware query generation, debate query creation, **group-level decomposition**, **_shouldUseGroupDecomposition()** |
+| `aggregator.js` | Conflict-aware synthesis prompt, perspective attribution, **group source attribution** |
 
 ### Integration Tests
 
@@ -1196,6 +1606,10 @@ function renderSoTSettings() {
 | 2 agents, simple query | Minimal SoT overhead, still functional |
 | Analytical query with disagreement | Debate phase triggered, tensions noted |
 | All agents agree | No false conflicts reported |
+| **3 groups (temporal, thematic, custom)** | **Each group gets appropriate perspective (historian, synthesizer, analyst)** |
+| **10+ agents in 2 groups** | **Group-level decomposition used instead of per-agent** |
+| **Ungrouped + grouped agents** | **Groups get perspectives, ungrouped use rotating assignment** |
+| **Single group with 5 agents** | **Falls back to per-agent within group** |
 
 ### A/B Test Configuration
 
@@ -1207,6 +1621,17 @@ Create test configurations in Test Builder:
 | SoT-Rotating | SoT enabled, rotating roles |
 | SoT-Primary | SoT enabled, primary roles only |
 | SoT-Debate | SoT + debate phase enabled |
+| **SoT-Groups** | **SoT enabled with group-level decomposition** |
+| **SoT-Groups+Debate** | **Group perspectives + inter-group debate phase** |
+
+### Group Integration Test Scenarios
+
+| Scenario | Groups Setup | Expected Behavior |
+|----------|--------------|-------------------|
+| Thematic groups | 3 AI-generated thematic groups | Each group = Synthesizer perspective, inter-group conflicts surfaced |
+| Temporal groups | Q1, Q2, Q3 quarterly groups | Each group = Historian perspective, timeline synthesis |
+| Mixed grouping | 2 temporal + 1 custom "Risks" | Temporal=Historian, Custom=Critic, diverse analysis |
+| Large dataset | 20 agents in 4 groups | Group-level queries (4 calls) vs agent-level (20 calls) |
 
 ---
 
@@ -1215,10 +1640,11 @@ Create test configurations in Test Builder:
 | Phase | Scope | Timeline |
 |-------|-------|----------|
 | 1. Perspective Roles | Core implementation | First |
-| 2. Conflict Detection | Enhance aggregation | Second |
-| 3. Diversity Selection | Improve agent selection | Third |
-| 4. Debate Phase | Complex queries only | Fourth |
-| 5. UI Enhancements | Visual feedback | Fifth |
+| **1.5. Group Integration** | **Group-aware perspectives** | **Second** |
+| 2. Conflict Detection | Enhance aggregation | Third |
+| 3. Diversity Selection | Improve agent selection | Fourth |
+| 4. Debate Phase | Complex queries only | Fifth |
+| 5. UI Enhancements | Visual feedback | Sixth |
 | 6. Settings Toggle | User control | Final |
 
 ---
@@ -1232,6 +1658,10 @@ Create test configurations in Test Builder:
 | Token Overhead | Additional tokens from SoT prompts | < 20% increase |
 | Latency Impact | Processing time increase | < 15% increase |
 | User Engagement | Time spent reading perspective-enriched responses | ↑ 5% |
+| **Group Decomposition Rate** | **% of queries using group-level vs agent-level** | **> 60% when groups exist** |
+| **Token Savings (Groups)** | **Reduction vs per-agent queries for large datasets** | **↓ 40-60% for 15+ agents** |
+| **Inter-Group Conflict Rate** | **% of group queries with cross-group disagreements** | **20-40%** |
+| **Perspective Assignment Accuracy** | **% of group types correctly mapped to perspectives** | **> 90%** |
 
 ---
 
