@@ -1,0 +1,1233 @@
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_CONNECTION_RESET
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_CONNECTION_RESET
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_CONNECTION_RESET
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_CONNECTION_RESET
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_CONNECTION_RESET
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_CONNECTION_RESET
+ Error occurred while installing the standard library:
+(anonymous) @ pyodide.js:9
+ 
+(anonymous) @ pyodide.js:9
+ Python path configuration:
+put_char @ pyodide.asm.js:9
+   PYTHONHOME = '/'
+put_char @ pyodide.asm.js:9
+   PYTHONPATH = (not set)
+put_char @ pyodide.asm.js:9
+   program name = './this.program'
+put_char @ pyodide.asm.js:9
+   isolated = 0
+put_char @ pyodide.asm.js:9
+   environment = 1
+put_char @ pyodide.asm.js:9
+   user site = 1
+put_char @ pyodide.asm.js:9
+   safe_path = 0
+put_char @ pyodide.asm.js:9
+   import site = 1
+put_char @ pyodide.asm.js:9
+   is in build tree = 0
+put_char @ pyodide.asm.js:9
+   stdlib dir = '/lib/python3.11'
+put_char @ pyodide.asm.js:9
+   sys._base_executable = '/home/pyodide/this.program'
+put_char @ pyodide.asm.js:9
+   sys.base_prefix = '/'
+put_char @ pyodide.asm.js:9
+   sys.base_exec_prefix = '/'
+put_char @ pyodide.asm.js:9
+   sys.platlibdir = 'lib'
+put_char @ pyodide.asm.js:9
+   sys.executable = '/home/pyodide/this.program'
+put_char @ pyodide.asm.js:9
+   sys.prefix = '/'
+put_char @ pyodide.asm.js:9
+   sys.exec_prefix = '/'
+put_char @ pyodide.asm.js:9
+   sys.path = [
+put_char @ pyodide.asm.js:9
+     '/lib/python311.zip',
+put_char @ pyodide.asm.js:9
+     '/lib/python3.11',
+put_char @ pyodide.asm.js:9
+     '/lib/python3.11/lib-dynload',
+put_char @ pyodide.asm.js:9
+   ]
+put_char @ pyodide.asm.js:9
+ Fatal Python error: init_fs_encoding: failed to get the Python codec of the filesystem encoding
+put_char @ pyodide.asm.js:9
+ Python runtime state: core initialized
+put_char @ pyodide.asm.js:9
+ ModuleNotFoundError: No module named 'encodings'
+put_char @ pyodide.asm.js:9
+ 
+put_char @ pyodide.asm.js:9
+ Current thread 0x003ba1a0 (most recent call first):
+put_char @ pyodide.asm.js:9
+   <no Python frame>
+put_char @ pyodide.asm.js:9
+ [REPL Worker] Failed to initialize Pyodide: ExitStatus
+(anonymous) @ repl-worker.js:416
+orchestrator.html:1 Access to fetch at 'https://api.openai.com/v1/chat/completions' from origin 'https://mjamiv.github.io' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_FAILED
+ [REPL Worker] Pyodide initialized successfully
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+orchestrator.html:1 Access to fetch at 'https://api.openai.com/v1/chat/completions' from origin 'https://mjamiv.github.io' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_FAILED
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_CONNECTION_CLOSED
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_CONNECTION_CLOSED
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_CONNECTION_CLOSED
+orchestrator.html:1 Access to fetch at 'https://api.openai.com/v1/chat/completions' from origin 'https://mjamiv.github.io' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_FAILED
+orchestrator.html:1 Access to fetch at 'https://api.openai.com/v1/chat/completions' from origin 'https://mjamiv.github.io' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_FAILED
+orchestrator.html:1 Access to fetch at 'https://api.openai.com/v1/chat/completions' from origin 'https://mjamiv.github.io' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_FAILED
+ [Metrics] addAPICallToMetrics: RLM: Create a master stak... tokens: 6857
+ [RLM:parallel] sq-6: executing
+ [RLM:parallel] sq-6: Prompt budget (context): 1248/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Create a master stak... tokens: 7127
+ [RLM:retry] sq-5: attempt 1 failed: Query sq-5 timed out after 30000ms
+ [RLM:retry] sq-3: attempt 2 failed: Query sq-3 timed out after 30000ms
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a master stak... tokens: 7440
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a master stak... tokens: 7535
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Create a master stak... tokens: 6908
+ [Metrics] addAPICallToMetrics: RLM: Create a master stak... tokens: 6126
+ [Metrics] addAPICallToMetrics: RLM: Create a master stak... tokens: 6224
+ [Metrics] addAPICallToMetrics: RLM: Create a master stak... tokens: 7450
+ [Metrics] addAPICallToMetrics: RLM: Create a master stak... tokens: 7262
+ [Metrics] addAPICallToMetrics: RLM: Create a master stak... tokens: 7276
+ [RLM:parallel] pool: completed
+ [RLM] Executed 7 sub-queries in 88678ms
+ [RLM] Step 3: Aggregating results...
+orchestrator.html:1 Access to fetch at 'https://api.openai.com/v1/chat/completions' from origin 'https://mjamiv.github.io' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_FAILED
+ LLM synthesis failed, falling back to simple aggregation: Browser blocked this request due to CORS. When running from GitHub Pages, you must route OpenAI API calls through your own backend/proxy so the response includes Access-Control-Allow-Origin.
+_llmAggregate @ aggregator.js:160
+ [RLM] Pipeline complete in 133335ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: Create a master stakeholder map combinin...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: Create a master stakeholder map combining response... with 14 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: Build a complete risk evolution narrative using re... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: Build a complete risk evolution narrative using re...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 7 sub-queries using parallel strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:parallel] pool: started (7 queries, max 4)
+ [RLM:parallel] sq-0: executing
+ [RLM:parallel] sq-0: Prompt budget (context): 1248/10000 tokens (ok).
+ [RLM:parallel] sq-1: executing
+ [RLM:parallel] sq-1: Prompt budget (context): 1192/10000 tokens (ok).
+ [RLM:parallel] sq-2: executing
+ [RLM:parallel] sq-2: Prompt budget (context): 1403/10000 tokens (ok).
+ [RLM:parallel] sq-3: executing
+ [RLM:parallel] sq-3: Prompt budget (context): 1120/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Build a complete ris... tokens: 7035
+ [RLM:parallel] sq-4: executing
+ [RLM:parallel] sq-4: Prompt budget (context): 997/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Build a complete ris... tokens: 7033
+ [RLM:parallel] sq-5: executing
+ [RLM:parallel] sq-5: Prompt budget (context): 1121/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Build a complete ris... tokens: 7167
+ [RLM:parallel] sq-6: executing
+ [RLM:parallel] sq-6: Prompt budget (context): 750/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Build a complete ris... tokens: 7483
+ [Metrics] addAPICallToMetrics: RLM: Build a complete ris... tokens: 6439
+ [Metrics] addAPICallToMetrics: RLM: Build a complete ris... tokens: 6890
+ [Metrics] addAPICallToMetrics: RLM: Build a complete ris... tokens: 7040
+ [RLM:parallel] pool: completed
+ [RLM] Executed 7 sub-queries in 39092ms
+ [RLM] Step 3: Aggregating results...
+ [Metrics] addAPICallToMetrics: RLM: Build a complete ris... tokens: 11348
+ [RLM] Pipeline complete in 71103ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: Build a complete risk evolution narrativ...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: Build a complete risk evolution narrative using re... with 8 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: Create a unified timeline combining responses #11,... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: Create a unified timeline combining responses #11,...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 8 sub-queries using map-reduce strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:map-reduce] map-phase: started
+ [RLM:parallel] pool: started (7 queries, max 4)
+ [RLM:parallel] sq-map-0: executing
+ [RLM:parallel] sq-map-0: Prompt budget (context): 329/10000 tokens (ok).
+ [RLM:parallel] sq-map-1: executing
+ [RLM:parallel] sq-map-1: Prompt budget (context): 280/10000 tokens (ok).
+ [RLM:parallel] sq-map-2: executing
+ [RLM:parallel] sq-map-2: Prompt budget (context): 293/10000 tokens (ok).
+ [RLM:parallel] sq-map-3: executing
+ [RLM:parallel] sq-map-3: Prompt budget (context): 305/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 6314
+ [RLM:parallel] sq-map-4: executing
+ [RLM:parallel] sq-map-4: Prompt budget (context): 267/10000 tokens (ok).
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 7046
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 6676
+ [RLM:parallel] sq-map-5: executing
+ [RLM:parallel] sq-map-5: Prompt budget (context): 272/10000 tokens (ok).
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 7088
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-map-0: attempt 1 failed: Query sq-map-0 timed out after 30000ms
+ [RLM:retry] sq-map-3: attempt 1 failed: Query sq-map-3 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 5428
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 5450
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 7022
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-map-4: attempt 1 failed: Query sq-map-4 timed out after 30000ms
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 7046
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 6951
+ [RLM:parallel] sq-map-6: executing
+ [RLM:parallel] sq-map-6: Prompt budget (context): 263/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 5402
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 6722
+ [RLM:retry] sq-map-3: attempt 2 failed: Query sq-map-3 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 5439
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 6651
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 7022
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-map-4: attempt 2 failed: Query sq-map-4 timed out after 30000ms
+ [RLM:retry] sq-map-3: attempt 3 failed: Query sq-map-3 timed out after 30000ms
+ [RLM:parallel] sq-map-3: failed: Query sq-map-3 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 5500
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 7046
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 5545
+ [RLM:retry] sq-map-4: attempt 3 failed: Query sq-map-4 timed out after 30000ms
+ [RLM:parallel] sq-map-4: failed: Query sq-map-4 timed out after 30000ms
+ [RLM:parallel] pool: completed
+ [RLM:map-reduce] map-phase: completed
+ [RLM:map-reduce] reduce-phase: started
+ [RLM:map-reduce] sq-reduce: Prompt budget (reduce): 2634/10000 tokens (ok).
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 7022
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 5519
+ [Metrics] addAPICallToMetrics: RLM: Create a unified tim... tokens: 8840
+ [RLM:map-reduce] reduce-phase: completed
+ [RLM] Executed 8 sub-queries in 133658ms
+ [RLM] Step 3: Aggregating results...
+ [RLM] Pipeline complete in 133668ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: Create a unified timeline combining resp...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: Create a unified timeline combining responses #11,... with 20 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: Develop a strategic recommendations document synth... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: Develop a strategic recommendations document synth...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 7 sub-queries using parallel strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:parallel] pool: started (7 queries, max 4)
+ [RLM:parallel] sq-0: executing
+ [RLM:parallel] sq-0: Prompt budget (context): 1121/10000 tokens (ok).
+ [RLM:parallel] sq-1: executing
+ [RLM:parallel] sq-1: Prompt budget (context): 997/10000 tokens (ok).
+ [RLM:parallel] sq-2: executing
+ [RLM:parallel] sq-2: Prompt budget (context): 1403/10000 tokens (ok).
+ [RLM:parallel] sq-3: executing
+ [RLM:parallel] sq-3: Prompt budget (context): 1192/10000 tokens (ok).
+ [RLM:retry] sq-0: attempt 1 failed: Query sq-0 timed out after 30000ms
+ [RLM:retry] sq-1: attempt 1 failed: Query sq-1 timed out after 30000ms
+ [RLM:retry] sq-2: attempt 1 failed: Query sq-2 timed out after 30000ms
+ [RLM:retry] sq-3: attempt 1 failed: Query sq-3 timed out after 30000ms
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7991
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7688
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7852
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7767
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6582
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6341
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6676
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6545
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7852
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7668
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7992
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-0: attempt 2 failed: Query sq-0 timed out after 30000ms
+ [RLM:retry] sq-1: attempt 2 failed: Query sq-1 timed out after 30000ms
+ [RLM:retry] sq-2: attempt 2 failed: Query sq-2 timed out after 30000ms
+ [RLM:retry] sq-3: attempt 2 failed: Query sq-3 timed out after 30000ms
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7767
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6404
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6876
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6764
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6395
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7992
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-0: attempt 3 failed: Query sq-0 timed out after 30000ms
+ [RLM:parallel] sq-0: failed: Query sq-0 timed out after 30000ms
+ [RLM:parallel] sq-4: executing
+ [RLM:parallel] sq-4: Prompt budget (context): 1248/10000 tokens (ok).
+ [RLM:retry] sq-1: attempt 3 failed: Query sq-1 timed out after 30000ms
+ [RLM:parallel] sq-1: failed: Query sq-1 timed out after 30000ms
+ [RLM:parallel] sq-5: executing
+ [RLM:parallel] sq-5: Prompt budget (context): 750/10000 tokens (ok).
+ [RLM:retry] sq-2: attempt 3 failed: Query sq-2 timed out after 30000ms
+ [RLM:parallel] sq-2: failed: Query sq-2 timed out after 30000ms
+ [RLM:parallel] sq-6: executing
+ [RLM:parallel] sq-6: Prompt budget (context): 1120/10000 tokens (ok).
+ [RLM:retry] sq-3: attempt 3 failed: Query sq-3 timed out after 30000ms
+ [RLM:parallel] sq-3: failed: Query sq-3 timed out after 30000ms
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7867
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7688
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7767
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6597
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6714
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6558
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7305
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7839
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7925
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-4: attempt 1 failed: Query sq-4 timed out after 30000ms
+ [RLM:retry] sq-6: attempt 1 failed: Query sq-6 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6610
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6484
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6582
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7925
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7839
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-4: attempt 2 failed: Query sq-4 timed out after 30000ms
+ [RLM:retry] sq-6: attempt 2 failed: Query sq-6 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6527
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6669
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7839
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 7925
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 5963
+ [RLM:retry] sq-4: attempt 3 failed: Query sq-4 timed out after 30000ms
+ [RLM:parallel] sq-4: failed: Query sq-4 timed out after 30000ms
+ [RLM:parallel] pool: completed
+ [RLM] Executed 7 sub-queries in 186062ms
+ [RLM] Step 3: Aggregating results...
+ [RLM] Pipeline complete in 186070ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: Develop a strategic recommendations docu...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: Develop a strategic recommendations document synth... with 36 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: Create the definitive meeting intelligence report ... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: Create the definitive meeting intelligence report ...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 8 sub-queries using map-reduce strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:map-reduce] map-phase: started
+ [RLM:parallel] pool: started (7 queries, max 4)
+ [RLM:parallel] sq-map-0: executing
+ [RLM:parallel] sq-map-0: Prompt budget (context): 305/10000 tokens (ok).
+ [RLM:parallel] sq-map-1: executing
+ [RLM:parallel] sq-map-1: Prompt budget (context): 263/10000 tokens (ok).
+ [RLM:parallel] sq-map-2: executing
+ [RLM:parallel] sq-map-2: Prompt budget (context): 280/10000 tokens (ok).
+ [RLM:parallel] sq-map-3: executing
+ [RLM:parallel] sq-map-3: Prompt budget (context): 293/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Develop a strategic ... tokens: 6414
+ [RLM:retry] sq-map-0: attempt 1 failed: Query sq-map-0 timed out after 30000ms
+ [RLM:retry] sq-map-1: attempt 1 failed: Query sq-map-1 timed out after 30000ms
+ [RLM:retry] sq-map-2: attempt 1 failed: Query sq-map-2 timed out after 30000ms
+ [RLM:retry] sq-map-3: attempt 1 failed: Query sq-map-3 timed out after 30000ms
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6914
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6926
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6922
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6936
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5850
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5912
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5992
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6138
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6922
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-map-0: attempt 2 failed: Query sq-map-0 timed out after 30000ms
+ [RLM:retry] sq-map-1: attempt 2 failed: Query sq-map-1 timed out after 30000ms
+ [RLM:retry] sq-map-2: attempt 2 failed: Query sq-map-2 timed out after 30000ms
+ [RLM:retry] sq-map-3: attempt 2 failed: Query sq-map-3 timed out after 30000ms
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6914
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6926
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6936
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6123
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5792
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5972
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6936
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6146
+ [RLM:retry] sq-map-0: attempt 3 failed: Query sq-map-0 timed out after 30000ms
+ [RLM:parallel] sq-map-0: failed: Query sq-map-0 timed out after 30000ms
+ [RLM:parallel] sq-map-4: executing
+ [RLM:parallel] sq-map-4: Prompt budget (context): 329/10000 tokens (ok).
+ [RLM:retry] sq-map-1: attempt 3 failed: Query sq-map-1 timed out after 30000ms
+ [RLM:parallel] sq-map-1: failed: Query sq-map-1 timed out after 30000ms
+ [RLM:parallel] sq-map-5: executing
+ [RLM:parallel] sq-map-5: Prompt budget (context): 267/10000 tokens (ok).
+ [RLM:retry] sq-map-2: attempt 3 failed: Query sq-map-2 timed out after 30000ms
+ [RLM:parallel] sq-map-2: failed: Query sq-map-2 timed out after 30000ms
+ [RLM:parallel] sq-map-6: executing
+ [RLM:parallel] sq-map-6: Prompt budget (context): 272/10000 tokens (ok).
+ [RLM:retry] sq-map-3: attempt 3 failed: Query sq-map-3 timed out after 30000ms
+ [RLM:parallel] sq-map-3: failed: Query sq-map-3 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6047
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6922
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6914
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6926
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-map-4: attempt 1 failed: Query sq-map-4 timed out after 30000ms
+ [RLM:retry] sq-map-5: attempt 1 failed: Query sq-map-5 timed out after 30000ms
+ [RLM:retry] sq-map-6: attempt 1 failed: Query sq-map-6 timed out after 30000ms
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6912
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6889
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6978
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5866
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6002
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6032
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5932
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5935
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5951
+ [RLM:retry] sq-map-4: attempt 2 failed: Query sq-map-4 timed out after 30000ms
+ [RLM:retry] sq-map-5: attempt 2 failed: Query sq-map-5 timed out after 30000ms
+ [RLM:retry] sq-map-6: attempt 2 failed: Query sq-map-6 timed out after 30000ms
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6978
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6889
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6912
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5956
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5986
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6061
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6912
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6978
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6889
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-map-4: attempt 3 failed: Query sq-map-4 timed out after 30000ms
+ [RLM:parallel] sq-map-4: failed: Query sq-map-4 timed out after 30000ms
+ [RLM:retry] sq-map-5: attempt 3 failed: Query sq-map-5 timed out after 30000ms
+ [RLM:parallel] sq-map-5: failed: Query sq-map-5 timed out after 30000ms
+ [RLM:retry] sq-map-6: attempt 3 failed: Query sq-map-6 timed out after 30000ms
+ [RLM:parallel] sq-map-6: failed: Query sq-map-6 timed out after 30000ms
+ [RLM:parallel] pool: completed
+ [RLM:map-reduce] map-phase: completed
+ [RLM:map-reduce] reduce-phase: started
+ [RLM:map-reduce] sq-reduce: Prompt budget (reduce): 0/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5730
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5984
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 5926
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6699
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-reduce: attempt 1 failed: Query sq-reduce timed out after 45000ms
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6302
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6699
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-reduce: attempt 2 failed: Query sq-reduce timed out after 45000ms
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6262
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6699
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-reduce: attempt 3 failed: Query sq-reduce timed out after 45000ms
+ [RLM] Pipeline error: 
+process @ index.js:649
+ [RLM] Falling back to legacy processing
+ [Metrics] addAPICallToMetrics: RLM: Create the definitiv... tokens: 6316
+orchestrator.html:1 Access to fetch at 'https://api.openai.com/v1/chat/completions' from origin 'https://mjamiv.github.io' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+api.openai.com/v1/chat/completions:1  Failed to load resource: net::ERR_FAILED
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: Create the definitive meeting intelligence report ... with 49 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: In response #51, did you identify any budget figur... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: In response #51, did you identify any budget figur...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 2 sub-queries using iterative strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:iterative] initial: started
+ [RLM:iterative] sq-initial: Prompt budget (context): 848/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: In response #51, did... tokens: 5592
+ [RLM:iterative] initial: completed
+ [RLM] Executed 1 sub-queries in 3935ms
+ [RLM] Step 3: Aggregating results...
+ [RLM] Pipeline complete in 3956ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: In response #51, did you identify any bu...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: In response #51, did you identify any budget figur... with 1 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: Across all 90 responses, did you ever mention the ... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: Across all 90 responses, did you ever mention the ...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 8 sub-queries using map-reduce strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:map-reduce] map-phase: started
+ [RLM:parallel] pool: started (7 queries, max 4)
+ [RLM:parallel] sq-map-0: executing
+ [RLM:parallel] sq-map-0: Prompt budget (context): 305/10000 tokens (ok).
+ [RLM:parallel] sq-map-1: executing
+ [RLM:parallel] sq-map-1: Prompt budget (context): 280/10000 tokens (ok).
+ [RLM:parallel] sq-map-2: executing
+ [RLM:parallel] sq-map-2: Prompt budget (context): 293/10000 tokens (ok).
+ [RLM:parallel] sq-map-3: executing
+ [RLM:parallel] sq-map-3: Prompt budget (context): 329/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Across all 90 respon... tokens: 4938
+ [RLM:parallel] sq-map-4: executing
+ [RLM:parallel] sq-map-4: Prompt budget (context): 267/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Across all 90 respon... tokens: 4984
+ [RLM:parallel] sq-map-5: executing
+ [RLM:parallel] sq-map-5: Prompt budget (context): 263/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Across all 90 respon... tokens: 5041
+ [RLM:parallel] sq-map-6: executing
+ [RLM:parallel] sq-map-6: Prompt budget (context): 272/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Across all 90 respon... tokens: 5061
+ [Metrics] addAPICallToMetrics: RLM: Across all 90 respon... tokens: 4987
+ [Metrics] addAPICallToMetrics: RLM: Across all 90 respon... tokens: 4891
+ [Metrics] addAPICallToMetrics: RLM: Across all 90 respon... tokens: 4980
+ [RLM:parallel] pool: completed
+ [RLM:map-reduce] map-phase: completed
+ [RLM:map-reduce] reduce-phase: started
+ [RLM:map-reduce] sq-reduce: Prompt budget (reduce): 281/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Across all 90 respon... tokens: 5062
+ [RLM:map-reduce] reduce-phase: completed
+ [RLM] Executed 8 sub-queries in 18594ms
+ [RLM] Step 3: Aggregating results...
+ [RLM] Pipeline complete in 18604ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: Across all 90 responses, did you ever me...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: Across all 90 responses, did you ever mention the ... with 8 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: In response #72, you recalled the first sentence o... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: In response #72, you recalled the first sentence o...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 8 sub-queries using map-reduce strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:map-reduce] map-phase: started
+ [RLM:parallel] pool: started (7 queries, max 4)
+ [RLM:parallel] sq-map-0: executing
+ [RLM:parallel] sq-map-0: Prompt budget (context): 280/10000 tokens (ok).
+ [RLM:parallel] sq-map-1: executing
+ [RLM:parallel] sq-map-1: Prompt budget (context): 305/10000 tokens (ok).
+ [RLM:parallel] sq-map-2: executing
+ [RLM:parallel] sq-map-2: Prompt budget (context): 293/10000 tokens (ok).
+ [RLM:parallel] sq-map-3: executing
+ [RLM:parallel] sq-map-3: Prompt budget (context): 263/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: In response #72, you... tokens: 5035
+ [RLM:parallel] sq-map-4: executing
+ [RLM:parallel] sq-map-4: Prompt budget (context): 329/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: In response #72, you... tokens: 5111
+ [RLM:parallel] sq-map-5: executing
+ [RLM:parallel] sq-map-5: Prompt budget (context): 267/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: In response #72, you... tokens: 5282
+ [RLM:parallel] sq-map-6: executing
+ [RLM:parallel] sq-map-6: Prompt budget (context): 272/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: In response #72, you... tokens: 5253
+ [Metrics] addAPICallToMetrics: RLM: In response #72, you... tokens: 5222
+ [Metrics] addAPICallToMetrics: RLM: In response #72, you... tokens: 5149
+ [Metrics] addAPICallToMetrics: RLM: In response #72, you... tokens: 5018
+ [RLM:parallel] pool: completed
+ [RLM:map-reduce] map-phase: completed
+ [RLM:map-reduce] reduce-phase: started
+ [RLM:map-reduce] sq-reduce: Prompt budget (reduce): 449/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: In response #72, you... tokens: 5620
+ [RLM:map-reduce] reduce-phase: completed
+ [RLM] Executed 8 sub-queries in 25733ms
+ [RLM] Step 3: Aggregating results...
+ [RLM] Pipeline complete in 25743ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: In response #72, you recalled the first ...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: In response #72, you recalled the first sentence o... with 8 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: How many times did you use the word 'critical' (ca... mode: repl usesRLM: true
+ [Chat] Using REPL-assisted processing for query
+ [RLM] Initializing REPL environment...
+ [RLM] REPL initialization failed: 
+initializeREPL @ index.js:371
+ [RLM:REPL] Error: 
+processWithREPL @ index.js:1606
+ [RLM:REPL] Falling back to standard processing
+ [RLM] Starting pipeline for query: How many times did you use the word 'critical' (ca...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 8 sub-queries using map-reduce strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:map-reduce] map-phase: started
+ [RLM:parallel] pool: started (7 queries, max 4)
+ [RLM:parallel] sq-map-0: executing
+ [RLM:parallel] sq-map-0: Prompt budget (context): 305/10000 tokens (ok).
+ [RLM:parallel] sq-map-1: executing
+ [RLM:parallel] sq-map-1: Prompt budget (context): 280/10000 tokens (ok).
+ [RLM:parallel] sq-map-2: executing
+ [RLM:parallel] sq-map-2: Prompt budget (context): 329/10000 tokens (ok).
+ [RLM:parallel] sq-map-3: executing
+ [RLM:parallel] sq-map-3: Prompt budget (context): 267/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 5776
+ [RLM:parallel] sq-map-4: executing
+ [RLM:parallel] sq-map-4: Prompt budget (context): 263/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 6031
+ [RLM:parallel] sq-map-5: executing
+ [RLM:parallel] sq-map-5: Prompt budget (context): 293/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 6510
+ [RLM:parallel] sq-map-6: executing
+ [RLM:parallel] sq-map-6: Prompt budget (context): 272/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 6016
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 7015
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-map-0: attempt 1 failed: Query sq-map-0 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 5126
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 6739
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 6052
+ [RLM:retry] sq-map-5: attempt 1 failed: Query sq-map-5 timed out after 30000ms
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 7005
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 5065
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 6735
+ [RLM:parallel] pool: completed
+ [RLM:map-reduce] map-phase: completed
+ [RLM:map-reduce] reduce-phase: started
+ [RLM:map-reduce] sq-reduce: Prompt budget (reduce): 772/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: REPL: How many times did y... tokens: 5977
+ [RLM:map-reduce] reduce-phase: completed
+ [RLM] Executed 8 sub-queries in 82342ms
+ [RLM] Step 3: Aggregating results...
+ [RLM] Pipeline complete in 82355ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: How many times did you use the word 'cri...
+ [REPL] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: How many times did you use the word 'critical' (ca... with 12 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: In response #48, you verified a reference chain (#... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: In response #48, you verified a reference chain (#...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 7 sub-queries using parallel strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:parallel] pool: started (7 queries, max 4)
+ [RLM:parallel] sq-0: executing
+ [RLM:parallel] sq-0: Prompt budget (context): 1192/10000 tokens (ok).
+ [RLM:parallel] sq-1: executing
+ [RLM:parallel] sq-1: Prompt budget (context): 1121/10000 tokens (ok).
+ [RLM:parallel] sq-2: executing
+ [RLM:parallel] sq-2: Prompt budget (context): 997/10000 tokens (ok).
+ [RLM:parallel] sq-3: executing
+ [RLM:parallel] sq-3: Prompt budget (context): 1248/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: In response #48, you... tokens: 6780
+ [RLM:parallel] sq-4: executing
+ [RLM:parallel] sq-4: Prompt budget (context): 1120/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: In response #48, you... tokens: 6906
+ [RLM:parallel] sq-5: executing
+ [RLM:parallel] sq-5: Prompt budget (context): 1403/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: In response #48, you... tokens: 6841
+ [RLM:parallel] sq-6: executing
+ [RLM:parallel] sq-6: Prompt budget (context): 750/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: In response #48, you... tokens: 6801
+ [Metrics] addAPICallToMetrics: RLM: In response #48, you... tokens: 6790
+ [Metrics] addAPICallToMetrics: RLM: In response #48, you... tokens: 6804
+ [Metrics] addAPICallToMetrics: RLM: In response #48, you... tokens: 6373
+ [RLM:parallel] pool: completed
+ [RLM] Executed 7 sub-queries in 32358ms
+ [RLM] Step 3: Aggregating results...
+ [Metrics] addAPICallToMetrics: RLM: In response #48, you... tokens: 5542
+ [RLM] Pipeline complete in 44282ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: In response #48, you verified a referenc...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: In response #48, you verified a reference chain (#... with 8 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: List the FIRST item from responses #1, #11, #21, #... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: List the FIRST item from responses #1, #11, #21, #...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 8 sub-queries using map-reduce strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:map-reduce] map-phase: started
+ [RLM:parallel] pool: started (7 queries, max 4)
+ [RLM:parallel] sq-map-0: executing
+ [RLM:parallel] sq-map-0: Prompt budget (context): 280/10000 tokens (ok).
+ [RLM:parallel] sq-map-1: executing
+ [RLM:parallel] sq-map-1: Prompt budget (context): 329/10000 tokens (ok).
+ [RLM:parallel] sq-map-2: executing
+ [RLM:parallel] sq-map-2: Prompt budget (context): 305/10000 tokens (ok).
+ [RLM:parallel] sq-map-3: executing
+ [RLM:parallel] sq-map-3: Prompt budget (context): 293/10000 tokens (ok).
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7271
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7285
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7327
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7275
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-map-0: attempt 1 failed: Query sq-map-0 timed out after 30000ms
+ [RLM:retry] sq-map-1: attempt 1 failed: Query sq-map-1 timed out after 30000ms
+ [RLM:retry] sq-map-2: attempt 1 failed: Query sq-map-2 timed out after 30000ms
+ [RLM:retry] sq-map-3: attempt 1 failed: Query sq-map-3 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 5384
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 5459
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 5538
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 5662
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 6984
+ [RLM:parallel] sq-map-4: executing
+ [RLM:parallel] sq-map-4: Prompt budget (context): 263/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7129
+ [RLM:parallel] sq-map-5: executing
+ [RLM:parallel] sq-map-5: Prompt budget (context): 267/10000 tokens (ok).
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7275
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7271
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-map-0: attempt 2 failed: Query sq-map-0 timed out after 30000ms
+ [RLM:retry] sq-map-3: attempt 2 failed: Query sq-map-3 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 5392
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 5469
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 6980
+ [RLM:parallel] sq-map-6: executing
+ [RLM:parallel] sq-map-6: Prompt budget (context): 272/10000 tokens (ok).
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7263
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-map-4: attempt 1 failed: Query sq-map-4 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7051
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 5612
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7144
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7238
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 6970
+ [RLM:retry] sq-map-6: attempt 1 failed: Query sq-map-6 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 5482
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7052
+ [RLM:parallel] pool: completed
+ [RLM:map-reduce] map-phase: completed
+ [RLM:map-reduce] reduce-phase: started
+ [RLM:map-reduce] sq-reduce: Prompt budget (reduce): 1527/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: List the FIRST item ... tokens: 7825
+ [RLM:map-reduce] reduce-phase: completed
+ [RLM] Executed 8 sub-queries in 158502ms
+ [RLM] Step 3: Aggregating results...
+ [RLM] Pipeline complete in 158510ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: List the FIRST item from responses #1, #...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: List the FIRST item from responses #1, #11, #21, #... with 24 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: Compare your understanding of the meetings NOW vs.... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: Compare your understanding of the meetings NOW vs....
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 7 sub-queries using parallel strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:parallel] pool: started (7 queries, max 4)
+ [RLM:parallel] sq-0: executing
+ [RLM:parallel] sq-0: Prompt budget (context): 997/10000 tokens (ok).
+ [RLM:parallel] sq-1: executing
+ [RLM:parallel] sq-1: Prompt budget (context): 1248/10000 tokens (ok).
+ [RLM:parallel] sq-2: executing
+ [RLM:parallel] sq-2: Prompt budget (context): 1120/10000 tokens (ok).
+ [RLM:parallel] sq-3: executing
+ [RLM:parallel] sq-3: Prompt budget (context): 1192/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Compare your underst... tokens: 7188
+ [RLM:parallel] sq-4: executing
+ [RLM:parallel] sq-4: Prompt budget (context): 1403/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Compare your underst... tokens: 7203
+ [RLM:parallel] sq-5: executing
+ [RLM:parallel] sq-5: Prompt budget (context): 1121/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Compare your underst... tokens: 7382
+ [RLM:parallel] sq-6: executing
+ [RLM:parallel] sq-6: Prompt budget (context): 750/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Compare your underst... tokens: 7637
+ [Metrics] addAPICallToMetrics: RLM: Compare your underst... tokens: 7027
+ [Metrics] addAPICallToMetrics: RLM: Compare your underst... tokens: 6631
+ [RLM:retry] sq-4: attempt 1 failed: Query sq-4 timed out after 30000ms
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Compare your underst... tokens: 8176
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Compare your underst... tokens: 6552
+ [Metrics] addAPICallToMetrics: RLM: Compare your underst... tokens: 7675
+ [RLM:parallel] pool: completed
+ [RLM] Executed 7 sub-queries in 74504ms
+ [RLM] Step 3: Aggregating results...
+ [Metrics] addAPICallToMetrics: RLM: Compare your underst... tokens: 8752
+ [RLM] Pipeline complete in 100522ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: Compare your understanding of the meetin...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: Compare your understanding of the meetings NOW vs.... with 10 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: Create a 'confidence score' (1-10) for your memory... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: Create a 'confidence score' (1-10) for your memory...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 7 sub-queries using parallel strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:parallel] pool: started (7 queries, max 4)
+ [RLM:parallel] sq-0: executing
+ [RLM:parallel] sq-0: Prompt budget (context): 1403/10000 tokens (ok).
+ [RLM:parallel] sq-1: executing
+ [RLM:parallel] sq-1: Prompt budget (context): 1121/10000 tokens (ok).
+ [RLM:parallel] sq-2: executing
+ [RLM:parallel] sq-2: Prompt budget (context): 997/10000 tokens (ok).
+ [RLM:parallel] sq-3: executing
+ [RLM:parallel] sq-3: Prompt budget (context): 1248/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 7484
+ [RLM:parallel] sq-4: executing
+ [RLM:parallel] sq-4: Prompt budget (context): 1192/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 7905
+ [RLM:parallel] sq-5: executing
+ [RLM:parallel] sq-5: Prompt budget (context): 1120/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 7971
+ [RLM:parallel] sq-6: executing
+ [RLM:parallel] sq-6: Prompt budget (context): 750/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 7897
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 7092
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 8163
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 7929
+ [RLM:retry] sq-4: attempt 1 failed: Query sq-4 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 6801
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 8129
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-4: attempt 2 failed: Query sq-4 timed out after 30000ms
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 6740
+ [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 8129
+ [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+ [RLM:retry] sq-4: attempt 3 failed: Query sq-4 timed out after 30000ms
+ [RLM:parallel] sq-4: failed: Query sq-4 timed out after 30000ms
+ [RLM:parallel] pool: completed
+ [RLM] Executed 7 sub-queries in 114322ms
+ [RLM] Step 3: Aggregating results...
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 6801
+ [Metrics] addAPICallToMetrics: RLM: Create a 'confidence... tokens: 8536
+ [RLM] Pipeline complete in 133269ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: Create a 'confidence score' (1-10) for y...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: Create a 'confidence score' (1-10) for your memory... with 13 sub-calls
+ [Metrics] updateMetricsDisplay called
+ [Metrics] Calculated metrics: Object
+ [Metrics] Showing metrics card (promptLogs > 0)
+ [Metrics] startPromptGroup: RLM: If someone read only responses #1, #16, #40, #50, ... mode: rlm-swm usesRLM: true
+ [Chat] Using RLM pipeline for query
+ [RLM] Starting pipeline for query: If someone read only responses #1, #16, #40, #50, ...
+ [RLM] Step 1: Decomposing query...
+ [RLM] Decomposed into 2 sub-queries using iterative strategy
+ [RLM] Step 2: Executing sub-queries...
+ [RLM:iterative] initial: started
+ [RLM:iterative] sq-initial: Prompt budget (context): 852/10000 tokens (ok).
+ [Metrics] addAPICallToMetrics: RLM: If someone read only... tokens: 6939
+ [RLM:iterative] initial: completed
+ [RLM] Executed 1 sub-queries in 18849ms
+ [RLM] Step 3: Aggregating results...
+ [RLM] Pipeline complete in 18858ms
+ [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+ [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+ [RLM:Cache] Stored result for query: If someone read only responses #1, #16, ...
+ [RLM] Query processed: Object
+ [Metrics] endPromptGroup called, activePromptGroup: true
+ [Metrics] Ending prompt group: RLM: If someone read only responses #1, #16, #40, #50, ... with 1 sub-calls
+orchestrator.js?v=50:8412 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=50:8420 [Metrics] Calculated metrics: Object
+orchestrator.js?v=50:8520 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=50:491 [Metrics] startPromptGroup: RLM: Final question: Summarize this ENTIRE 100-response... mode: rlm-swm usesRLM: true
+orchestrator.js?v=50:6634 [Chat] Using RLM pipeline for query
+index.js:505 [RLM] Starting pipeline for query: Final question: Summarize this ENTIRE 100-response...
+index.js:511 [RLM] Step 1: Decomposing query...
+index.js:516 [RLM] Decomposed into 4 sub-queries using parallel strategy
+index.js:566 [RLM] Step 2: Executing sub-queries...
+sub-executor.js:482 [RLM:parallel] pool: started (4 queries, max 4)
+sub-executor.js:482 [RLM:parallel] sq-0: executing
+sub-executor.js:482 [RLM:parallel] sq-0: Prompt budget (context): 1248/10000 tokens (ok).
+sub-executor.js:482 [RLM:parallel] sq-1: executing
+sub-executor.js:482 [RLM:parallel] sq-1: Prompt budget (context): 1403/10000 tokens (ok).
+sub-executor.js:482 [RLM:parallel] sq-2: executing
+sub-executor.js:482 [RLM:parallel] sq-2: Prompt budget (context): 997/10000 tokens (ok).
+sub-executor.js:482 [RLM:parallel] sq-3: executing
+sub-executor.js:482 [RLM:parallel] sq-3: Prompt budget (context): 1121/10000 tokens (ok).
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 8049
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+sub-executor.js:482 [RLM:retry] sq-0: attempt 1 failed: Query sq-0 timed out after 30000ms
+sub-executor.js:482 [RLM:retry] sq-1: attempt 1 failed: Query sq-1 timed out after 30000ms
+sub-executor.js:482 [RLM:retry] sq-2: attempt 1 failed: Query sq-2 timed out after 30000ms
+sub-executor.js:482 [RLM:retry] sq-3: attempt 1 failed: Query sq-3 timed out after 30000ms
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7703
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7922
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7798
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7703
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7922
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 8049
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7798
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+sub-executor.js:482 [RLM:retry] sq-0: attempt 2 failed: Query sq-0 timed out after 30000ms
+sub-executor.js:482 [RLM:retry] sq-1: attempt 2 failed: Query sq-1 timed out after 30000ms
+sub-executor.js:482 [RLM:retry] sq-2: attempt 2 failed: Query sq-2 timed out after 30000ms
+sub-executor.js:482 [RLM:retry] sq-3: attempt 2 failed: Query sq-3 timed out after 30000ms
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7382
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 6971
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7174
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7077
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 6954
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 6975
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7385
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7922
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7798
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 8049
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+orchestrator.js?v=50:8115 [API] gpt-5-mini-2025-08-07 returned empty string. Response details: Object
+validateAndExtractResponse @ orchestrator.js?v=50:8115
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7703
+orchestrator.js?v=50:7764 [API] gpt-5-mini-2025-08-07 returned empty response; retrying with GPT-5.2.
+callGPTWithMessages @ orchestrator.js?v=50:7764
+sub-executor.js:482 [RLM:retry] sq-0: attempt 3 failed: Query sq-0 timed out after 30000ms
+sub-executor.js:482 [RLM:parallel] sq-0: failed: Query sq-0 timed out after 30000ms
+sub-executor.js:482 [RLM:retry] sq-1: attempt 3 failed: Query sq-1 timed out after 30000ms
+sub-executor.js:482 [RLM:parallel] sq-1: failed: Query sq-1 timed out after 30000ms
+sub-executor.js:482 [RLM:retry] sq-2: attempt 3 failed: Query sq-2 timed out after 30000ms
+sub-executor.js:482 [RLM:parallel] sq-2: failed: Query sq-2 timed out after 30000ms
+sub-executor.js:482 [RLM:retry] sq-3: attempt 3 failed: Query sq-3 timed out after 30000ms
+sub-executor.js:482 [RLM:parallel] sq-3: failed: Query sq-3 timed out after 30000ms
+sub-executor.js:482 [RLM:parallel] pool: completed
+index.js:584 [RLM] Executed 4 sub-queries in 93040ms
+index.js:594 [RLM] Step 3: Aggregating results...
+index.js:620 [RLM] Pipeline complete in 93058ms
+query-cache.js:260 [Cache] EVICT LRU entry: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909...
+query-cache.js:237 [Cache] SET key: rlm:agent-1768965909652-kcjc3l5r5,agent-1768965909... (TTL: 300s)
+index.js:2193 [RLM:Cache] Stored result for query: Final question: Summarize this ENTIRE 10...
+orchestrator.js?v=50:6808 [RLM] Query processed: Object
+orchestrator.js?v=50:726 [Metrics] endPromptGroup called, activePromptGroup: true
+orchestrator.js?v=50:735 [Metrics] Ending prompt group: RLM: Final question: Summarize this ENTIRE 100-response... with 19 sub-calls
+orchestrator.js?v=50:8412 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=50:8420 [Metrics] Calculated metrics: Object
+orchestrator.js?v=50:8520 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=50:3018 [Settings] Applied optimization mode config: balanced Object
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7544
+orchestrator.js?v=50:8412 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=50:8420 [Metrics] Calculated metrics: Object
+orchestrator.js?v=50:8520 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7332
+orchestrator.js?v=50:8412 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=50:8420 [Metrics] Calculated metrics: Object
+orchestrator.js?v=50:8520 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7218
+orchestrator.js?v=50:8412 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=50:8420 [Metrics] Calculated metrics: Object
+orchestrator.js?v=50:8520 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7370
+orchestrator.js?v=50:8412 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=50:8420 [Metrics] Calculated metrics: Object
+orchestrator.js?v=50:8520 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=50:759 [Metrics] addAPICallToMetrics: RLM: Final question: Summ... tokens: 7046
+orchestrator.js?v=50:8412 [Metrics] updateMetricsDisplay called
+orchestrator.js?v=50:8420 [Metrics] Calculated metrics: Object
+orchestrator.js?v=50:8520 [Metrics] Showing metrics card (promptLogs > 0)
+orchestrator.js?v=50:9121 [Metrics] CSV downloaded: 201 entries
