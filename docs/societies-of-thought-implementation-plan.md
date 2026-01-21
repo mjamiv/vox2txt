@@ -79,6 +79,390 @@ function perspectiveFromGroup(group) {
 
 ## Implementation Phases
 
+### Phase 0: Agent Builder SoT Metadata
+**Priority: High | Complexity: Low | Files: 1**
+
+#### Objective
+Enhance the Agent Builder's analysis to extract SoT-relevant metadata at agent creation time. This enriched data enables smarter grouping, better perspective assignment, and improved conflict detection in the Orchestrator.
+
+#### 0.1 Current vs Enhanced Analysis
+
+| Current Fields | New SoT Fields |
+|----------------|----------------|
+| `summary` | `meetingType` |
+| `keyPoints` | `keyEntities` |
+| `actionItems` | `temporalContext` |
+| `sentiment` | `topicTags` |
+| | `contentSignals` |
+| | `suggestedPerspective` |
+
+#### 0.2 Enhanced Analysis Prompt
+
+**File: `js/app.js` (MODIFY)**
+
+Update `PROMPTS.analysisBatchSystem`:
+
+```javascript
+const PROMPTS = {
+    analysisBatchSystem: `You are an expert meeting analyst. Analyze the following meeting transcript and provide a comprehensive analysis in JSON format:
+
+{
+  "summary": "A concise abstract paragraph summarizing the meeting. Retain the most important points, providing a coherent and readable summary.",
+
+  "keyPoints": "List of main points discussed, separated by newlines. Start each point with a dash (-). These should be the most important ideas, findings, or topics.",
+
+  "actionItems": "List of specific tasks or action items assigned or discussed, separated by newlines. Start each item with a dash (-). If none found, respond with 'No specific action items identified.'",
+
+  "sentiment": "Overall sentiment: exactly one of 'Positive', 'Negative', or 'Neutral'.",
+
+  "meetingType": "Classify the meeting type. Choose exactly one: 'planning', 'review', 'standup', 'brainstorm', 'decision', 'retrospective', 'report', 'general'.",
+
+  "keyEntities": {
+    "people": ["Names of individuals mentioned (max 10)"],
+    "projects": ["Project or initiative names mentioned (max 5)"],
+    "organizations": ["Teams, departments, or companies mentioned (max 5)"],
+    "products": ["Products, features, or tools mentioned (max 5)"]
+  },
+
+  "temporalContext": {
+    "quarter": "Quarter mentioned (e.g., 'Q4 2025') or null if not specified",
+    "explicitDates": ["Any specific dates mentioned in YYYY-MM-DD format"],
+    "deadlines": ["Deadline descriptions if mentioned"],
+    "timeframe": "Primary focus: 'past' (retrospective), 'present' (status), or 'future' (planning)"
+  },
+
+  "topicTags": ["3-7 lowercase semantic topic tags extracted from content, e.g., 'budget', 'hiring', 'product-launch'"],
+
+  "contentSignals": {
+    "riskMentions": 0,
+    "decisionsMade": 0,
+    "actionsAssigned": 0,
+    "questionsRaised": 0,
+    "conflictIndicators": 0
+  },
+
+  "suggestedPerspective": "Based on content focus, suggest the most appropriate analysis perspective. Choose one: 'analyst' (data-heavy), 'advocate' (opportunity-focused), 'critic' (risk-heavy), 'synthesizer' (pattern-finding), 'historian' (timeline-focused), 'pragmatist' (action-heavy), 'stakeholder' (people-focused)."
+}
+
+Ensure your response is valid JSON only, no additional text.`
+};
+```
+
+#### 0.3 Update Analysis Parser
+
+**File: `js/app.js` (MODIFY)**
+
+Update `analyzeMeetingBatch()` to handle new fields:
+
+```javascript
+async function analyzeMeetingBatch(text) {
+    const meta = {
+        mode: 'batch-json',
+        jsonRecovered: false,
+        usedFallback: false
+    };
+    const systemPrompt = PROMPTS.analysisBatchSystem;
+    const response = await callChatAPI(systemPrompt, text, 'Meeting Analysis');
+
+    try {
+        const parsed = JSON.parse(response);
+        return {
+            // Existing fields
+            summary: parsed.summary || '',
+            keyPoints: parsed.keyPoints || '',
+            actionItems: parsed.actionItems || '',
+            sentiment: parsed.sentiment || 'Neutral',
+
+            // New SoT metadata fields
+            meetingType: parsed.meetingType || 'general',
+            keyEntities: parsed.keyEntities || {
+                people: [], projects: [], organizations: [], products: []
+            },
+            temporalContext: parsed.temporalContext || null,
+            topicTags: parsed.topicTags || [],
+            contentSignals: parsed.contentSignals || {
+                riskMentions: 0, decisionsMade: 0, actionsAssigned: 0,
+                questionsRaised: 0, conflictIndicators: 0
+            },
+            suggestedPerspective: parsed.suggestedPerspective || null,
+
+            _meta: meta
+        };
+    } catch (error) {
+        // Existing fallback logic...
+    }
+}
+```
+
+#### 0.4 Update Export Payload
+
+**File: `js/app.js` (MODIFY)**
+
+Add `sotMetadata` to `buildExportPayload()`:
+
+```javascript
+function buildExportPayload(agentName, now, readableDate) {
+    const results = state.results || {};
+    // ... existing code ...
+
+    return {
+        // ... existing fields ...
+
+        analysis: {
+            summary: results.summary || '',
+            keyPoints: results.keyPoints || '',
+            actionItems: results.actionItems || '',
+            sentiment: results.sentiment || '',
+            transcript,
+            model: GPT_52_MODEL
+        },
+
+        // NEW: SoT metadata for Orchestrator
+        sotMetadata: {
+            meetingType: results.meetingType || 'general',
+            keyEntities: results.keyEntities || {
+                people: [], projects: [], organizations: [], products: []
+            },
+            temporalContext: results.temporalContext || null,
+            topicTags: results.topicTags || [],
+            contentSignals: results.contentSignals || {
+                riskMentions: 0, decisionsMade: 0, actionsAssigned: 0,
+                questionsRaised: 0, conflictIndicators: 0
+            },
+            suggestedPerspective: results.suggestedPerspective || null
+        },
+
+        // ... rest of existing fields ...
+    };
+}
+```
+
+#### 0.5 Orchestrator Integration
+
+**File: `js/orchestrator.js` (MODIFY)**
+
+Extract and use SoT metadata when importing agents:
+
+```javascript
+/**
+ * Extract SoT metadata from imported agent
+ * @param {Object} payload - Agent export payload
+ * @returns {Object} Normalized SoT metadata
+ */
+function extractSoTMetadata(payload) {
+    const sot = payload?.sotMetadata || {};
+
+    return {
+        meetingType: sot.meetingType || 'general',
+        keyEntities: sot.keyEntities || { people: [], projects: [], organizations: [], products: [] },
+        temporalContext: sot.temporalContext || null,
+        topicTags: Array.isArray(sot.topicTags) ? sot.topicTags : [],
+        contentSignals: sot.contentSignals || null,
+        suggestedPerspective: sot.suggestedPerspective || null,
+        // Computed fields for grouping
+        temporalQuarter: sot.temporalContext?.quarter || null,
+        timeframe: sot.temporalContext?.timeframe || null,
+        hasRisks: (sot.contentSignals?.riskMentions || 0) > 2,
+        hasDecisions: (sot.contentSignals?.decisionsMade || 0) > 0,
+        isActionHeavy: (sot.contentSignals?.actionsAssigned || 0) > 3
+    };
+}
+
+// In parseAgentFile or agent import logic:
+function importAgent(agentData) {
+    const agent = {
+        // ... existing agent fields ...
+
+        // Add SoT metadata
+        sotMetadata: extractSoTMetadata(agentData.extendedContext || agentData)
+    };
+
+    // Expose key fields at top level for easy access
+    agent.meetingType = agent.sotMetadata.meetingType;
+    agent.topicTags = agent.sotMetadata.topicTags;
+    agent.suggestedPerspective = agent.sotMetadata.suggestedPerspective;
+    agent.temporalQuarter = agent.sotMetadata.temporalQuarter;
+
+    return agent;
+}
+```
+
+#### 0.6 Enhanced Auto-Grouping with SoT Metadata
+
+**File: `js/orchestrator.js` (MODIFY)**
+
+Add new grouping strategies using SoT metadata:
+
+```javascript
+/**
+ * Group agents by meeting type (uses SoT metadata)
+ * @param {Array} agents - Agents with sotMetadata
+ * @returns {Array} Proposed groups
+ */
+function groupByMeetingType(agents) {
+    const typeGroups = {};
+
+    agents.forEach(agent => {
+        const type = agent.sotMetadata?.meetingType || 'general';
+        if (!typeGroups[type]) {
+            typeGroups[type] = [];
+        }
+        typeGroups[type].push(agent.id);
+    });
+
+    const typeLabels = {
+        'planning': { name: 'Planning Sessions', icon: '📋', perspective: 'pragmatist' },
+        'review': { name: 'Review Meetings', icon: '🔍', perspective: 'critic' },
+        'standup': { name: 'Standups', icon: '⚡', perspective: 'analyst' },
+        'brainstorm': { name: 'Brainstorms', icon: '💡', perspective: 'advocate' },
+        'decision': { name: 'Decision Meetings', icon: '⚖️', perspective: 'analyst' },
+        'retrospective': { name: 'Retrospectives', icon: '🔄', perspective: 'historian' },
+        'report': { name: 'Reports', icon: '📊', perspective: 'analyst' },
+        'general': { name: 'General Meetings', icon: '📁', perspective: null }
+    };
+
+    return Object.entries(typeGroups)
+        .filter(([type, ids]) => ids.length > 0)
+        .map(([type, agentIds], index) => ({
+            name: typeLabels[type]?.name || `${type} Meetings`,
+            agentIds,
+            color: GROUP_COLORS[index % GROUP_COLORS.length],
+            icon: typeLabels[type]?.icon || '📁',
+            criteria: {
+                type: 'meeting-type',
+                parameters: { meetingType: type },
+                suggestedPerspective: typeLabels[type]?.perspective
+            }
+        }));
+}
+
+/**
+ * Group agents by suggested perspective (uses SoT metadata)
+ * @param {Array} agents - Agents with sotMetadata
+ * @returns {Array} Proposed groups
+ */
+function groupBySuggestedPerspective(agents) {
+    const perspectiveGroups = {};
+
+    agents.forEach(agent => {
+        const perspective = agent.sotMetadata?.suggestedPerspective || 'analyst';
+        if (!perspectiveGroups[perspective]) {
+            perspectiveGroups[perspective] = [];
+        }
+        perspectiveGroups[perspective].push(agent.id);
+    });
+
+    const perspectiveLabels = {
+        'analyst': { name: 'Data & Analysis', icon: '📊' },
+        'advocate': { name: 'Opportunities', icon: '🌟' },
+        'critic': { name: 'Risks & Issues', icon: '⚠️' },
+        'synthesizer': { name: 'Patterns & Themes', icon: '🔗' },
+        'historian': { name: 'Timeline & Progress', icon: '📅' },
+        'pragmatist': { name: 'Actions & Tasks', icon: '✅' },
+        'stakeholder': { name: 'People & Impact', icon: '👥' }
+    };
+
+    return Object.entries(perspectiveGroups)
+        .filter(([perspective, ids]) => ids.length > 0)
+        .map(([perspective, agentIds], index) => ({
+            name: perspectiveLabels[perspective]?.name || perspective,
+            agentIds,
+            color: GROUP_COLORS[index % GROUP_COLORS.length],
+            icon: perspectiveLabels[perspective]?.icon || '📁',
+            criteria: {
+                type: 'perspective',
+                parameters: { perspective },
+                suggestedPerspective: perspective
+            }
+        }));
+}
+
+/**
+ * Smart auto-grouping that uses SoT metadata when available
+ * Falls back to thematic grouping for legacy agents
+ */
+async function smartAutoGroup(agents) {
+    // Check if agents have SoT metadata
+    const agentsWithSoT = agents.filter(a => a.sotMetadata?.meetingType);
+    const hasSoTData = agentsWithSoT.length > agents.length * 0.5; // >50% have metadata
+
+    if (hasSoTData) {
+        // Use meeting type grouping (more reliable with SoT data)
+        return groupByMeetingType(agents);
+    } else {
+        // Fall back to LLM-based thematic grouping
+        return await groupByThematic(agents);
+    }
+}
+```
+
+#### 0.7 Perspective Assignment from SoT Metadata
+
+**File: `js/rlm/perspective-roles.js` (MODIFY)**
+
+Add function to use agent's suggested perspective:
+
+```javascript
+/**
+ * Get perspective from agent's SoT metadata
+ * @param {Object} agent - Agent with sotMetadata
+ * @returns {Object|null} Perspective role or null
+ */
+export function perspectiveFromAgentMetadata(agent) {
+    const suggested = agent?.sotMetadata?.suggestedPerspective;
+    if (!suggested) return null;
+
+    const mapping = {
+        'analyst': PerspectiveRoles.ANALYST,
+        'advocate': PerspectiveRoles.ADVOCATE,
+        'critic': PerspectiveRoles.CRITIC,
+        'synthesizer': PerspectiveRoles.SYNTHESIZER,
+        'historian': PerspectiveRoles.HISTORIAN,
+        'pragmatist': PerspectiveRoles.PRAGMATIST,
+        'stakeholder': PerspectiveRoles.STAKEHOLDER
+    };
+
+    return mapping[suggested.toLowerCase()] || null;
+}
+
+/**
+ * Infer perspective from content signals
+ * @param {Object} signals - contentSignals from SoT metadata
+ * @returns {Object|null} Perspective role or null
+ */
+export function perspectiveFromContentSignals(signals) {
+    if (!signals) return null;
+
+    const { riskMentions, decisionsMade, actionsAssigned, questionsRaised } = signals;
+
+    // Prioritize based on dominant signal
+    if (riskMentions > 3) return PerspectiveRoles.CRITIC;
+    if (actionsAssigned > 5) return PerspectiveRoles.PRAGMATIST;
+    if (decisionsMade > 2) return PerspectiveRoles.ANALYST;
+    if (questionsRaised > 3) return PerspectiveRoles.ADVOCATE;
+
+    return null;
+}
+```
+
+#### 0.8 Token Impact
+
+| Change | Token Impact |
+|--------|--------------|
+| Enhanced analysis prompt | +50 input tokens |
+| Extended JSON response | +100-150 output tokens |
+| **Total per agent creation** | **~$0.002 additional cost** |
+| Orchestrator queries | **No change** (metadata already extracted) |
+
+#### 0.9 Backward Compatibility
+
+Agents exported before this update will work normally:
+- Missing `sotMetadata` defaults to empty/null values
+- Orchestrator falls back to existing grouping logic
+- Perspective assignment uses rotating strategy for legacy agents
+
+---
+
 ### Phase 1: Cognitive Perspective Roles
 **Priority: High | Complexity: Medium | Files: 2**
 
@@ -1589,11 +1973,27 @@ function renderSoTSettings() {
 
 ## Testing Plan
 
+### Phase 0: Agent Builder Tests
+
+| Test Case | Input | Expected Output |
+|-----------|-------|-----------------|
+| Meeting type classification | Planning meeting transcript | `meetingType: "planning"` |
+| Meeting type classification | Sprint retrospective | `meetingType: "retrospective"` |
+| Key entities extraction | Transcript with names | `keyEntities.people: ["Alice", "Bob"]` |
+| Temporal context | "Q4 2025 deadline" | `temporalContext.quarter: "Q4 2025"` |
+| Topic tags | Budget discussion | `topicTags: ["budget", "finance", ...]` |
+| Content signals - risks | 5 risk mentions | `contentSignals.riskMentions: 5` |
+| Suggested perspective | Risk-heavy content | `suggestedPerspective: "critic"` |
+| Suggested perspective | Action-heavy content | `suggestedPerspective: "pragmatist"` |
+| Backward compatibility | Legacy agent (no sotMetadata) | Defaults applied, no errors |
+| Export payload | New analysis | `sotMetadata` included in export |
+
 ### Unit Tests
 
 | Module | Test Cases |
 |--------|------------|
-| `perspective-roles.js` | Role selection by intent, role assignment strategies, role cycling, **group-to-perspective mapping**, **perspectiveFromGroupType()** |
+| **`js/app.js`** | **Enhanced prompt parsing, sotMetadata extraction, export payload structure** |
+| `perspective-roles.js` | Role selection by intent, role assignment strategies, role cycling, **group-to-perspective mapping**, **perspectiveFromGroupType()**, **perspectiveFromAgentMetadata()**, **perspectiveFromContentSignals()** |
 | `conflict-detector.js` | Conflict identification, agreement detection, threshold tuning |
 | `query-decomposer.js` | Role-aware query generation, debate query creation, **group-level decomposition**, **_shouldUseGroupDecomposition()** |
 | `aggregator.js` | Conflict-aware synthesis prompt, perspective attribution, **group source attribution** |
@@ -1637,15 +2037,31 @@ Create test configurations in Test Builder:
 
 ## Rollout Plan
 
-| Phase | Scope | Timeline |
-|-------|-------|----------|
-| 1. Perspective Roles | Core implementation | First |
-| **1.5. Group Integration** | **Group-aware perspectives** | **Second** |
-| 2. Conflict Detection | Enhance aggregation | Third |
-| 3. Diversity Selection | Improve agent selection | Fourth |
-| 4. Debate Phase | Complex queries only | Fifth |
-| 5. UI Enhancements | Visual feedback | Sixth |
-| 6. Settings Toggle | User control | Final |
+| Phase | Scope | Files |
+|-------|-------|-------|
+| **0. Agent Builder SoT Metadata** | **Enhanced analysis with SoT fields** | **`js/app.js`** |
+| 1. Perspective Roles | Core perspective definitions | `js/rlm/perspective-roles.js` |
+| 1.5. Group Integration | Group-aware perspectives | `js/rlm/query-decomposer.js`, `js/rlm/index.js` |
+| 2. Conflict Detection | Detect inter-perspective tensions | `js/rlm/conflict-detector.js`, `js/rlm/aggregator.js` |
+| 3. Diversity Selection | Improve agent selection | `js/rlm/context-store.js` |
+| 4. Debate Phase | MAP→DEBATE→REDUCE for complex queries | `js/rlm/sub-executor.js` |
+| 5. UI Enhancements | Perspective badges, conflict indicators | `js/orchestrator.js`, `css/styles.css` |
+| 6. Settings Toggle | User controls | `js/orchestrator.js` |
+
+### Recommended Implementation Order
+
+```
+Phase 0 (Agent Builder) ──► Phase 1 (Roles) ──► Phase 1.5 (Groups)
+                                                      │
+                                                      ▼
+Phase 6 (Settings) ◄── Phase 5 (UI) ◄── Phase 4 (Debate) ◄── Phase 3 (Diversity) ◄── Phase 2 (Conflicts)
+```
+
+**Rationale:**
+- Phase 0 first: New agents will have SoT metadata ready for subsequent phases
+- Phase 1 + 1.5 together: Groups need perspective roles defined
+- Phases 2-4: Progressive enhancement of query processing
+- Phases 5-6 last: UI polish after core functionality works
 
 ---
 
@@ -1662,6 +2078,8 @@ Create test configurations in Test Builder:
 | **Token Savings (Groups)** | **Reduction vs per-agent queries for large datasets** | **↓ 40-60% for 15+ agents** |
 | **Inter-Group Conflict Rate** | **% of group queries with cross-group disagreements** | **20-40%** |
 | **Perspective Assignment Accuracy** | **% of group types correctly mapped to perspectives** | **> 90%** |
+| **SoT Metadata Coverage** | **% of new agents with complete sotMetadata** | **> 95%** |
+| **Meeting Type Classification Accuracy** | **Correctness of auto-classified meeting types** | **> 85%** |
 
 ---
 
