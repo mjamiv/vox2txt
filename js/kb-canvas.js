@@ -931,18 +931,18 @@ class KBCanvas {
     }
 
     /**
-     * Layout with group containers - positions groups horizontally, agents inside each group
+     * Layout with group containers - positions groups horizontally with ungrouped agents between
      */
     autoLayoutWithGroups() {
         const containerRect = this.space.getBoundingClientRect();
         const padding = 30;
-        const groupGap = 60;  // Gap between group containers for inter-group connections
+        const groupGap = 50;  // Gap between group containers
         const nodeWidth = 80;   // Compact circular node
         const nodeHeight = 80;  // Circular - same as width
-        const nodeGapX = 20;
-        const nodeGapY = 20;
-        const headerHeight = 32;
-        const containerPadding = 20;
+        const nodeGapX = 25;    // Horizontal gap between nodes
+        const nodeGapY = 25;    // Vertical gap between nodes
+        const headerHeight = 36;
+        const containerPadding = 25;
 
         // Separate grouped and ungrouped agents
         const groupedAgents = new Map(); // groupId -> [nodeData]
@@ -973,9 +973,69 @@ class KBCanvas {
         const groupPositions = [];
         const allNodePositions = [];
 
-        sortedGroups.forEach((group, groupIndex) => {
+        // Calculate group sizes first to plan layout
+        const groupSizes = sortedGroups.map(group => {
             const agents = groupedAgents.get(group.id) || [];
+            // Use 2 columns for wider layout within groups
+            const columnsInGroup = Math.min(2, agents.length);
+            const rowsInGroup = Math.ceil(agents.length / columnsInGroup);
+            const groupWidth = columnsInGroup * (nodeWidth + nodeGapX) - nodeGapX + containerPadding * 2;
+            const groupHeight = rowsInGroup * (nodeHeight + nodeGapY) - nodeGapY + containerPadding * 2 + headerHeight;
+            return { group, agents, columnsInGroup, rowsInGroup, width: groupWidth, height: groupHeight };
+        });
+
+        // Calculate ungrouped section size if needed
+        let ungroupedWidth = 0;
+        let ungroupedHeight = 0;
+        let ungroupedColumnsInGroup = 0;
+        let ungroupedRowsInGroup = 0;
+        if (ungroupedAgents.length > 0) {
+            ungroupedColumnsInGroup = Math.min(2, ungroupedAgents.length);
+            ungroupedRowsInGroup = Math.ceil(ungroupedAgents.length / ungroupedColumnsInGroup);
+            ungroupedWidth = ungroupedColumnsInGroup * (nodeWidth + nodeGapX) - nodeGapX + containerPadding * 2;
+            ungroupedHeight = ungroupedRowsInGroup * (nodeHeight + nodeGapY) - nodeGapY + containerPadding * 2 + headerHeight;
+        }
+
+        // Position groups horizontally, with ungrouped agents in middle if there are 2+ groups
+        const insertUngroupedInMiddle = sortedGroups.length >= 2 && ungroupedAgents.length > 0;
+        const middleIndex = Math.floor(sortedGroups.length / 2);
+
+        groupSizes.forEach((groupData, groupIndex) => {
+            const { group, agents, columnsInGroup, width: groupWidth, height: groupHeight } = groupData;
             if (agents.length === 0) return;
+
+            // Insert ungrouped agents in the middle
+            if (insertUngroupedInMiddle && groupIndex === middleIndex) {
+                // Check if ungrouped section fits in current row
+                if (currentX + ungroupedWidth > availableWidth && currentX > padding) {
+                    currentX = padding;
+                    currentRowY += maxRowHeight + groupGap;
+                    maxRowHeight = 0;
+                }
+
+                // Position ungrouped agents
+                ungroupedAgents.sort((a, b) => {
+                    const indexA = parseInt(a.element?.dataset?.index) || 0;
+                    const indexB = parseInt(b.element?.dataset?.index) || 0;
+                    return indexA - indexB;
+                });
+
+                ungroupedAgents.forEach((agentData, i) => {
+                    const col = i % ungroupedColumnsInGroup;
+                    const row = Math.floor(i / ungroupedColumnsInGroup);
+
+                    allNodePositions.push({
+                        id: agentData.id,
+                        position: {
+                            x: currentX + containerPadding + col * (nodeWidth + nodeGapX),
+                            y: currentRowY + headerHeight + containerPadding + row * (nodeHeight + nodeGapY)
+                        }
+                    });
+                });
+
+                currentX += ungroupedWidth + groupGap;
+                maxRowHeight = Math.max(maxRowHeight, ungroupedHeight);
+            }
 
             // Sort agents within group by index
             agents.sort((a, b) => {
@@ -984,16 +1044,8 @@ class KBCanvas {
                 return indexA - indexB;
             });
 
-            // Calculate group container size
-            // Agents arranged in a vertical stack within the group
-            const agentsPerColumn = Math.min(agents.length, 3); // Max 3 agents per column
-            const columns = Math.ceil(agents.length / agentsPerColumn);
-            const groupWidth = columns * (nodeWidth + nodeGapX) - nodeGapX + containerPadding * 2;
-            const groupHeight = agentsPerColumn * (nodeHeight + nodeGapY) - nodeGapY + containerPadding * 2 + headerHeight;
-
             // Check if group fits in current row
             if (currentX + groupWidth > availableWidth && currentX > padding) {
-                // Move to next row
                 currentX = padding;
                 currentRowY += maxRowHeight + groupGap;
                 maxRowHeight = 0;
@@ -1004,10 +1056,10 @@ class KBCanvas {
             const groupY = currentRowY;
             groupPositions.push({ groupId: group.id, x: groupX, y: groupY, width: groupWidth, height: groupHeight });
 
-            // Calculate positions for agents within this group
+            // Calculate positions for agents within this group (row-first for horizontal layout)
             agents.forEach((agentData, agentIndex) => {
-                const col = Math.floor(agentIndex / agentsPerColumn);
-                const row = agentIndex % agentsPerColumn;
+                const col = agentIndex % columnsInGroup;
+                const row = Math.floor(agentIndex / columnsInGroup);
 
                 const agentX = groupX + containerPadding + col * (nodeWidth + nodeGapX);
                 const agentY = groupY + headerHeight + containerPadding + row * (nodeHeight + nodeGapY);
@@ -1023,12 +1075,13 @@ class KBCanvas {
             maxRowHeight = Math.max(maxRowHeight, groupHeight);
         });
 
-        // Position ungrouped agents after groups
-        if (ungroupedAgents.length > 0) {
-            // Start a new row for ungrouped if needed
-            if (currentX > padding) {
+        // Position ungrouped agents at the end if not inserted in middle (or if only 1 group)
+        if (!insertUngroupedInMiddle && ungroupedAgents.length > 0) {
+            // Check if ungrouped section fits in current row
+            if (currentX + ungroupedWidth > availableWidth && currentX > padding) {
                 currentX = padding;
                 currentRowY += maxRowHeight + groupGap;
+                maxRowHeight = 0;
             }
 
             ungroupedAgents.sort((a, b) => {
@@ -1038,15 +1091,14 @@ class KBCanvas {
             });
 
             ungroupedAgents.forEach((agentData, i) => {
-                const nodesPerRow = Math.max(1, Math.floor(availableWidth / (nodeWidth + nodeGapX + 30)));
-                const row = Math.floor(i / nodesPerRow);
-                const col = i % nodesPerRow;
+                const col = i % ungroupedColumnsInGroup;
+                const row = Math.floor(i / ungroupedColumnsInGroup);
 
                 allNodePositions.push({
                     id: agentData.id,
                     position: {
-                        x: padding + col * (nodeWidth + nodeGapX + 30),
-                        y: currentRowY + row * (nodeHeight + nodeGapY + 20)
+                        x: currentX + containerPadding + col * (nodeWidth + nodeGapX),
+                        y: currentRowY + headerHeight + containerPadding + row * (nodeHeight + nodeGapY)
                     }
                 });
             });
