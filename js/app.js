@@ -49,6 +49,9 @@ const state = {
     chatMode: 'rlm', // 'direct' or 'rlm' - default to RLM
     isRecording: false, // Voice recording state
     voiceResponseEnabled: true, // Whether to speak responses aloud
+    voiceMode: 'push-to-talk', // 'push-to-talk' or 'realtime'
+    realtimeActive: false, // Whether real-time session is active
+    realtimeSessionCost: 0, // Running cost of real-time session
     sourceUrl: null,
     exportMeta: {
         agentId: null,
@@ -469,6 +472,15 @@ async function init() {
         voiceStatusText: document.getElementById('voice-status-text'),
         voiceVolumeBar: document.getElementById('voice-volume-bar'),
 
+        // Real-time Voice
+        voiceModeBtns: document.querySelectorAll('.voice-mode-btn'),
+        realtimePanel: document.getElementById('realtime-panel'),
+        startRealtimeBtn: document.getElementById('start-realtime-btn'),
+        stopRealtimeBtn: document.getElementById('stop-realtime-btn'),
+        realtimeStatus: document.getElementById('realtime-status'),
+        realtimeStatusText: document.getElementById('realtime-status-text'),
+        realtimeCost: document.getElementById('realtime-cost'),
+
         // URL Input
         urlTab: document.getElementById('url-tab'),
         urlInput: document.getElementById('url-input'),
@@ -671,6 +683,25 @@ function setupEventListeners() {
     // Clear Chat Button
     if (elements.clearChatBtn) {
         elements.clearChatBtn.addEventListener('click', resetChatHistory);
+    }
+
+    // Voice Mode Selector
+    elements.voiceModeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            elements.voiceModeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.voiceMode = btn.dataset.mode;
+            updateVoiceModeUI();
+            console.log('[Voice] Mode switched to:', state.voiceMode);
+        });
+    });
+
+    // Real-time Voice Controls
+    if (elements.startRealtimeBtn) {
+        elements.startRealtimeBtn.addEventListener('click', startRealtimeConversation);
+    }
+    if (elements.stopRealtimeBtn) {
+        elements.stopRealtimeBtn.addEventListener('click', stopRealtimeConversation);
     }
 
     // URL Input
@@ -4109,6 +4140,464 @@ function updateVoiceButtonUI(isRecording) {
         if (icon) icon.classList.remove('hidden');
         if (recording) recording.classList.add('hidden');
     }
+}
+
+function updateVoiceModeUI() {
+    const isPushToTalk = state.voiceMode === 'push-to-talk';
+
+    // Show/hide appropriate controls
+    if (elements.voiceInputBtn) {
+        elements.voiceInputBtn.classList.toggle('hidden', !isPushToTalk);
+    }
+    if (elements.realtimePanel) {
+        elements.realtimePanel.classList.toggle('hidden', isPushToTalk);
+    }
+}
+
+// ============================================
+// Real-time Voice Conversation
+// ============================================
+
+let realtimeWs = null;
+let realtimeAudioContext = null;
+let realtimeMediaStream = null;
+let realtimeWorkletNode = null;
+let realtimeCostInterval = null;
+let realtimeStartTime = null;
+let silenceTimeout = null;
+let lastAudioTime = null;
+
+// Pricing: $0.06/min input + $0.24/min output ≈ $0.30/min total
+const REALTIME_COST_PER_MINUTE = 0.30;
+const SILENCE_TIMEOUT_MS = 5000; // 5 seconds
+
+async function startRealtimeConversation() {
+    if (state.realtimeActive) return;
+
+    if (!state.results) {
+        showError('Please analyze a meeting first before using voice chat.');
+        return;
+    }
+
+    if (!state.apiKey) {
+        showError('Please enter your OpenAI API key first.');
+        return;
+    }
+
+    try {
+        updateRealtimeStatus('Requesting microphone...', false);
+        showRealtimeStatus();
+
+        // 1. Get microphone access with 24kHz sample rate
+        realtimeMediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                sampleRate: 24000,
+                channelCount: 1,
+                echoCancellation: true,
+                noiseSuppression: true
+            }
+        });
+
+        updateRealtimeStatus('Connecting to OpenAI...', false);
+
+        // 2. Set up audio context
+        realtimeAudioContext = new AudioContext({ sampleRate: 24000 });
+
+        // 3. Connect to OpenAI Realtime API
+        const wsUrl = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17';
+        realtimeWs = new WebSocket(wsUrl, [
+            'realtime',
+            `openai-insecure-api-key.${state.apiKey}`
+        ]);
+
+        realtimeWs.onopen = async () => {
+            console.log('[Realtime] WebSocket connected');
+            updateRealtimeStatus('Configuring session...', false);
+
+            // Configure session with meeting context
+            const sessionConfig = {
+                type: 'session.update',
+                session: {
+                    modalities: ['text', 'audio'],
+                    instructions: buildRealtimeSystemPrompt(),
+                    voice: 'nova',
+                    input_audio_format: 'pcm16',
+                    output_audio_format: 'pcm16',
+                    input_audio_transcription: { model: 'whisper-1' },
+                    turn_detection: {
+                        type: 'server_vad',
+                        threshold: 0.5,
+                        prefix_padding_ms: 300,
+                        silence_duration_ms: 500
+                    }
+                }
+            };
+            realtimeWs.send(JSON.stringify(sessionConfig));
+
+            // Start audio streaming
+            await startRealtimeAudioStream();
+
+            // Mark as active
+            state.realtimeActive = true;
+            state.realtimeSessionCost = 0;
+            realtimeStartTime = Date.now();
+            lastAudioTime = Date.now();
+
+            // Start cost counter
+            realtimeCostInterval = setInterval(updateRealtimeCost, 1000);
+
+            // Start silence detection
+            startSilenceDetection();
+
+            // Update UI
+            updateRealtimeStatus('Listening... speak now!', true);
+            updateRealtimeButtons(true);
+            console.log('[Realtime] Session started');
+        };
+
+        realtimeWs.onmessage = handleRealtimeMessage;
+
+        realtimeWs.onerror = (error) => {
+            console.error('[Realtime] WebSocket error:', error);
+            updateRealtimeStatus('Connection error', false, true);
+            stopRealtimeConversation();
+        };
+
+        realtimeWs.onclose = (event) => {
+            console.log('[Realtime] WebSocket closed:', event.code, event.reason);
+            if (state.realtimeActive) {
+                stopRealtimeConversation();
+            }
+        };
+
+    } catch (error) {
+        console.error('[Realtime] Setup failed:', error);
+        showError('Failed to start real-time conversation: ' + error.message);
+        cleanupRealtimeResources();
+    }
+}
+
+function stopRealtimeConversation() {
+    console.log('[Realtime] Stopping conversation...');
+
+    // Stop silence detection
+    if (silenceTimeout) {
+        clearTimeout(silenceTimeout);
+        silenceTimeout = null;
+    }
+
+    // Stop cost counter
+    if (realtimeCostInterval) {
+        clearInterval(realtimeCostInterval);
+        realtimeCostInterval = null;
+    }
+
+    // Clean up resources
+    cleanupRealtimeResources();
+
+    // Update state
+    state.realtimeActive = false;
+
+    // Update UI
+    updateRealtimeButtons(false);
+    updateRealtimeStatus('Conversation ended', false);
+
+    // Log final cost
+    console.log(`[Realtime] Session ended. Total cost: $${state.realtimeSessionCost.toFixed(4)}`);
+}
+
+function cleanupRealtimeResources() {
+    // Close WebSocket
+    if (realtimeWs) {
+        if (realtimeWs.readyState === WebSocket.OPEN) {
+            realtimeWs.close();
+        }
+        realtimeWs = null;
+    }
+
+    // Stop worklet
+    if (realtimeWorkletNode) {
+        realtimeWorkletNode.disconnect();
+        realtimeWorkletNode = null;
+    }
+
+    // Close audio context
+    if (realtimeAudioContext && realtimeAudioContext.state !== 'closed') {
+        realtimeAudioContext.close();
+        realtimeAudioContext = null;
+    }
+
+    // Stop media stream
+    if (realtimeMediaStream) {
+        realtimeMediaStream.getTracks().forEach(track => track.stop());
+        realtimeMediaStream = null;
+    }
+}
+
+async function startRealtimeAudioStream() {
+    try {
+        // Load audio worklet
+        await realtimeAudioContext.audioWorklet.addModule('js/audio-worklet-processor.js');
+
+        // Create source from microphone
+        const source = realtimeAudioContext.createMediaStreamSource(realtimeMediaStream);
+
+        // Create worklet node
+        realtimeWorkletNode = new AudioWorkletNode(realtimeAudioContext, 'pcm16-processor');
+
+        // Handle audio data from worklet
+        realtimeWorkletNode.port.onmessage = (event) => {
+            if (event.data.type === 'audio' && realtimeWs?.readyState === WebSocket.OPEN) {
+                // Update last audio time for silence detection
+                lastAudioTime = Date.now();
+
+                // Send audio chunk to API
+                const base64Audio = arrayBufferToBase64(event.data.data);
+                realtimeWs.send(JSON.stringify({
+                    type: 'input_audio_buffer.append',
+                    audio: base64Audio
+                }));
+            }
+        };
+
+        // Connect: mic → worklet
+        source.connect(realtimeWorkletNode);
+
+        console.log('[Realtime] Audio streaming started');
+
+    } catch (error) {
+        console.error('[Realtime] Audio stream setup failed:', error);
+        throw error;
+    }
+}
+
+function buildRealtimeSystemPrompt() {
+    const results = state.results;
+    return `You are a helpful meeting assistant having a voice conversation. You have access to the following meeting data:
+
+SUMMARY: ${results?.summary || 'No summary available'}
+
+KEY POINTS: ${results?.keyPoints || 'No key points'}
+
+ACTION ITEMS: ${results?.actionItems || 'No action items'}
+
+SENTIMENT: ${results?.sentiment || 'Unknown'}
+
+Instructions:
+- Answer questions about this meeting concisely and conversationally.
+- Keep responses brief (1-3 sentences) for natural conversation flow.
+- If asked about something not in the meeting, say you don't have that information.
+- Be helpful, friendly, and to the point.`;
+}
+
+function handleRealtimeMessage(event) {
+    const message = JSON.parse(event.data);
+
+    switch (message.type) {
+        case 'session.created':
+            console.log('[Realtime] Session created:', message.session?.id);
+            break;
+
+        case 'session.updated':
+            console.log('[Realtime] Session updated');
+            break;
+
+        case 'input_audio_buffer.speech_started':
+            updateRealtimeStatus('You are speaking...', true);
+            lastAudioTime = Date.now(); // Reset silence timer
+            break;
+
+        case 'input_audio_buffer.speech_stopped':
+            updateRealtimeStatus('Processing...', true);
+            break;
+
+        case 'conversation.item.input_audio_transcription.completed':
+            // User's transcribed speech
+            if (message.transcript) {
+                appendChatMessage('user', message.transcript);
+                state.chatHistory.push({
+                    role: 'user',
+                    content: message.transcript,
+                    timestamp: new Date().toISOString(),
+                    inputMethod: 'realtime'
+                });
+            }
+            break;
+
+        case 'response.audio.delta':
+            // Play incoming audio chunk
+            playRealtimeAudioChunk(message.delta);
+            updateRealtimeStatus('Assistant speaking...', true);
+            lastAudioTime = Date.now(); // Reset silence timer during response
+            break;
+
+        case 'response.audio_transcript.delta':
+            // Could show live transcript here if needed
+            break;
+
+        case 'response.done':
+            // Response complete
+            if (message.response?.output) {
+                const output = message.response.output[0];
+                if (output?.content) {
+                    const textContent = output.content.find(c => c.type === 'text');
+                    const audioContent = output.content.find(c => c.type === 'audio');
+                    const transcript = audioContent?.transcript || textContent?.text;
+
+                    if (transcript) {
+                        appendChatMessage('assistant', transcript);
+                        state.chatHistory.push({
+                            role: 'assistant',
+                            content: transcript,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                }
+            }
+            updateRealtimeStatus('Listening...', true);
+            lastAudioTime = Date.now(); // Reset silence timer after response
+            break;
+
+        case 'error':
+            console.error('[Realtime] API error:', message.error);
+            updateRealtimeStatus('Error: ' + (message.error?.message || 'Unknown'), false, true);
+            break;
+
+        default:
+            // Log other message types for debugging
+            if (message.type && !message.type.startsWith('response.audio')) {
+                console.log('[Realtime] Message:', message.type);
+            }
+    }
+}
+
+// Audio playback queue
+let audioPlaybackQueue = [];
+let isPlayingRealtimeAudio = false;
+
+async function playRealtimeAudioChunk(base64Audio) {
+    if (!realtimeAudioContext || realtimeAudioContext.state === 'closed') return;
+
+    try {
+        const audioData = base64ToArrayBuffer(base64Audio);
+        audioPlaybackQueue.push(audioData);
+
+        if (!isPlayingRealtimeAudio) {
+            playNextRealtimeChunk();
+        }
+    } catch (error) {
+        console.error('[Realtime] Audio playback error:', error);
+    }
+}
+
+async function playNextRealtimeChunk() {
+    if (audioPlaybackQueue.length === 0 || !realtimeAudioContext) {
+        isPlayingRealtimeAudio = false;
+        return;
+    }
+
+    isPlayingRealtimeAudio = true;
+    const audioData = audioPlaybackQueue.shift();
+
+    try {
+        // Convert PCM16 to AudioBuffer
+        const int16Array = new Int16Array(audioData);
+        const audioBuffer = realtimeAudioContext.createBuffer(1, int16Array.length, 24000);
+        const channelData = audioBuffer.getChannelData(0);
+
+        for (let i = 0; i < int16Array.length; i++) {
+            channelData[i] = int16Array[i] / 32768;
+        }
+
+        const source = realtimeAudioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(realtimeAudioContext.destination);
+        source.onended = playNextRealtimeChunk;
+        source.start();
+    } catch (error) {
+        console.error('[Realtime] Chunk playback error:', error);
+        playNextRealtimeChunk(); // Try next chunk
+    }
+}
+
+// Silence detection
+function startSilenceDetection() {
+    checkSilence();
+}
+
+function checkSilence() {
+    if (!state.realtimeActive) return;
+
+    const timeSinceLastAudio = Date.now() - lastAudioTime;
+
+    if (timeSinceLastAudio >= SILENCE_TIMEOUT_MS) {
+        console.log('[Realtime] Silence timeout - stopping conversation');
+        updateRealtimeStatus('Stopped (5s silence)', false);
+        stopRealtimeConversation();
+        return;
+    }
+
+    // Check again in 1 second
+    silenceTimeout = setTimeout(checkSilence, 1000);
+}
+
+// Cost tracking
+function updateRealtimeCost() {
+    if (!state.realtimeActive || !realtimeStartTime) return;
+
+    const elapsedMinutes = (Date.now() - realtimeStartTime) / 60000;
+    state.realtimeSessionCost = elapsedMinutes * REALTIME_COST_PER_MINUTE;
+
+    if (elements.realtimeCost) {
+        elements.realtimeCost.textContent = '$' + state.realtimeSessionCost.toFixed(2);
+    }
+}
+
+// UI helpers
+function showRealtimeStatus() {
+    if (elements.realtimeStatus) {
+        elements.realtimeStatus.classList.remove('hidden');
+    }
+}
+
+function updateRealtimeStatus(text, isActive, isError = false) {
+    if (elements.realtimeStatusText) {
+        elements.realtimeStatusText.textContent = text;
+    }
+
+    const statusDot = document.querySelector('.realtime-status .status-dot');
+    if (statusDot) {
+        statusDot.classList.toggle('pulsing', isActive);
+        statusDot.classList.toggle('error', isError);
+    }
+}
+
+function updateRealtimeButtons(isActive) {
+    if (elements.startRealtimeBtn) {
+        elements.startRealtimeBtn.classList.toggle('hidden', isActive);
+    }
+    if (elements.stopRealtimeBtn) {
+        elements.stopRealtimeBtn.classList.toggle('hidden', !isActive);
+    }
+}
+
+// Helper functions
+function arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
 }
 
 // ============================================

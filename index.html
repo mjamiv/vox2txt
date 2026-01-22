@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=55">
+    <link rel="stylesheet" href="css/styles.css?v=56">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a853">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230a0e17' width='32' height='32' rx='6'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23d4a853'%3E⭐%3C/text%3E%3C/svg%3E" type="image/svg+xml">
@@ -460,15 +460,56 @@
                         </button>
                     </div>
 
-                    <!-- Voice Response Toggle -->
-                    <div class="voice-response-toggle">
-                        <label class="toggle-inline">
-                            <input type="checkbox" id="voice-response-toggle" checked>
-                            <span>Speak responses</span>
-                        </label>
+                    <!-- Voice Controls Row -->
+                    <div class="voice-controls-row">
+                        <!-- Voice Response Toggle -->
+                        <div class="voice-response-toggle">
+                            <label class="toggle-inline">
+                                <input type="checkbox" id="voice-response-toggle" checked>
+                                <span>Speak responses</span>
+                            </label>
+                        </div>
+
+                        <!-- Voice Mode Selector -->
+                        <div class="voice-mode-selector">
+                            <button class="voice-mode-btn active" data-mode="push-to-talk" title="Hold mic button to speak">
+                                🎤 Push-to-Talk
+                            </button>
+                            <button class="voice-mode-btn" data-mode="realtime" title="Continuous conversation (higher cost)">
+                                🎙️ Real-time
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Voice Recording Status (shown when recording) -->
+                    <!-- Real-time Mode Warning & Controls (hidden by default) -->
+                    <div id="realtime-panel" class="realtime-panel hidden">
+                        <div class="realtime-warning">
+                            <span class="warning-icon">⚠️</span>
+                            <span class="warning-text">Real-time mode costs ~$0.30/min. Auto-stops after 5s of silence.</span>
+                        </div>
+                        <div class="realtime-controls">
+                            <button id="start-realtime-btn" class="btn-realtime start">
+                                <span class="btn-icon">🎙️</span>
+                                <span class="btn-text">Start Conversation</span>
+                            </button>
+                            <button id="stop-realtime-btn" class="btn-realtime stop hidden">
+                                <span class="btn-icon">⏹️</span>
+                                <span class="btn-text">End Conversation</span>
+                            </button>
+                        </div>
+                        <div id="realtime-status" class="realtime-status hidden">
+                            <div class="realtime-status-indicator">
+                                <span class="status-dot pulsing"></span>
+                                <span class="status-text" id="realtime-status-text">Connecting...</span>
+                            </div>
+                            <div class="realtime-cost">
+                                <span class="cost-label">Session cost:</span>
+                                <span class="cost-value" id="realtime-cost">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voice Recording Status (shown when recording in push-to-talk mode) -->
                     <div id="voice-recording-status" class="voice-recording-status hidden">
                         <div class="voice-status-content">
                             <span class="voice-status-text" id="voice-status-text">Preparing...</span>
@@ -726,7 +767,7 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/app.js?v=55" type="module"></script>
+    <script src="js/app.js?v=56" type="module"></script>
 
     <!-- Service Worker Registration with Auto-Update -->
     <script>

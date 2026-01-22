@@ -3247,6 +3247,181 @@ footer a:hover {
     accent-color: var(--accent-primary);
 }
 
+/* Voice Controls Row */
+.voice-controls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 var(--space-md) var(--space-sm);
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.voice-controls-row .voice-response-toggle {
+    padding: 0;
+}
+
+/* Voice Mode Selector */
+.voice-mode-selector {
+    display: flex;
+    gap: 2px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.voice-mode-btn {
+    padding: var(--space-xs) var(--space-sm);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.voice-mode-btn:hover {
+    color: var(--text-primary);
+}
+
+.voice-mode-btn.active {
+    background: var(--accent-primary);
+    color: #000;
+    font-weight: 600;
+}
+
+/* Real-time Panel */
+.realtime-panel {
+    background: rgba(251, 191, 36, 0.05);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    border-radius: var(--radius-md);
+    margin: var(--space-sm) var(--space-md);
+    padding: var(--space-sm);
+    animation: fadeIn 0.2s ease;
+}
+
+.realtime-warning {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-xs) var(--space-sm);
+    background: rgba(251, 191, 36, 0.1);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.realtime-warning .warning-icon {
+    font-size: 1rem;
+}
+
+.realtime-warning .warning-text {
+    font-size: 0.75rem;
+    color: var(--warning);
+}
+
+.realtime-controls {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-sm);
+}
+
+.btn-realtime {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-sm) var(--space-md);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-realtime.start {
+    background: linear-gradient(135deg, var(--success), #22c55e);
+    color: #000;
+}
+
+.btn-realtime.start:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(74, 222, 128, 0.3);
+}
+
+.btn-realtime.stop {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+}
+
+.btn-realtime.stop:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-realtime:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Real-time Status */
+.realtime-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-sm);
+    padding: var(--space-sm);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-sm);
+}
+
+.realtime-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.realtime-status .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--success);
+}
+
+.realtime-status .status-dot.pulsing {
+    animation: pulse-dot 1s infinite;
+}
+
+.realtime-status .status-dot.error {
+    background: #ef4444;
+}
+
+.realtime-status .status-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.realtime-cost {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.realtime-cost .cost-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.realtime-cost .cost-value {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--warning);
+    font-family: 'Monaco', 'Consolas', monospace;
+}
+
 /* Voice Recording Status */
 .voice-recording-status {
     display: flex;
