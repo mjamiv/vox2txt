@@ -46,7 +46,7 @@ const state = {
     results: null,
     metrics: null,
     chatHistory: [], // Stores chat conversation history
-    chatMode: 'rlm', // 'direct' or 'rlm' - default to RLM
+    chatMode: 'direct', // 'direct' or 'rlm' - default to Direct for single-meeting chat
     isRecording: false, // Voice recording state
     voiceResponseEnabled: true, // Whether to speak responses aloud
     voiceMode: 'push-to-talk', // 'push-to-talk' or 'realtime'
@@ -3400,12 +3400,20 @@ function clearUrlContent() {
 function updateChatModeUI() {
     if (!elements.modeDirectLabel || !elements.modeRlmLabel) return;
 
-    if (state.chatMode === 'rlm') {
+    const isRlm = state.chatMode === 'rlm';
+
+    if (isRlm) {
         elements.modeDirectLabel.classList.remove('mode-active');
         elements.modeRlmLabel.classList.add('mode-active');
     } else {
         elements.modeDirectLabel.classList.add('mode-active');
         elements.modeRlmLabel.classList.remove('mode-active');
+    }
+
+    // Show/hide RLM warning
+    const rlmWarning = document.getElementById('rlm-warning');
+    if (rlmWarning) {
+        rlmWarning.classList.toggle('hidden', !isRlm);
     }
 }
 

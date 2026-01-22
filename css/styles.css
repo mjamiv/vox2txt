@@ -2898,6 +2898,30 @@ footer a:hover {
     font-size: 0.9rem;
 }
 
+/* RLM Mode Warning */
+.rlm-warning {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    margin: var(--space-sm) 0;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: var(--radius-md);
+    animation: fadeIn 0.2s ease;
+}
+
+.rlm-warning .warning-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.rlm-warning .warning-text {
+    font-size: 0.75rem;
+    color: var(--warning);
+    line-height: 1.4;
+}
+
 .chat-mode-toggle {
     display: flex;
     align-items: center;
