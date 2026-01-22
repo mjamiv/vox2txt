@@ -3449,6 +3449,12 @@ async function chatWithRLM(query, thinkingId) {
     // Sync meeting data to RLM context store
     syncMeetingToRLM();
 
+    // Clear RLM cache to ensure fresh results for each query
+    // This prevents stale cached responses in Agent Builder mode
+    if (rlmPipeline && rlmPipeline.clearCache) {
+        rlmPipeline.clearCache();
+    }
+
     // Create LLM call wrapper for RLM pipeline
     const llmCallWrapper = async (systemPrompt, userContent, context) => {
         const messages = [
