@@ -4235,22 +4235,33 @@ async function startRealtimeConversation() {
             updateRealtimeStatus('Configuring session...', false);
 
             // Configure session with meeting context
-            // Note: session.type is required by the GA Realtime API (distinguishes from transcription sessions)
+            // Note: GA Realtime API uses nested audio.input/output structure
             const sessionConfig = {
                 type: 'session.update',
                 session: {
                     type: 'realtime',
-                    modalities: ['text', 'audio'],
+                    output_modalities: ['audio'],
                     instructions: buildRealtimeSystemPrompt(),
-                    voice: 'nova',
-                    input_audio_format: 'pcm16',
-                    output_audio_format: 'pcm16',
-                    input_audio_transcription: { model: 'whisper-1' },
-                    turn_detection: {
-                        type: 'server_vad',
-                        threshold: 0.5,
-                        prefix_padding_ms: 300,
-                        silence_duration_ms: 500
+                    audio: {
+                        input: {
+                            format: {
+                                type: 'audio/pcm',
+                                rate: 24000
+                            },
+                            turn_detection: {
+                                type: 'server_vad',
+                                threshold: 0.5,
+                                prefix_padding_ms: 300,
+                                silence_duration_ms: 500,
+                                create_response: true
+                            }
+                        },
+                        output: {
+                            format: {
+                                type: 'audio/pcm'
+                            },
+                            voice: 'marin'
+                        }
                     }
                 }
             };
@@ -4456,14 +4467,16 @@ function handleRealtimeMessage(event) {
             }
             break;
 
-        case 'response.audio.delta':
+        case 'response.output_audio.delta':
+        case 'response.audio.delta': // Keep beta event name for compatibility
             // Play incoming audio chunk
             playRealtimeAudioChunk(message.delta);
             updateRealtimeStatus('Assistant speaking...', true);
             lastAudioTime = Date.now(); // Reset silence timer during response
             break;
 
-        case 'response.audio_transcript.delta':
+        case 'response.output_audio_transcript.delta':
+        case 'response.audio_transcript.delta': // Keep beta event name for compatibility
             // Could show live transcript here if needed
             break;
 
