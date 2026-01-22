@@ -47,6 +47,8 @@ const state = {
     metrics: null,
     chatHistory: [], // Stores chat conversation history
     chatMode: 'rlm', // 'direct' or 'rlm' - default to RLM
+    isRecording: false, // Voice recording state
+    voiceResponseEnabled: true, // Whether to speak responses aloud
     sourceUrl: null,
     exportMeta: {
         agentId: null,
@@ -458,7 +460,11 @@ async function init() {
         chatModeToggle: document.getElementById('chat-mode-toggle'),
         modeDirectLabel: document.getElementById('mode-direct-label'),
         modeRlmLabel: document.getElementById('mode-rlm-label'),
-        
+
+        // Voice Chat
+        voiceInputBtn: document.getElementById('voice-input-btn'),
+        voiceResponseToggle: document.getElementById('voice-response-toggle'),
+
         // URL Input
         urlTab: document.getElementById('url-tab'),
         urlInput: document.getElementById('url-input'),
@@ -628,6 +634,33 @@ function setupEventListeners() {
             state.chatMode = e.target.checked ? 'rlm' : 'direct';
             updateChatModeUI();
             console.log('[Chat] Mode switched to:', state.chatMode);
+        });
+    }
+
+    // Voice Input - Push-to-talk
+    if (elements.voiceInputBtn) {
+        elements.voiceInputBtn.addEventListener('mousedown', startVoiceRecording);
+        elements.voiceInputBtn.addEventListener('mouseup', stopVoiceRecording);
+        elements.voiceInputBtn.addEventListener('mouseleave', () => {
+            if (state.isRecording) stopVoiceRecording();
+        });
+
+        // Touch support for mobile
+        elements.voiceInputBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startVoiceRecording();
+        });
+        elements.voiceInputBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopVoiceRecording();
+        });
+    }
+
+    // Voice Response Toggle
+    if (elements.voiceResponseToggle) {
+        elements.voiceResponseToggle.addEventListener('change', (e) => {
+            state.voiceResponseEnabled = e.target.checked;
+            console.log('[Voice] Response enabled:', state.voiceResponseEnabled);
         });
     }
 
@@ -3692,6 +3725,214 @@ function restoreChatHistoryUI() {
     state.chatHistory.forEach(message => {
         appendChatMessage(message.role, message.content);
     });
+}
+
+// ============================================
+// Voice Chat - Turn-Based
+// ============================================
+
+let mediaRecorder = null;
+let audioChunks = [];
+
+async function startVoiceRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            stream.getTracks().forEach(track => track.stop());
+            await processVoiceInput(audioBlob);
+        };
+
+        mediaRecorder.start();
+        state.isRecording = true;
+        updateVoiceButtonUI(true);
+        console.log('[Voice] Recording started');
+
+    } catch (error) {
+        console.error('[Voice] Microphone access denied:', error);
+        showError('Microphone access is required for voice input.');
+    }
+}
+
+function stopVoiceRecording() {
+    if (mediaRecorder && state.isRecording) {
+        mediaRecorder.stop();
+        state.isRecording = false;
+        updateVoiceButtonUI(false);
+        console.log('[Voice] Recording stopped');
+    }
+}
+
+async function processVoiceInput(audioBlob) {
+    if (!state.results) {
+        showError('Please analyze a meeting first before using voice chat.');
+        return;
+    }
+
+    // Disable voice button while processing
+    if (elements.voiceInputBtn) {
+        elements.voiceInputBtn.disabled = true;
+    }
+
+    // Show thinking indicator
+    const thinkingId = showThinkingIndicator();
+    updateThinkingStatus(thinkingId, 'Transcribing your voice...');
+
+    try {
+        // Step 1: Transcribe with Whisper
+        const transcript = await transcribeVoiceInput(audioBlob);
+        if (!transcript || transcript.trim().length === 0) {
+            removeTypingIndicator(thinkingId);
+            showError('Could not understand audio. Please try again.');
+            return;
+        }
+
+        // Display transcribed text as user message
+        appendChatMessage('user', transcript);
+        state.chatHistory.push({
+            role: 'user',
+            content: transcript,
+            timestamp: new Date().toISOString(),
+            inputMethod: 'voice'
+        });
+
+        // Step 2: Get chat response (RLM or Direct)
+        let response;
+        if (state.chatMode === 'rlm') {
+            updateThinkingStatus(thinkingId, 'Processing with RLM...');
+            response = await chatWithRLM(transcript, thinkingId);
+        } else {
+            updateThinkingStatus(thinkingId, 'Analyzing with AI...');
+            const context = buildChatContext();
+            response = await chatWithData(context, state.chatHistory);
+        }
+
+        // Remove thinking indicator
+        removeTypingIndicator(thinkingId);
+
+        // Display text response
+        appendChatMessage('assistant', response);
+        state.chatHistory.push({
+            role: 'assistant',
+            content: response,
+            model: GPT_52_MODEL,
+            timestamp: new Date().toISOString()
+        });
+
+        // Step 3: Speak response if enabled
+        if (state.voiceResponseEnabled) {
+            await speakResponse(response);
+        }
+
+    } catch (error) {
+        console.error('[Voice] Processing error:', error);
+        removeTypingIndicator(thinkingId);
+        showError('Voice processing failed. Please try again.');
+    } finally {
+        if (elements.voiceInputBtn) {
+            elements.voiceInputBtn.disabled = false;
+        }
+    }
+}
+
+async function transcribeVoiceInput(audioBlob) {
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'voice-input.webm');
+    formData.append('model', 'whisper-1');
+
+    const response = await fetchOpenAI('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${state.apiKey}`
+        },
+        body: formData
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error?.message || 'Transcription failed');
+    }
+
+    const data = await response.json();
+
+    // Track metrics - estimate ~6 seconds for typical voice input
+    currentMetrics.whisperMinutes += 0.1;
+    currentMetrics.apiCalls.push({
+        name: 'Voice Transcription',
+        model: 'whisper-1',
+        duration: '~6s'
+    });
+
+    // Update metrics display
+    state.metrics = calculateMetrics();
+    displayMetrics();
+
+    return data.text;
+}
+
+async function speakResponse(text) {
+    // Strip markdown formatting for cleaner TTS
+    let cleanText = text
+        .replace(/#{1,6}\s*/g, '') // Remove headers
+        .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold
+        .replace(/\*(.+?)\*/g, '$1') // Remove italics
+        .replace(/`(.+?)`/g, '$1') // Remove inline code
+        .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+        .replace(/^\s*[-•]\s+/gm, '') // Remove bullet points
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links, keep text
+        .trim();
+
+    // Truncate long responses for TTS (max ~500 chars for reasonable playback)
+    if (cleanText.length > 500) {
+        cleanText = cleanText.substring(0, 497) + '...';
+    }
+
+    if (!cleanText) {
+        console.log('[Voice] No text to speak after cleaning');
+        return;
+    }
+
+    try {
+        const audioBlob = await textToSpeech(cleanText, 'nova');
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        const audio = new Audio(audioUrl);
+        audio.onended = () => URL.revokeObjectURL(audioUrl);
+        await audio.play();
+
+        console.log('[Voice] TTS playback started');
+
+    } catch (error) {
+        console.error('[Voice] TTS playback failed:', error);
+        // Fail silently - text response is already displayed
+    }
+}
+
+function updateVoiceButtonUI(isRecording) {
+    const btn = elements.voiceInputBtn;
+    if (!btn) return;
+
+    const icon = btn.querySelector('.voice-icon');
+    const recording = btn.querySelector('.voice-recording');
+
+    if (isRecording) {
+        btn.classList.add('recording');
+        if (icon) icon.classList.add('hidden');
+        if (recording) recording.classList.remove('hidden');
+    } else {
+        btn.classList.remove('recording');
+        if (icon) icon.classList.remove('hidden');
+        if (recording) recording.classList.add('hidden');
+    }
 }
 
 // ============================================

@@ -3137,6 +3137,84 @@ footer a:hover {
     display: flex;
 }
 
+/* Voice Input Button */
+.btn-voice {
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.btn-voice:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.btn-voice.recording {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    animation: pulse-recording 1s infinite;
+}
+
+.btn-voice:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.voice-recording {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.recording-dot {
+    width: 12px;
+    height: 12px;
+    background: #ef4444;
+    border-radius: 50%;
+    animation: pulse-dot 0.8s infinite;
+}
+
+@keyframes pulse-recording {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+@keyframes pulse-dot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+}
+
+/* Voice Response Toggle */
+.voice-response-toggle {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 var(--space-md) var(--space-sm);
+}
+
+.toggle-inline {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.toggle-inline input {
+    accent-color: var(--accent-primary);
+}
+
 .spinner-small {
     width: 16px;
     height: 16px;
@@ -3635,6 +3713,11 @@ details[open] .about-toggle {
     }
     
     .btn-chat-send {
+        width: 38px;
+        height: 38px;
+    }
+
+    .btn-voice {
         width: 38px;
         height: 38px;
     }
