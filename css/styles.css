@@ -2865,13 +2865,45 @@ footer a:hover {
 }
 
 /* Chat Mode Toggle */
+/* Chat Controls Container */
+.chat-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: var(--space-sm);
+}
+
+.btn-clear-chat {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-clear-chat:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+}
+
+.btn-clear-chat span {
+    font-size: 0.9rem;
+}
+
 .chat-mode-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-sm);
     padding: var(--space-sm) var(--space-md);
-    margin-bottom: var(--space-sm);
     background: var(--bg-card);
     border-radius: var(--radius-md);
     border: 1px solid rgba(255, 255, 255, 0.08);

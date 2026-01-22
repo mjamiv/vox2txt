@@ -460,6 +460,7 @@ async function init() {
         chatModeToggle: document.getElementById('chat-mode-toggle'),
         modeDirectLabel: document.getElementById('mode-direct-label'),
         modeRlmLabel: document.getElementById('mode-rlm-label'),
+        clearChatBtn: document.getElementById('clear-chat-btn'),
 
         // Voice Chat
         voiceInputBtn: document.getElementById('voice-input-btn'),
@@ -665,6 +666,11 @@ function setupEventListeners() {
             state.voiceResponseEnabled = e.target.checked;
             console.log('[Voice] Response enabled:', state.voiceResponseEnabled);
         });
+    }
+
+    // Clear Chat Button
+    if (elements.clearChatBtn) {
+        elements.clearChatBtn.addEventListener('click', resetChatHistory);
     }
 
     // URL Input
