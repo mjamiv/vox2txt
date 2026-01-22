@@ -4235,9 +4235,11 @@ async function startRealtimeConversation() {
             updateRealtimeStatus('Configuring session...', false);
 
             // Configure session with meeting context
+            // Note: session.type is required by the GA Realtime API (distinguishes from transcription sessions)
             const sessionConfig = {
                 type: 'session.update',
                 session: {
+                    type: 'realtime',
                     modalities: ['text', 'audio'],
                     instructions: buildRealtimeSystemPrompt(),
                     voice: 'nova',
@@ -4359,6 +4361,12 @@ function cleanupRealtimeResources() {
 }
 
 async function startRealtimeAudioStream() {
+    // Check if context is still valid (may have been cleaned up due to error)
+    if (!realtimeAudioContext || !realtimeMediaStream) {
+        console.log('[Realtime] Audio context or stream no longer available, skipping audio setup');
+        return;
+    }
+
     try {
         // Load audio worklet
         await realtimeAudioContext.audioWorklet.addModule('js/audio-worklet-processor.js');
