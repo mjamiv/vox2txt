@@ -4214,8 +4214,14 @@ async function startRealtimeConversation() {
 
         updateRealtimeStatus('Connecting to OpenAI...', false);
 
-        // 2. Set up audio context
+        // 2. Set up audio context at 24kHz for Realtime API
         realtimeAudioContext = new AudioContext({ sampleRate: 24000 });
+
+        // Log actual sample rate (browser may not honor the requested rate)
+        console.log('[Realtime] AudioContext sample rate:', realtimeAudioContext.sampleRate);
+        if (realtimeAudioContext.sampleRate !== 24000) {
+            console.warn('[Realtime] Warning: Browser using', realtimeAudioContext.sampleRate, 'Hz instead of 24000 Hz');
+        }
 
         // 3. Connect to OpenAI Realtime API
         const wsUrl = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17';
@@ -4246,7 +4252,11 @@ async function startRealtimeConversation() {
                     }
                 }
             };
+            console.log('[Realtime] Sending session config:', JSON.stringify(sessionConfig, null, 2));
             realtimeWs.send(JSON.stringify(sessionConfig));
+
+            // Wait briefly for session to configure before starting audio
+            await new Promise(resolve => setTimeout(resolve, 500));
 
             // Start audio streaming
             await startRealtimeAudioStream();
@@ -4473,8 +4483,26 @@ function handleRealtimeMessage(event) {
             break;
 
         case 'error':
-            console.error('[Realtime] API error:', message.error);
-            updateRealtimeStatus('Error: ' + (message.error?.message || 'Unknown'), false, true);
+            // Log full error details for debugging
+            console.error('[Realtime] API error:', JSON.stringify(message.error, null, 2));
+            console.error('[Realtime] Full error message:', message);
+            const errorMsg = message.error?.message || message.error?.code || 'Unknown error';
+            const errorCode = message.error?.code || '';
+            updateRealtimeStatus(`Error: ${errorMsg}`, false, true);
+
+            // Show user-friendly error message
+            if (errorCode === 'invalid_api_key' || errorMsg.includes('authentication')) {
+                showError('Realtime API authentication failed. Please check your API key has Realtime API access.');
+            } else if (errorCode === 'model_not_found' || errorMsg.includes('model')) {
+                showError('Realtime API model not available. Please ensure your API key has access to gpt-4o-realtime-preview.');
+            } else if (errorMsg.includes('audio') || errorMsg.includes('format')) {
+                showError('Audio format error. Please try again or use Push-to-Talk mode.');
+            } else {
+                showError(`Realtime API error: ${errorMsg}`);
+            }
+
+            // Stop the conversation on error
+            stopRealtimeConversation();
             break;
 
         default:
