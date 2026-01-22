@@ -56,6 +56,10 @@ northstar.LM/
 │   ├── 100-question-test/  # 100-question test data
 │   └── archive/            # Previous report versions
 ├── archive/            # Legacy files (not deployed)
+├── recent commits/     # Weekly progress reports (auto-generated)
+│   ├── YYYY-MM-DD.md       # Daily commit tables
+│   ├── weekly-summary.md   # Narrative weekly summary
+│   └── weekly-summary.html # HTML version of summary
 └── .github/workflows/deploy.yml  # GitHub Pages deployment
 ```
 
