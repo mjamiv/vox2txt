@@ -22,7 +22,10 @@ northstar.LM is a client-side web application that uses OpenAI's AI models to an
 ### Agent Builder
 - **Multi-format Input**: Audio (MP3, WAV, M4A), Video (MP4, WebM), PDF, Images, Text, URLs
 - **AI Analysis**: Summaries, key points, action items, sentiment analysis via GPT-5.2
-- **RLM-Powered Chat**: Direct/RLM toggle for chat and agenda generation (defaults to RLM)
+- **Voice Chat**: Two modes for voice interaction with meeting content
+  - **Push-to-Talk**: Hold mic → Whisper transcription → Chat → TTS response (~$0.02/exchange)
+  - **Real-time**: Continuous voice conversation via OpenAI Realtime API (~$0.30/min)
+- **RLM-Powered Chat**: Direct/RLM toggle for chat and agenda generation
 - **Audio Briefing**: 2-minute executive summaries with customizable TTS voices
 - **Meeting Infographic**: 4 style presets (Executive, Dashboard, Action Board, Timeline) with black/gold theme, or custom prompts
 - **Professional Export**: DOCX reports and portable agent files (.md)
@@ -133,7 +136,7 @@ flowchart TB
 | Category | Technologies |
 |----------|--------------|
 | **Frontend** | Vanilla HTML, CSS, JavaScript (ES Modules), PWA |
-| **AI Models** | Whisper, GPT-5.2, GPT-5.2 Vision, GPT-4o-mini-TTS, GPT-Image-1.5 |
+| **AI Models** | Whisper, GPT-5.2, GPT-5.2 Vision, GPT-4o-mini-TTS, GPT-Image-1.5, GPT-4o-Realtime |
 | **Libraries** | [docx.js](https://docx.js.org/), [PDF.js](https://mozilla.github.io/pdf.js/), [marked.js](https://marked.js.org/), [Pyodide](https://pyodide.org/) |
 | **Deployment** | GitHub Pages |
 
@@ -144,6 +147,8 @@ flowchart TB
 | GPT-5.2 | $1.75/1M tokens | $14.00/1M tokens |
 | GPT-5-mini | $0.25/1M tokens | $2.00/1M tokens |
 | Whisper | $0.006/minute | — |
+| GPT-4o-mini-TTS | — | $0.015/1K chars |
+| Realtime API | $0.06/min (audio) | $0.24/min (audio) |
 
 ---
 
@@ -198,6 +203,7 @@ python -m http.server 3000
 |----------|-------------|
 | [CLAUDE.md](CLAUDE.md) | Development guide and architecture reference |
 | [RLM_STATUS.md](RLM_STATUS.md) | RLM implementation details and API reference |
+| [Voice Chat Guide](docs/voice-chat-implementation-guide.md) | Voice conversation implementation (Push-to-Talk & Real-time) |
 | [Testing/](Testing/) | Validation test data and reports |
 
 ---

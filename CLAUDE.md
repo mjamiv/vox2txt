@@ -10,7 +10,7 @@ The application consists of two main pages:
 - **Agent Builder** (`index.html`) - Analyzes individual meetings and exports them as agents. Includes Direct/RLM toggle for chat and agenda generation.
 - **Agent Orchestrator** (`orchestrator.html`) - Combines multiple agents for cross-meeting insights using the RLM pipeline
 
-Features include multi-meeting orchestration, agent export/import, image OCR with Vision AI, professional document generation, and RLM-powered chat in both applications.
+Features include multi-meeting orchestration, agent export/import, image OCR with Vision AI, professional document generation, RLM-powered chat in both applications, and voice conversation (Push-to-Talk and Real-time modes).
 
 > **For visual architecture diagrams**, see [README.md](README.md).
 > **For detailed RLM implementation status**, see [RLM_STATUS.md](RLM_STATUS.md).
@@ -32,6 +32,7 @@ northstar.LM/
 │   ├── app.js          # Main application logic (ES Module)
 │   ├── orchestrator.js # Orchestrator page logic (uses RLM)
 │   ├── kb-canvas.js    # Knowledge Base 3D canvas (drag-drop, SVG connections)
+│   ├── audio-worklet-processor.js  # PCM16 conversion for Realtime API
 │   └── rlm/            # RLM-Lite module (Recursive Language Model)
 │       ├── index.js        # Main entry point & RLMPipeline class
 │       ├── context-store.js    # Agent data as queryable variables
@@ -122,6 +123,53 @@ The Agent Builder includes 4 infographic style presets with a consistent black/g
 
 Custom prompts override presets when provided. Presets are defined in `INFOGRAPHIC_PRESETS` constant in `app.js`.
 
+### Voice Chat
+
+The Agent Builder includes voice conversation capability with two modes:
+
+| Mode | Description | Cost | Best For |
+|------|-------------|------|----------|
+| **Push-to-Talk** | Hold mic → Whisper → Chat → TTS | ~$0.02/exchange | Controlled interactions |
+| **Real-time** | Continuous WebSocket streaming | ~$0.30/min | Natural conversation |
+
+**Push-to-Talk Flow:**
+```
+[Hold button] → [MediaRecorder] → [Whisper API] → [Chat API] → [TTS API] → [Playback]
+```
+
+**Real-time Flow:**
+```
+[Microphone] ←→ [WebSocket @ 24kHz PCM16] ←→ [OpenAI Realtime API] ←→ [Playback]
+```
+
+**Key Files:**
+- `js/app.js` - Voice recording, WebSocket management, audio playback
+- `js/audio-worklet-processor.js` - PCM16 audio conversion for Realtime API
+
+**GA Realtime API Session Format:**
+```javascript
+{
+    type: 'session.update',
+    session: {
+        type: 'realtime',
+        output_modalities: ['audio'],
+        instructions: '...',
+        audio: {
+            input: {
+                format: { type: 'audio/pcm', rate: 24000 },
+                turn_detection: { type: 'server_vad', ... }
+            },
+            output: {
+                format: { type: 'audio/pcm', rate: 24000 },
+                voice: 'marin'
+            }
+        }
+    }
+}
+```
+
+> **For detailed implementation guide**, see [docs/voice-chat-implementation-guide.md](docs/voice-chat-implementation-guide.md).
+
 ## Key Technical Decisions
 
 ### Client-Side Only
@@ -138,6 +186,7 @@ Custom prompts override presets when provided. Presets are defined in `INFOGRAPH
 | Image/PDF Vision | `gpt-5.2` (vision) |
 | Text-to-Speech | `gpt-4o-mini-tts` |
 | Image Generation | `gpt-image-1.5` |
+| Real-time Voice | `gpt-4o-realtime-preview-2024-12-17` |
 
 ### Libraries (CDN-loaded)
 - **docx.js** (`8.5.0`) - DOCX generation
@@ -184,10 +233,16 @@ const state = {
     results: null,        // transcription, summary, keyPoints, actionItems, sentiment
     metrics: null,
     chatHistory: [],
-    chatMode: 'rlm',      // 'direct' or 'rlm' - controls chat and agenda processing
+    chatMode: 'direct',   // 'direct' or 'rlm' - controls chat and agenda processing
     sourceUrl: null,
     exportMeta: { /* agentId, source, processing, artifacts */ },
-    urlContent: null
+    urlContent: null,
+    // Voice chat
+    isRecording: false,
+    voiceResponseEnabled: true,
+    voiceMode: 'push-to-talk',  // 'push-to-talk' or 'realtime'
+    realtimeActive: false,
+    realtimeSessionCost: 0
 };
 ```
 
@@ -216,6 +271,17 @@ const state = {
 - `updateChatModeUI()` - Update Direct/RLM toggle visual state
 - `generateAgenda()` - Create simplified half-page agenda (uses RLM when enabled)
 - `generateInfographic()` - Generate visual infographic using preset or custom style
+- **Voice Chat (Push-to-Talk)**
+  - `startVoiceRecording()` - Begin audio capture with volume visualization
+  - `stopVoiceRecording()` - Stop recording and process audio
+  - `transcribeVoiceInput()` - Send audio to Whisper API
+  - `speakResponse()` - Convert text to speech via TTS API
+- **Voice Chat (Real-time)**
+  - `startRealtimeConversation()` - Initialize WebSocket connection to Realtime API
+  - `stopRealtimeConversation()` - Cleanup WebSocket and audio resources
+  - `startRealtimeAudioStream()` - Begin PCM16 audio streaming via AudioWorklet
+  - `handleRealtimeMessage()` - Process incoming WebSocket messages
+  - `playRealtimeAudioChunk()` - Queue and play PCM16 audio responses
 
 ### Orchestrator
 - `chatWithRLM()` - Process queries through RLM pipeline
