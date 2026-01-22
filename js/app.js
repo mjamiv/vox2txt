@@ -4,6 +4,14 @@
  */
 
 // ============================================
+// RLM Pipeline Import
+// ============================================
+import { getRLMPipeline } from './rlm/index.js';
+
+// RLM Pipeline Instance (initialized in init())
+let rlmPipeline = null;
+
+// ============================================
 // PDF.js Configuration
 // ============================================
 const pdfjsLib = window['pdfjs-dist/build/pdf'] || null;
@@ -38,6 +46,7 @@ const state = {
     results: null,
     metrics: null,
     chatHistory: [], // Stores chat conversation history
+    chatMode: 'rlm', // 'direct' or 'rlm' - default to RLM
     sourceUrl: null,
     exportMeta: {
         agentId: null,
@@ -183,21 +192,30 @@ Format your response as follows:
 
 Be thorough and capture every piece of text visible in the image.`,
     audioBriefingSystem: 'You create professional executive audio briefings.',
-    agendaSystem: `You are an expert meeting facilitator skilled at creating effective meeting agendas.
-Based on the analysis of a previous meeting, create a well-structured agenda for the follow-up meeting.
+    agendaSystem: `You are a meeting facilitator creating concise agendas.
 
-The agenda should:
-- Address unresolved action items from the previous meeting
-- Include time allocations for each item
-- Prioritize important follow-up discussions
-- Include space for new business
-- Be practical and actionable
+CRITICAL RULES:
+- Output must fit on HALF A PAGE (200-300 words max)
+- Include only 4-6 big-picture sections
+- Use time RANGES (e.g., "3-5 min"), not exact minutes
+- Maximum 2 bullet points per section
+- No detailed sub-items, preparation notes, or attendee lists
+- Focus on WHAT, not HOW
 
-Format the agenda in a clear, professional structure with:
-1. Meeting title/topic
-2. Suggested duration
-3. Numbered agenda items with time allocations
-4. Any preparation notes for attendees`
+FORMAT:
+[Meeting Title] — Agenda
+Target duration: [X-Y] minutes
+
+[Section 1] ([time range])
+- [1-2 bullets max]
+
+[Section 2] ([time range])
+- [1-2 bullets max]
+
+... (4-6 sections total)`,
+    agendaQuery: `Create a half-page follow-up meeting agenda.
+Focus only on: action item review, key decisions needed, critical updates.
+Keep it scannable - big picture items only, no details.`
 };
 
 // Metrics tracking for current run
@@ -325,6 +343,9 @@ async function init() {
         chatMessages: document.getElementById('chat-messages'),
         chatInput: document.getElementById('chat-input'),
         chatSendBtn: document.getElementById('chat-send-btn'),
+        chatModeToggle: document.getElementById('chat-mode-toggle'),
+        modeDirectLabel: document.getElementById('mode-direct-label'),
+        modeRlmLabel: document.getElementById('mode-rlm-label'),
         
         // URL Input
         urlTab: document.getElementById('url-tab'),
@@ -361,9 +382,13 @@ async function init() {
     loadSavedApiKey();
     setupEventListeners();
     updateAnalyzeButton();
-    
+
     // Pre-load PDF.js in the background
     loadPdfJs();
+
+    // Initialize RLM pipeline
+    rlmPipeline = getRLMPipeline();
+    console.log('[RLM] Pipeline initialized for Agent Builder');
 }
 
 function loadSavedApiKey() {
@@ -473,7 +498,16 @@ function setupEventListeners() {
             sendChatMessage();
         }
     });
-    
+
+    // Chat Mode Toggle (Direct vs RLM)
+    if (elements.chatModeToggle) {
+        elements.chatModeToggle.addEventListener('change', (e) => {
+            state.chatMode = e.target.checked ? 'rlm' : 'direct';
+            updateChatModeUI();
+            console.log('[Chat] Mode switched to:', state.chatMode);
+        });
+    }
+
     // URL Input
     elements.fetchUrlBtn.addEventListener('click', fetchUrlContent);
     elements.urlInput.addEventListener('keypress', (e) => {
@@ -2803,34 +2837,42 @@ async function generateAgenda() {
     btn.disabled = true;
 
     try {
-        const agendaPrompt = `Based on the following meeting analysis, create a detailed agenda for the next follow-up meeting.
+        let agendaText;
 
-Meeting Summary:
-${state.results.summary}
+        // Build simplified agenda prompt
+        const agendaPrompt = `Create a concise half-page agenda based on this meeting:
 
-Key Points Discussed:
-${state.results.keyPoints}
+Action Items: ${state.results.actionItems}
 
-Action Items:
-${state.results.actionItems}
+Key Decisions/Topics: ${state.results.keyPoints}
 
-Overall Sentiment: ${state.results.sentiment}
+Keep it brief - 4-6 sections max, 1-2 bullets each.`;
 
-Create an agenda that:
-1. Opens with a review of action items from this meeting
-2. Addresses any unresolved topics or decisions
-3. Includes time for progress updates on assigned tasks
-4. Allows space for new business
-5. Suggests appropriate meeting duration based on content`;
+        if (state.chatMode === 'rlm' && rlmPipeline) {
+            // Use RLM pipeline
+            syncMeetingToRLM();
 
-        const agenda = await callChatAPI(
-            PROMPTS.agendaSystem,
-            agendaPrompt,
-            'Agenda Generation'
-        );
+            // Create LLM call wrapper
+            const llmCallWrapper = async (systemPrompt, userContent) => {
+                return await callChatAPI(systemPrompt, userContent, 'RLM Agenda');
+            };
+
+            const result = await rlmPipeline.process(PROMPTS.agendaQuery, llmCallWrapper, {
+                apiKey: state.apiKey
+            });
+            agendaText = result.response;
+            console.log('[RLM] Agenda generated via RLM pipeline');
+        } else {
+            // Direct GPT call with simplified prompt
+            agendaText = await callChatAPI(
+                PROMPTS.agendaSystem,
+                agendaPrompt,
+                'Agenda Generation'
+            );
+        }
 
         // Display the agenda in the result card
-        elements.resultAgenda.innerHTML = marked.parse(agenda);
+        elements.resultAgenda.innerHTML = marked.parse(agendaText);
 
         // Open the agenda section
         elements.agendaSection.open = true;
@@ -3135,49 +3177,165 @@ function clearUrlContent() {
 // ============================================
 // Chat with Data
 // ============================================
+
+/**
+ * Update the chat mode toggle UI to reflect current state
+ */
+function updateChatModeUI() {
+    if (!elements.modeDirectLabel || !elements.modeRlmLabel) return;
+
+    if (state.chatMode === 'rlm') {
+        elements.modeDirectLabel.classList.remove('mode-active');
+        elements.modeRlmLabel.classList.add('mode-active');
+    } else {
+        elements.modeDirectLabel.classList.add('mode-active');
+        elements.modeRlmLabel.classList.remove('mode-active');
+    }
+}
+
+/**
+ * Sync meeting data to RLM context store
+ */
+function syncMeetingToRLM() {
+    if (!rlmPipeline || !state.results) return;
+
+    // Create agent-like context from current meeting analysis
+    const meetingAgent = {
+        id: 'current-meeting',
+        displayName: 'Current Meeting',
+        title: 'Current Meeting Analysis',
+        enabled: true,
+        summary: state.results.summary || '',
+        keyPoints: state.results.keyPoints || '',
+        actionItems: state.results.actionItems || '',
+        sentiment: state.results.sentiment || '',
+        transcript: state.results.transcription || '',
+        // Include extended context for better search
+        extendedContext: [
+            state.results.summary,
+            state.results.keyPoints,
+            state.results.actionItems
+        ].filter(Boolean).join('\n\n')
+    };
+
+    // Load into RLM context store
+    rlmPipeline.contextStore.loadAgents([meetingAgent]);
+    console.log('[RLM] Meeting data synced to context store');
+}
+
+/**
+ * Process chat using RLM pipeline
+ * @param {string} query - User's question
+ * @param {string} thinkingId - ID for thinking indicator updates
+ * @returns {Promise<string>} - AI response
+ */
+async function chatWithRLM(query, thinkingId) {
+    // Sync meeting data to RLM context store
+    syncMeetingToRLM();
+
+    // Create LLM call wrapper for RLM pipeline
+    const llmCallWrapper = async (systemPrompt, userContent, context) => {
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userContent }
+        ];
+
+        // Add recent chat history for context continuity
+        const recentHistory = state.chatHistory.slice(-4).map(h => ({
+            role: h.role,
+            content: h.content
+        }));
+        if (recentHistory.length > 0) {
+            messages.splice(1, 0, ...recentHistory);
+        }
+
+        // Call GPT
+        const response = await callChatAPI(
+            systemPrompt,
+            userContent,
+            'RLM Chat',
+            { includeHistory: false } // History already included
+        );
+
+        return response;
+    };
+
+    // Set up progress callback for thinking indicator
+    rlmPipeline.setProgressCallback((step, type) => {
+        if (thinkingId) {
+            updateThinkingStatus(thinkingId, step);
+        }
+    });
+
+    // Process through RLM pipeline
+    const result = await rlmPipeline.process(query, llmCallWrapper, {
+        apiKey: state.apiKey
+    });
+
+    // Clear progress callback
+    rlmPipeline.setProgressCallback(null);
+
+    // Log RLM metadata for debugging
+    if (result.metadata) {
+        console.log('[RLM] Query processed:', {
+            strategy: result.metadata.strategy,
+            subQueries: result.metadata.totalSubQueries,
+            time: result.metadata.pipelineTime + 'ms'
+        });
+    }
+
+    return result.response;
+}
+
 async function sendChatMessage() {
     const message = elements.chatInput.value.trim();
     if (!message || !state.results) return;
-    
+
     // Disable input while processing
     elements.chatInput.disabled = true;
     elements.chatSendBtn.disabled = true;
     elements.chatInput.value = '';
-    
+
     // Add user message to UI
     appendChatMessage('user', message);
-    
+
     // Add to chat history
     state.chatHistory.push({
         role: 'user',
         content: message,
         timestamp: new Date().toISOString()
     });
-    
+
     // Show thinking indicator with train of thought
     const thinkingId = showThinkingIndicator();
-    
+
     try {
-        // Step 1: Understanding the question
-        updateThinkingStatus(thinkingId, 'Understanding your question...');
-        await sleep(300); // Brief pause for UX
-        
-        // Step 2: Building context
-        updateThinkingStatus(thinkingId, 'Searching meeting data...');
-        const context = buildChatContext();
-        await sleep(200);
-        
-        // Step 3: Calling AI
-        updateThinkingStatus(thinkingId, 'Analyzing with AI...');
-        const response = await chatWithData(context, state.chatHistory);
-        
-        // Step 4: Processing response
+        let response;
+
+        if (state.chatMode === 'rlm') {
+            // RLM Pipeline Processing
+            updateThinkingStatus(thinkingId, 'Starting RLM pipeline...');
+            response = await chatWithRLM(message, thinkingId);
+        } else {
+            // Direct GPT Processing (legacy)
+            updateThinkingStatus(thinkingId, 'Understanding your question...');
+            await sleep(300);
+
+            updateThinkingStatus(thinkingId, 'Searching meeting data...');
+            const context = buildChatContext();
+            await sleep(200);
+
+            updateThinkingStatus(thinkingId, 'Analyzing with AI...');
+            response = await chatWithData(context, state.chatHistory);
+        }
+
+        // Processing response
         updateThinkingStatus(thinkingId, 'Preparing response...');
         await sleep(150);
-        
+
         // Remove thinking indicator
         removeTypingIndicator(thinkingId);
-        
+
         // Add assistant response to UI and history
         appendChatMessage('assistant', response);
         state.chatHistory.push({
@@ -3186,7 +3344,7 @@ async function sendChatMessage() {
             model: GPT_52_MODEL,
             timestamp: new Date().toISOString()
         });
-        
+
     } catch (error) {
         console.error('Chat error:', error);
         removeTypingIndicator(thinkingId);
