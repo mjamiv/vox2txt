@@ -464,6 +464,9 @@ async function init() {
         // Voice Chat
         voiceInputBtn: document.getElementById('voice-input-btn'),
         voiceResponseToggle: document.getElementById('voice-response-toggle'),
+        voiceRecordingStatus: document.getElementById('voice-recording-status'),
+        voiceStatusText: document.getElementById('voice-status-text'),
+        voiceVolumeBar: document.getElementById('voice-volume-bar'),
 
         // URL Input
         urlTab: document.getElementById('url-tab'),
@@ -3733,11 +3736,38 @@ function restoreChatHistoryUI() {
 
 let mediaRecorder = null;
 let audioChunks = [];
+let audioContext = null;
+let analyser = null;
+let volumeAnimationId = null;
+let voiceStream = null;
+let stopRecordingTimeout = null;
+let isRecordingReady = false;
+
+// Configuration
+const VOICE_START_DELAY = 500;  // ms to wait before "Start speaking"
+const VOICE_STOP_DELAY = 600;   // ms to wait after release before stopping
 
 async function startVoiceRecording() {
+    // Prevent multiple recordings
+    if (state.isRecording) return;
+
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        // Show status immediately
+        showVoiceStatus('Preparing...', false);
+        updateVoiceButtonUI(true);
+
+        // Get microphone access
+        voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // Set up audio context for volume analysis
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        const source = audioContext.createMediaStreamSource(voiceStream);
+        source.connect(analyser);
+
+        // Set up media recorder
+        mediaRecorder = new MediaRecorder(voiceStream, { mimeType: 'audio/webm' });
         audioChunks = [];
 
         mediaRecorder.ondataavailable = (event) => {
@@ -3747,28 +3777,168 @@ async function startVoiceRecording() {
         };
 
         mediaRecorder.onstop = async () => {
+            // Stop volume visualization
+            if (volumeAnimationId) {
+                cancelAnimationFrame(volumeAnimationId);
+                volumeAnimationId = null;
+            }
+
+            // Clean up audio context
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            // Stop all tracks
+            if (voiceStream) {
+                voiceStream.getTracks().forEach(track => track.stop());
+                voiceStream = null;
+            }
+
+            // Hide status
+            hideVoiceStatus();
+
+            // Process the recording
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            stream.getTracks().forEach(track => track.stop());
             await processVoiceInput(audioBlob);
         };
 
-        mediaRecorder.start();
+        // Start recording after a brief delay
         state.isRecording = true;
-        updateVoiceButtonUI(true);
-        console.log('[Voice] Recording started');
+        isRecordingReady = false;
+
+        // Brief preparation period
+        setTimeout(() => {
+            if (state.isRecording && mediaRecorder && mediaRecorder.state === 'inactive') {
+                mediaRecorder.start();
+                isRecordingReady = true;
+                showVoiceStatus('Start speaking...', true);
+                startVolumeVisualization();
+                console.log('[Voice] Recording started');
+
+                // After a moment, change to "Listening..."
+                setTimeout(() => {
+                    if (state.isRecording) {
+                        updateVoiceStatusText('Listening...');
+                    }
+                }, 1000);
+            }
+        }, VOICE_START_DELAY);
 
     } catch (error) {
         console.error('[Voice] Microphone access denied:', error);
         showError('Microphone access is required for voice input.');
+        cleanupVoiceRecording();
     }
 }
 
 function stopVoiceRecording() {
-    if (mediaRecorder && state.isRecording) {
-        mediaRecorder.stop();
+    // Clear any pending stop timeout
+    if (stopRecordingTimeout) {
+        clearTimeout(stopRecordingTimeout);
+        stopRecordingTimeout = null;
+    }
+
+    if (!state.isRecording) return;
+
+    // Update status to show we're finishing
+    updateVoiceStatusText('Finishing...');
+
+    // Add delay before actually stopping to capture trailing audio
+    stopRecordingTimeout = setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            console.log('[Voice] Recording stopped');
+        }
         state.isRecording = false;
+        isRecordingReady = false;
         updateVoiceButtonUI(false);
-        console.log('[Voice] Recording stopped');
+    }, VOICE_STOP_DELAY);
+}
+
+function cleanupVoiceRecording() {
+    // Clear timeouts
+    if (stopRecordingTimeout) {
+        clearTimeout(stopRecordingTimeout);
+        stopRecordingTimeout = null;
+    }
+
+    // Stop volume visualization
+    if (volumeAnimationId) {
+        cancelAnimationFrame(volumeAnimationId);
+        volumeAnimationId = null;
+    }
+
+    // Clean up audio context
+    if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+    }
+
+    // Stop all tracks
+    if (voiceStream) {
+        voiceStream.getTracks().forEach(track => track.stop());
+        voiceStream = null;
+    }
+
+    // Reset state
+    state.isRecording = false;
+    isRecordingReady = false;
+    mediaRecorder = null;
+    audioChunks = [];
+
+    // Update UI
+    updateVoiceButtonUI(false);
+    hideVoiceStatus();
+}
+
+function startVolumeVisualization() {
+    if (!analyser) return;
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    function updateVolume() {
+        if (!state.isRecording || !analyser) return;
+
+        analyser.getByteFrequencyData(dataArray);
+
+        // Calculate average volume
+        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        const volumePercent = Math.min(100, (average / 128) * 100);
+
+        // Update volume bar
+        if (elements.voiceVolumeBar) {
+            elements.voiceVolumeBar.style.width = volumePercent + '%';
+        }
+
+        volumeAnimationId = requestAnimationFrame(updateVolume);
+    }
+
+    updateVolume();
+}
+
+function showVoiceStatus(text, isReady) {
+    if (elements.voiceRecordingStatus) {
+        elements.voiceRecordingStatus.classList.remove('hidden');
+    }
+    if (elements.voiceStatusText) {
+        elements.voiceStatusText.textContent = text;
+        elements.voiceStatusText.classList.toggle('ready', isReady);
+    }
+    if (elements.voiceVolumeBar) {
+        elements.voiceVolumeBar.style.width = '0%';
+    }
+}
+
+function updateVoiceStatusText(text) {
+    if (elements.voiceStatusText) {
+        elements.voiceStatusText.textContent = text;
+    }
+}
+
+function hideVoiceStatus() {
+    if (elements.voiceRecordingStatus) {
+        elements.voiceRecordingStatus.classList.add('hidden');
     }
 }
 
