@@ -218,6 +218,117 @@ Focus only on: action item review, key decisions needed, critical updates.
 Keep it scannable - big picture items only, no details.`
 };
 
+// Infographic Style Presets
+const INFOGRAPHIC_PRESETS = {
+    executive: {
+        name: 'Executive Summary',
+        style: `Premium executive infographic with a BOLD, STRIKING design.
+
+MANDATORY COLOR SCHEME:
+- Background: Deep black (#0a0a0a) with subtle gold gradient accents
+- Primary accent: Rich gold (#d4a853) and warm yellow (#fbbf24) for highlights
+- Text: Clean white (#ffffff) for readability
+- Secondary: Charcoal gray (#1a1a1a) for depth and cards
+
+TYPOGRAPHY (CRITICAL):
+- Headers: Bold condensed sans-serif (like Impact, Bebas Neue, or Oswald style) - strong, commanding presence
+- Body text: Clean modern sans-serif (like Acumin Pro or Source Sans) - professional and readable
+- Numbers/stats: Extra bold, oversized for visual impact
+
+DESIGN STYLE:
+- Sleek, modern corporate aesthetic with dramatic visual hierarchy
+- Large bold header at top with gold underline accent
+- 3-4 key insight cards with black backgrounds and gold borders
+- Prominent statistics displayed as large numbers with gold highlights
+- Minimalist icons in gold/white
+- Subtle geometric patterns or lines for sophistication
+- Strong contrast between elements
+- Professional but visually exciting - NOT boring or generic`
+    },
+    dashboard: {
+        name: 'Data Dashboard',
+        style: `Dynamic data visualization dashboard with energetic design.
+
+MANDATORY COLOR SCHEME:
+- Background: Rich black (#0d0d0d) with depth
+- Primary: Vibrant gold (#d4a853) and electric yellow (#facc15)
+- Accent: Warm amber (#f59e0b) for charts and graphs
+- Text: Crisp white (#ffffff)
+- Cards: Dark charcoal (#1f1f1f) with gold glow effects
+
+TYPOGRAPHY (CRITICAL):
+- Headers: Heavy condensed typeface (Impact/Bebas Neue style) - bold and powerful
+- Data labels: Clean sans-serif (Acumin Pro style)
+- Numbers: Extra bold, large scale
+
+DESIGN STYLE:
+- Modern analytics dashboard aesthetic
+- Circular progress rings and gauges in gold/yellow
+- Bar charts and metrics with gradient fills
+- KPI cards with glowing gold borders
+- Percentage displays and trend indicators
+- Grid layout with clear visual sections
+- Data-driven but visually stunning
+- Avoid flat/boring - make it dynamic and engaging`
+    },
+    action: {
+        name: 'Action Board',
+        style: `Bold action-focused task board with high-impact design.
+
+MANDATORY COLOR SCHEME:
+- Background: Jet black (#0a0a0a)
+- Primary: Gold (#d4a853) for priorities and highlights
+- Secondary: Bright yellow (#fde047) for urgent items
+- Checkmarks/success: Gold with white
+- Text: Pure white (#ffffff)
+- Cards: Dark gray (#1a1a1a) with gold accents
+
+TYPOGRAPHY (CRITICAL):
+- Headers: Extra bold condensed (Impact/Bebas style) - attention-grabbing
+- Task text: Clean readable sans-serif (Acumin Pro style)
+- Priority labels: Bold uppercase
+
+DESIGN STYLE:
+- Kanban/task board inspired layout
+- Large checkbox icons with gold fills when complete
+- Priority badges with gold/yellow gradients
+- Owner avatars or initials in gold circles
+- Due dates with visual urgency indicators
+- Clear task cards with subtle gold borders
+- Progress bars in gold gradient
+- Energetic, motivating design - NOT a plain checklist`
+    },
+    timeline: {
+        name: 'Timeline Flow',
+        style: `Striking timeline infographic with cinematic design.
+
+MANDATORY COLOR SCHEME:
+- Background: Deep black (#0a0a0a) with subtle texture
+- Timeline line: Bold gold (#d4a853) gradient
+- Milestone markers: Glowing gold/yellow (#fbbf24)
+- Text: Clean white (#ffffff)
+- Event cards: Charcoal (#1a1a1a) with gold highlights
+
+TYPOGRAPHY (CRITICAL):
+- Headers: Bold condensed display font (Impact/Bebas style) - dramatic presence
+- Event titles: Strong sans-serif
+- Dates/labels: Clean modern type (Acumin Pro style)
+
+DESIGN STYLE:
+- Horizontal or diagonal timeline flow
+- Large gold milestone markers with glow effects
+- Event cards branching from the timeline
+- Connecting lines and arrows in gold
+- Key moments highlighted with yellow bursts
+- Date stamps with elegant typography
+- Flow and progression clearly visible
+- Cinematic, premium feel - NOT a basic timeline`
+    }
+};
+
+// Currently selected infographic preset
+let selectedInfographicPreset = 'executive';
+
 // Metrics tracking for current run
 let currentMetrics = {
     whisperMinutes: 0,
@@ -338,6 +449,7 @@ async function init() {
         infographicContainer: document.getElementById('infographic-container'),
         infographicImage: document.getElementById('infographic-image'),
         downloadInfographicBtn: document.getElementById('download-infographic-btn'),
+        infographicPresetBtns: document.querySelectorAll('.preset-btn'),
         
         // Chat with Data
         chatMessages: document.getElementById('chat-messages'),
@@ -489,7 +601,18 @@ function setupEventListeners() {
     // Infographic
     elements.generateInfographicBtn.addEventListener('click', generateInfographic);
     elements.downloadInfographicBtn.addEventListener('click', downloadInfographic);
-    
+
+    // Infographic Preset Selection
+    elements.infographicPresetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Update selection state
+            elements.infographicPresetBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedInfographicPreset = btn.dataset.preset;
+            console.log('[Infographic] Preset selected:', selectedInfographicPreset);
+        });
+    });
+
     // Chat with Data
     elements.chatSendBtn.addEventListener('click', sendChatMessage);
     elements.chatInput.addEventListener('keypress', (e) => {
@@ -2656,7 +2779,13 @@ function resetForNewAnalysis() {
     elements.infographicContainer.classList.add('hidden');
     elements.infographicImage.src = '';
     elements.infographicPrompt.value = '';
-    
+
+    // Reset infographic preset to default
+    selectedInfographicPreset = 'executive';
+    elements.infographicPresetBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === 'executive');
+    });
+
     updateAnalyzeButton();
     
     // Reopen the setup section
@@ -2896,7 +3025,15 @@ Keep it brief - 4-6 sections max, 1-2 bullets each.`;
 async function generateInfographic() {
     if (!state.results) return;
 
-    const userStyle = elements.infographicPrompt.value.trim() || 'professional corporate infographic with icons';
+    const customPrompt = elements.infographicPrompt.value.trim();
+    const preset = INFOGRAPHIC_PRESETS[selectedInfographicPreset];
+
+    // Determine style: custom prompt overrides preset
+    const isCustom = customPrompt.length > 0;
+    const styleDescription = isCustom ? customPrompt : preset.style;
+    const styleName = isCustom ? 'Custom' : preset.name;
+
+    console.log(`[Infographic] Generating with ${isCustom ? 'custom prompt' : `preset: ${selectedInfographicPreset}`}`);
 
     const btn = elements.generateInfographicBtn;
     const btnText = btn.querySelector('.btn-text');
@@ -2908,31 +3045,35 @@ async function generateInfographic() {
     btn.disabled = true;
 
     try {
-        // Create a detailed prompt for DALL-E with safe margin instructions
-        const dallePrompt = `Create a professional meeting infographic with the following style: ${userStyle}.
+        // Build the DALL-E prompt
+        const dallePrompt = `Create a premium meeting infographic.
 
-The infographic should visualize these meeting insights:
+=== STYLE REQUIREMENTS ===
+${styleDescription}
 
-SUMMARY: ${state.results.summary.substring(0, 200)}...
+=== MEETING CONTENT TO VISUALIZE ===
 
-KEY POINTS (show as visual elements):
+TITLE: "Meeting Insights"
+
+SUMMARY (main message):
+${state.results.summary.substring(0, 250)}
+
+KEY POINTS (display as 3-4 visual elements):
 ${state.results.keyPoints.split('\n').slice(0, 4).join('\n')}
 
-ACTION ITEMS (show as checklist or tasks):
+ACTION ITEMS (show as tasks/checklist):
 ${state.results.actionItems.split('\n').slice(0, 3).join('\n')}
 
-SENTIMENT: ${state.results.sentiment}
+OVERALL TONE: ${state.results.sentiment}
 
-CRITICAL DESIGN REQUIREMENTS:
-- Keep ALL content well within the image boundaries with generous padding (at least 50px from all edges)
-- Do NOT place any text, icons, or visual elements near the edges that might get cut off
-- Center the composition with clear margins on all sides
-- Clean, professional layout with good whitespace
-- Use icons and visual hierarchy
-- Include a centered title "Meeting Insights" at the top
-- Use a cohesive color scheme
-- Make text readable and fully visible
-- Horizontal/landscape layout`;
+=== MANDATORY LAYOUT RULES ===
+- Landscape/horizontal orientation (1536x1024)
+- Keep ALL content within safe margins (60px padding from edges)
+- NO text or elements near edges that could be cut off
+- Strong visual hierarchy with clear focal points
+- Professional typography - readable at all sizes
+- Cohesive design that feels premium and polished
+- Make it visually EXCITING and ENGAGING, not boring or generic`;
 
         const imageUrl = await generateImage(dallePrompt);
 
@@ -2943,7 +3084,9 @@ CRITICAL DESIGN REQUIREMENTS:
         // Store URL for download
         generatedImageUrl = imageUrl;
         state.exportMeta.artifacts.infographic = {
-            userStyle,
+            preset: isCustom ? null : selectedInfographicPreset,
+            styleName,
+            customPrompt: isCustom ? customPrompt : null,
             prompt: dallePrompt,
             size: '1536x1024',
             generatedAt: new Date().toISOString()

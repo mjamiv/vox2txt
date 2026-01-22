@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=51">
+    <link rel="stylesheet" href="css/styles.css?v=52">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a853">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230a0e17' width='32' height='32' rx='6'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23d4a853'%3E⭐%3C/text%3E%3C/svg%3E" type="image/svg+xml">
@@ -489,10 +489,34 @@
             <div class="feature-section" id="infographic-section">
                 <h3><span>&#127912;</span> Meeting Infographic</h3>
                 <p class="feature-desc">Create a visual infographic from your meeting insights</p>
-                
+
+                <!-- Infographic Style Presets -->
+                <div class="infographic-presets">
+                    <span class="preset-label">Choose a style:</span>
+                    <div class="preset-buttons">
+                        <button class="preset-btn active" data-preset="executive" title="Clean executive summary style">
+                            <span class="preset-icon">📊</span>
+                            <span class="preset-name">Executive</span>
+                        </button>
+                        <button class="preset-btn" data-preset="dashboard" title="Data-driven dashboard style">
+                            <span class="preset-icon">📈</span>
+                            <span class="preset-name">Dashboard</span>
+                        </button>
+                        <button class="preset-btn" data-preset="action" title="Action items and tasks focused">
+                            <span class="preset-icon">✅</span>
+                            <span class="preset-name">Action Board</span>
+                        </button>
+                        <button class="preset-btn" data-preset="timeline" title="Timeline and process flow">
+                            <span class="preset-icon">⏱️</span>
+                            <span class="preset-name">Timeline</span>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="feature-controls">
                     <div class="prompt-input-group">
-                        <input type="text" id="infographic-prompt" placeholder="Describe your preferred style (e.g., 'colorful corporate with icons')" />
+                        <input type="text" id="infographic-prompt" placeholder="Custom style override (leave empty to use preset above)" />
+                        <span class="custom-hint">Adding a custom prompt will override the preset style</span>
                     </div>
                     <button id="generate-infographic-btn" class="btn-secondary" title="Generate a visual infographic from meeting insights using AI">
                         <span class="btn-text">&#127912; Generate Infographic</span>
@@ -667,7 +691,7 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/app.js?v=51" type="module"></script>
+    <script src="js/app.js?v=52" type="module"></script>
 
     <!-- Service Worker Registration with Auto-Update -->
     <script>

@@ -1462,6 +1462,74 @@ details.result-card:not([open]) .card-content {
     object-fit: contain;
 }
 
+/* Infographic Style Presets */
+.infographic-presets {
+    margin-bottom: var(--space-lg);
+}
+
+.infographic-presets .preset-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-sm);
+}
+
+.preset-buttons {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.preset-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--bg-secondary);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    min-width: 90px;
+}
+
+.preset-btn:hover {
+    border-color: rgba(212, 168, 83, 0.4);
+    background: rgba(212, 168, 83, 0.1);
+    transform: translateY(-2px);
+}
+
+.preset-btn.active {
+    border-color: var(--accent-primary);
+    background: rgba(212, 168, 83, 0.15);
+    box-shadow: 0 0 12px rgba(212, 168, 83, 0.3);
+}
+
+.preset-btn .preset-icon {
+    font-size: 1.5rem;
+}
+
+.preset-btn .preset-name {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.preset-btn.active .preset-name {
+    color: var(--accent-primary);
+}
+
+.custom-hint {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: var(--space-xs);
+    font-style: italic;
+}
+
 /* Responsive adjustments */
 @media (max-width: 600px) {
     .feature-controls {

@@ -10,7 +10,8 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nImplement Societies of Thought \\(SoT\\) for diverse cognitive perspectives\n\nBased on \"Reasoning Models Generate Societies of Thought\" \\(arXiv:2601.10825\\),\nthis adds multi-perspective analysis to the RLM pipeline:\n\nPhase 0: Agent Builder extracts SoT metadata \\(meetingType, keyEntities,\n  topicTags, contentSignals, suggestedPerspective\\) during analysis\n\nPhase 1: New perspective-roles.js module defines 7 cognitive roles\n  \\(analyst, advocate, critic, synthesizer, historian, pragmatist, stakeholder\\)\n\nPhase 1.5: Query decomposer assigns perspectives to agents/groups and\n  generates role-aware sub-queries\n\nPhase 2: New conflict-detector.js identifies tensions between perspectives;\n  aggregator surfaces conflicts in synthesis prompts\n\nPhase 3: context-store.js adds queryAgentsWithDiversity\\(\\) for diversity-\n  weighted agent selection across sourceType, meetingType, temporalQuarter\n\nPhase 4: sub-executor.js adds MAP->DEBATE->REDUCE strategy that pits\n  opposing perspectives \\(advocate vs critic, etc.\\) before synthesis\n\nPhase 5: CSS styles for perspective badges and conflict summary UI;\n  orchestrator renders conflict analysis in chat responses\n\nPhase 6: Settings toggles for enableSocietiesOfThought, enableConflictDetection,\n  enableDebatePhase, enableDiversitySelection\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push)",
       "Bash(git commit:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(node --check:*)"
     ]
   }
 }
