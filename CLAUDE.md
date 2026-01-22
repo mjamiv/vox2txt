@@ -104,6 +104,24 @@ const RLM_CONFIG = {
 };
 ```
 
+### Infographic Style Presets
+
+The Agent Builder includes 4 infographic style presets with a consistent black/gold/white theme:
+
+| Preset | Description |
+|--------|-------------|
+| **Executive** | Premium corporate style with gold accents and strong visual hierarchy |
+| **Dashboard** | Data visualization focused with charts, gauges, and KPI cards |
+| **Action Board** | Task/checklist focused with priority badges and progress indicators |
+| **Timeline** | Chronological flow with milestone markers and event cards |
+
+**Design specifications:**
+- Colors: Black (#0a0a0a) background, gold (#d4a853) and yellow (#fbbf24) accents, white text
+- Headers: Bold condensed fonts (Impact/Bebas Neue style)
+- Body: Clean sans-serif (Acumin Pro style)
+
+Custom prompts override presets when provided. Presets are defined in `INFOGRAPHIC_PRESETS` constant in `app.js`.
+
 ## Key Technical Decisions
 
 ### Client-Side Only
@@ -197,6 +215,7 @@ const state = {
 - `syncMeetingToRLM()` - Load meeting data into RLM context store
 - `updateChatModeUI()` - Update Direct/RLM toggle visual state
 - `generateAgenda()` - Create simplified half-page agenda (uses RLM when enabled)
+- `generateInfographic()` - Generate visual infographic using preset or custom style
 
 ### Orchestrator
 - `chatWithRLM()` - Process queries through RLM pipeline

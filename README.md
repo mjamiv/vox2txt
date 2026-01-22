@@ -24,7 +24,7 @@ northstar.LM is a client-side web application that uses OpenAI's AI models to an
 - **AI Analysis**: Summaries, key points, action items, sentiment analysis via GPT-5.2
 - **RLM-Powered Chat**: Direct/RLM toggle for chat and agenda generation (defaults to RLM)
 - **Audio Briefing**: 2-minute executive summaries with customizable TTS voices
-- **Meeting Infographic**: AI-generated visual summaries via GPT-Image-1.5
+- **Meeting Infographic**: 4 style presets (Executive, Dashboard, Action Board, Timeline) with black/gold theme, or custom prompts
 - **Professional Export**: DOCX reports and portable agent files (.md)
 
 ### Agent Orchestrator
