@@ -4258,7 +4258,8 @@ async function startRealtimeConversation() {
                         },
                         output: {
                             format: {
-                                type: 'audio/pcm'
+                                type: 'audio/pcm',
+                                rate: 24000
                             },
                             voice: 'marin'
                         }
