@@ -12,12 +12,19 @@
 
 northstar.LM consists of two main applications:
 
-- **Agent Builder** (`index.html`) - Analyzes recordings, videos, documents, images, and text to create intelligent meeting agents with AI-powered insights
+- **Agent Builder** (`index.html`) - Analyzes recordings, videos, documents, images, and text to create intelligent meeting agents with AI-powered insights. Now includes optional RLM pipeline for enhanced chat and agenda generation.
 - **Agent Orchestrator** (`orchestrator.html`) - Combines multiple agents for cross-meeting analysis using the RLM (Recursive Language Model) pipeline
 
 ## Recent Updates
 
 ### January 2026
+- **Agent Builder RLM Integration:**
+  - Added Direct/RLM chat mode toggle to Agent Builder chat interface
+  - RLM pipeline now available in Agent Builder for single-meeting analysis
+  - Chat mode defaults to RLM for enhanced context handling
+  - Simplified agenda generation with half-page, big-picture format
+  - Meeting data syncs to RLM context store for intelligent query processing
+
 - **Bug Fixes:**
   - Fixed orchestrator file upload button double-trigger issue (dialog opening and immediately closing)
   - Fixed JavaScript syntax error with nullish coalescing operator (`??`) mixed with logical OR (`||`)
@@ -823,6 +830,8 @@ At-a-glance metrics displayed at the top of every analysis:
 
 ### Chat with Your Data
 - Interactive AI chat powered by GPT-5.2-Thinking
+- **Direct/RLM Mode Toggle** - Switch between direct GPT calls and RLM pipeline processing
+- RLM mode (default) provides enhanced context handling via signal-weighted memory
 - Full access to transcript and analysis results
 - Ask follow-up questions about decisions, action items, participants
 - Maintains conversation history for context-aware responses

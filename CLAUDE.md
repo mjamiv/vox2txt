@@ -7,10 +7,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 **northstar.LM** is a client-side web application that transforms meeting recordings, videos, PDFs, images, or text into actionable insights using OpenAI's AI models. The entire application runs client-side with no backend server.
 
 The application consists of two main pages:
-- **Agent Builder** (`index.html`) - Analyzes individual meetings and exports them as agents
+- **Agent Builder** (`index.html`) - Analyzes individual meetings and exports them as agents. Includes Direct/RLM toggle for chat and agenda generation.
 - **Agent Orchestrator** (`orchestrator.html`) - Combines multiple agents for cross-meeting insights using the RLM pipeline
 
-Features include multi-meeting orchestration, agent export/import, image OCR with Vision AI, and professional document generation.
+Features include multi-meeting orchestration, agent export/import, image OCR with Vision AI, professional document generation, and RLM-powered chat in both applications.
 
 > **For visual architecture diagrams**, see [README.md](README.md).
 > **For detailed RLM implementation status**, see [RLM_STATUS.md](RLM_STATUS.md).
@@ -60,7 +60,7 @@ northstar.LM/
 
 ## RLM Quick Reference
 
-The orchestrator uses RLM-Lite for intelligent query processing. See [RLM_STATUS.md](RLM_STATUS.md) for full implementation details.
+Both the Agent Builder and Orchestrator use RLM-Lite for intelligent query processing. The Agent Builder includes a Direct/RLM toggle (defaults to RLM) for chat and agenda generation. See [RLM_STATUS.md](RLM_STATUS.md) for full implementation details.
 
 ### RLM Components
 
@@ -166,6 +166,7 @@ const state = {
     results: null,        // transcription, summary, keyPoints, actionItems, sentiment
     metrics: null,
     chatHistory: [],
+    chatMode: 'rlm',      // 'direct' or 'rlm' - controls chat and agenda processing
     sourceUrl: null,
     exportMeta: { /* agentId, source, processing, artifacts */ },
     urlContent: null
@@ -192,6 +193,10 @@ const state = {
 - `importAgentSession()` - Restore session state
 - `analyzeImageWithVision()` - GPT-5.2 Vision OCR
 - `downloadDocx()` - Professional Word document
+- `chatWithRLM()` - Process chat queries through RLM pipeline
+- `syncMeetingToRLM()` - Load meeting data into RLM context store
+- `updateChatModeUI()` - Update Direct/RLM toggle visual state
+- `generateAgenda()` - Create simplified half-page agenda (uses RLM when enabled)
 
 ### Orchestrator
 - `chatWithRLM()` - Process queries through RLM pipeline
