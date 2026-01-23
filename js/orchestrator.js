@@ -9828,29 +9828,53 @@ FORMAT THE AGENDA AS:
 
 Remember: Keep task ownership with CORE team members only. External dependencies are noted but owned by a core member.`;
 
-        console.log('[Agenda] Generating weekly agenda...');
+        console.log('[Agenda] Generating weekly agenda using RLM with', activeAgents.length, 'agents...');
 
-        // Use RLM pipeline if available, otherwise direct call
+        // Always use RLM pipeline for agenda generation to leverage multi-agent context
         let agendaText;
 
-        if (state.settings.useRLM && rlmPipeline) {
-            // Use RLM for better context understanding
-            const llmCallWrapper = async (systemPrompt, userContent) => {
-                const messages = [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userContent }
-                ];
-                return await callGPTWithMessages(messages, 'Weekly Agenda (RLM)');
-            };
+        // Ensure all agents are synced to RLM context store
+        syncAgentsToRLM();
 
+        // Build enhanced system prompt for RLM
+        const systemPrompt = `You are an expert executive assistant who creates sophisticated weekly agendas using multi-agent intelligence synthesis.
+
+You have access to ${activeAgents.length} meeting agents in your context store:
+${activeAgents.map((a, i) => `${i + 1}. "${a.name}" - ${a.payload?.results?.summary?.substring(0, 100) || 'Meeting data available'}...`).join('\n')}
+
+You understand the "Societies of Thought" methodology where multiple AI agents analyze different meetings and their perspectives are reconciled into unified recommendations.
+
+IMPORTANT INSTRUCTIONS:
+- Reference SPECIFIC agents by name when discussing insights (e.g., "Based on the Q4 Planning meeting...")
+- Cross-reference information across agents to identify patterns
+- Always start with a narrative explaining HOW this agenda was developed using multi-agent analysis
+- Assign all action items to CORE team members only (daily standup participants)
+- Note external dependencies as items for core members to drive`;
+
+        // Create LLM call wrapper for RLM pipeline
+        const llmCallWrapper = async (sysPrompt, userContent) => {
+            const messages = [
+                { role: 'system', content: sysPrompt || systemPrompt },
+                { role: 'user', content: userContent }
+            ];
+            return await callGPTWithMessages(messages, 'Weekly Agenda (RLM)');
+        };
+
+        if (rlmPipeline) {
+            // Use RLM pipeline for intelligent decomposition and multi-agent querying
             const result = await rlmPipeline.process(agendaPrompt, llmCallWrapper, {
-                apiKey: state.apiKey
+                apiKey: state.apiKey,
+                systemPrompt: systemPrompt,
+                forceStrategy: 'map-reduce' // Use map-reduce to query each agent
             });
             agendaText = result.response;
+
+            console.log('[Agenda] RLM processing complete. Strategy:', result.strategy, 'Sub-queries:', result.subQueries?.length || 0);
         } else {
-            // Direct GPT call
+            // Fallback to direct call if RLM pipeline not available
+            console.warn('[Agenda] RLM pipeline not available, using direct call');
             const messages = [
-                { role: 'system', content: 'You are an expert executive assistant who creates sophisticated weekly agendas using multi-agent intelligence synthesis. You understand the "Societies of Thought" methodology where multiple AI agents analyze different meetings and their perspectives are reconciled into unified recommendations. You always start with a narrative explaining HOW the agenda was developed, and you assign all action items to CORE team members only (daily standup participants), noting external dependencies as items for core members to drive.' },
+                { role: 'system', content: systemPrompt },
                 { role: 'user', content: agendaPrompt }
             ];
             agendaText = await callGPTWithMessages(messages, 'Weekly Agenda');
