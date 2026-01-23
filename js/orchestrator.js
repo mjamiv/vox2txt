@@ -9394,11 +9394,12 @@ function hideButtonLoader(button) {
 // ============================================
 
 /**
- * Generate an audio summary of cross-meeting insights using TTS
+ * Generate a podcast-style executive audio briefing (~3 minutes)
+ * Two-step process: GPT generates the script, then TTS converts to audio
  */
 async function generateAudioUpdate() {
-    if (!state.insights) {
-        showError('No insights available. Generate cross-meeting insights first.');
+    if (!state.insights && state.agents.filter(a => a.active).length === 0) {
+        showError('Load agents or generate insights first.');
         return;
     }
 
@@ -9412,37 +9413,91 @@ async function generateAudioUpdate() {
     if (btn) btn.disabled = true;
 
     try {
-        // Build a concise summary for TTS
         const activeAgents = state.agents.filter(a => a.active);
-        const agentNames = activeAgents.slice(0, 3).map(a => a.name).join(', ');
-        const moreText = activeAgents.length > 3 ? ` and ${activeAgents.length - 3} more meetings` : '';
+        const today = new Date();
+        const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
+        const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-        let script = `Cross-meeting insights summary based on ${activeAgents.length} meetings including ${agentNames}${moreText}. `;
+        // Build comprehensive context for script generation
+        let meetingContext = activeAgents.map(agent => {
+            const summary = agent.payload?.results?.summary || '';
+            const actions = agent.payload?.results?.actionItems || '';
+            const keyPoints = agent.payload?.results?.keyPoints || '';
+            return `Meeting: ${agent.name}
+Summary: ${summary.substring(0, 400)}
+Key Points: ${keyPoints.substring(0, 300)}
+Action Items: ${actions.substring(0, 300)}`;
+        }).join('\n\n');
 
-        // Add themes
-        if (state.insights.themes && state.insights.themes.length > 0) {
-            script += `Key themes: ${state.insights.themes.slice(0, 3).join('. ')}. `;
+        // Include cross-meeting insights if available
+        let insightsContext = '';
+        if (state.insights) {
+            insightsContext = `
+CROSS-MEETING INSIGHTS:
+- Common Themes: ${state.insights.themes?.join('; ') || 'None identified'}
+- Consolidated Action Items: ${state.insights.actions?.join('; ') || 'None'}
+- Key Risks: ${state.insights.risks?.join('; ') || 'None identified'}
+- Recommendations: ${state.insights.recommendations?.join('; ') || 'None'}
+- Trends: ${state.insights.trends?.join('; ') || 'None identified'}`;
         }
 
-        // Add action items
-        if (state.insights.actions && state.insights.actions.length > 0) {
-            script += `Priority action items: ${state.insights.actions.slice(0, 3).join('. ')}. `;
+        // Step 1: Generate podcast script using GPT
+        console.log('[Audio] Generating podcast script...');
+
+        const scriptPrompt = `You are a professional executive briefing producer. Create a compelling 3-minute audio script (approximately 450-500 words) that sounds like a polished podcast or news update.
+
+TODAY'S DATE: ${weekday}, ${dateStr}
+NUMBER OF MEETINGS ANALYZED: ${activeAgents.length}
+
+MEETING DATA:
+${meetingContext}
+
+${insightsContext}
+
+SCRIPT REQUIREMENTS:
+1. **Opening Hook** (15 seconds): Start with an engaging, professional greeting. Something like "Good morning, here's your executive briefing for ${weekday}..." Make it sound like a premium news podcast.
+
+2. **Week Overview** (30 seconds): Provide context on what was accomplished. Mention the number of meetings analyzed and give a high-level summary of the work performed.
+
+3. **Key Themes & Insights** (45 seconds): Discuss the major themes that emerged across meetings. Explain WHY these themes matter to the business. Connect the dots between different discussions.
+
+4. **Critical Decisions & Outcomes** (30 seconds): Highlight important decisions made and their implications. What moved forward? What got resolved?
+
+5. **Action Items & Ownership** (45 seconds): Cover the priority action items. Where possible, mention WHO owns them and WHEN they're due. Focus on the items that need executive attention.
+
+6. **Risks & Watchpoints** (30 seconds): Address any risks, blockers, or concerns that surfaced. Frame them constructively with potential mitigations.
+
+7. **Looking Ahead** (20 seconds): What should leadership focus on? What's the recommended priority for the coming days?
+
+8. **Closing** (5 seconds): Brief, professional sign-off.
+
+STYLE GUIDELINES:
+- Write for SPOKEN delivery - use natural, conversational language
+- Avoid jargon unless it was specifically used in the meetings
+- Use transitional phrases between sections ("Moving on to...", "Now let's look at...", "Importantly...")
+- Include brief pauses (use "..." or paragraph breaks) for natural pacing
+- Sound confident and authoritative, but not stiff
+- Make it feel like a trusted advisor giving a briefing, not a robot reading a report
+- Do NOT use markdown formatting, bullet points, or headers - this is a spoken script
+- Do NOT say "bullet point" or "item one, item two" - use natural speech patterns
+
+Write the script now:`;
+
+        const scriptMessages = [
+            { role: 'system', content: 'You are an expert executive communications specialist who creates engaging, professional audio briefings. Your scripts sound natural and polished, like a premium business podcast.' },
+            { role: 'user', content: scriptPrompt }
+        ];
+
+        const script = await callGPTWithMessages(scriptMessages, 'Audio Briefing Script');
+
+        if (!script || script.trim().length < 200) {
+            throw new Error('Failed to generate a complete script');
         }
 
-        // Add risks
-        if (state.insights.risks && state.insights.risks.length > 0) {
-            script += `Key risks to watch: ${state.insights.risks.slice(0, 2).join('. ')}. `;
-        }
+        console.log('[Audio] Script generated:', script.length, 'chars. Converting to speech...');
 
-        // Truncate if too long
-        if (script.length > 1500) {
-            script = script.substring(0, 1497) + '...';
-        }
-
-        console.log('[Audio] Generating TTS for script:', script.length, 'chars');
-
-        // Call OpenAI TTS API
-        const response = await fetch('https://api.openai.com/v1/audio/speech', {
+        // Step 2: Convert script to audio using TTS
+        const ttsResponse = await fetch('https://api.openai.com/v1/audio/speech', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${state.apiKey}`,
@@ -9450,19 +9505,20 @@ async function generateAudioUpdate() {
             },
             body: JSON.stringify({
                 model: 'gpt-4o-mini-tts',
-                voice: 'nova',
+                voice: 'onyx', // Deep, authoritative voice for executive briefings
                 input: script,
-                response_format: 'mp3'
+                response_format: 'mp3',
+                speed: 0.95 // Slightly slower for clarity
             })
         });
 
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.error?.message || `TTS failed: ${response.status}`);
+        if (!ttsResponse.ok) {
+            const error = await ttsResponse.json().catch(() => ({}));
+            throw new Error(error.error?.message || `TTS failed: ${ttsResponse.status}`);
         }
 
         // Get audio blob
-        generatedAudioBlob = await response.blob();
+        generatedAudioBlob = await ttsResponse.blob();
         const audioUrl = URL.createObjectURL(generatedAudioBlob);
 
         // Update audio player
@@ -9473,11 +9529,11 @@ async function generateAudioUpdate() {
         // Show audio section
         elements.audioUpdateSection?.classList.remove('hidden');
 
-        console.log('[Audio] TTS generated successfully');
+        console.log('[Audio] Executive briefing generated successfully');
 
     } catch (error) {
-        console.error('[Audio] TTS generation failed:', error);
-        showError('Failed to generate audio: ' + error.message);
+        console.error('[Audio] Briefing generation failed:', error);
+        showError('Failed to generate audio briefing: ' + error.message);
     } finally {
         if (btnText) btnText.classList.remove('hidden');
         if (btnLoader) btnLoader.classList.add('hidden');
@@ -9812,11 +9868,18 @@ async function downloadInsightsDocx() {
         return;
     }
 
+    // Access docx library from window (loaded via CDN)
+    if (typeof window.docx === 'undefined') {
+        showError('DOCX library not loaded. Please refresh the page and try again.');
+        console.error('[Export] docx library not available on window object');
+        return;
+    }
+
     const {
         Document, Paragraph, TextRun, HeadingLevel, Packer,
         Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType,
         PageBreak
-    } = docx;
+    } = window.docx;
 
     const currentDate = new Date().toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -9991,6 +10054,72 @@ async function downloadInsightsDocx() {
             });
         } else {
             children.push(createTextParagraph('No data available.'));
+        }
+        children.push(new Paragraph({ spacing: { after: 300 } }));
+    }
+
+    // Weekly Agenda (if generated)
+    if (generatedWeeklyAgenda) {
+        children.push(new Paragraph({ children: [new PageBreak()] }));
+        children.push(createSectionHeading("Next Week's Agenda"));
+
+        // Parse the markdown agenda into paragraphs
+        const agendaLines = generatedWeeklyAgenda.split('\n');
+        for (const line of agendaLines) {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) continue;
+
+            // Handle headers
+            if (trimmedLine.startsWith('# ')) {
+                children.push(new Paragraph({
+                    children: [new TextRun({
+                        text: trimmedLine.replace(/^#+\s*/, ''),
+                        bold: true,
+                        size: 28,
+                        font: "Calibri"
+                    })],
+                    spacing: { before: 300, after: 150 }
+                }));
+            } else if (trimmedLine.startsWith('## ')) {
+                children.push(new Paragraph({
+                    children: [new TextRun({
+                        text: trimmedLine.replace(/^#+\s*/, ''),
+                        bold: true,
+                        size: 24,
+                        font: "Calibri"
+                    })],
+                    spacing: { before: 250, after: 100 }
+                }));
+            } else if (trimmedLine.startsWith('### ')) {
+                children.push(new Paragraph({
+                    children: [new TextRun({
+                        text: trimmedLine.replace(/^#+\s*/, ''),
+                        bold: true,
+                        size: 22,
+                        font: "Calibri"
+                    })],
+                    spacing: { before: 200, after: 80 }
+                }));
+            } else if (trimmedLine.match(/^[-*]\s*\[.\]/)) {
+                // Checkbox item
+                const isChecked = trimmedLine.includes('[x]') || trimmedLine.includes('[X]');
+                const itemText = trimmedLine.replace(/^[-*]\s*\[.\]\s*/, '');
+                children.push(new Paragraph({
+                    children: [new TextRun({
+                        text: (isChecked ? '☑ ' : '☐ ') + itemText,
+                        size: 22,
+                        font: "Calibri"
+                    })],
+                    indent: { left: 360 },
+                    spacing: { after: 60 }
+                }));
+            } else if (trimmedLine.match(/^[-*]\s/)) {
+                // Regular bullet
+                children.push(createBulletItem(trimmedLine.replace(/^[-*]\s*/, '')));
+            } else {
+                // Regular paragraph
+                children.push(createTextParagraph(trimmedLine));
+            }
         }
         children.push(new Paragraph({ spacing: { after: 300 } }));
     }
