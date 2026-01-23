@@ -9755,14 +9755,41 @@ Key Points: ${keyPoints.substring(0, 300)}...`;
 - Recommendations: ${state.insights.recommendations?.slice(0, 3).join('; ') || 'None'}`;
         }
 
-        const agendaPrompt = `Based on the following meeting data, create a comprehensive NEXT WEEK'S AGENDA.
+        // Build groups context if available
+        let groupsContext = '';
+        if (state.groups && state.groups.length > 0) {
+            groupsContext = state.groups.map(g => {
+                const groupAgents = activeAgents.filter(a => a.groupId === g.id);
+                return `- ${g.name}: ${groupAgents.map(a => a.name).join(', ') || 'No agents'}`;
+            }).join('\n');
+        }
 
-This agenda should:
-1. Focus on what to prioritize FIRST THING MONDAY
-2. Include a PER-PERSON TASK LIST identifying key team members mentioned and their specific tasks
-3. Organize tasks by priority (Critical, High, Medium)
-4. Include specific deadlines where mentioned
-5. Highlight any dependencies or blockers to address early
+        const agendaPrompt = `You are creating a NEXT WEEK'S AGENDA for an executive team based on intelligence gathered from multiple meeting agents.
+
+=== METHODOLOGY NARRATIVE (Include this at the start) ===
+
+Begin the agenda with a brief narrative (2-3 paragraphs) explaining HOW this agenda was developed:
+
+1. **Multi-Agent Analysis**: Explain that this agenda synthesizes insights from ${activeAgents.length} distinct meeting agents, each representing a different meeting or work session. Name the agents: ${activeAgents.map(a => a.name).join(', ')}.
+
+2. **Societies of Thought Approach**: Describe how different perspectives were considered:
+   - Each agent brought unique context from their respective meetings
+   - Cross-referencing identified patterns, dependencies, and priorities
+   - Conflicting viewpoints were reconciled to form a unified action plan
+   ${groupsContext ? `- Agents were organized into thematic groups:\n${groupsContext}` : ''}
+
+3. **Synthesis Process**: Briefly note that themes, risks, and recommendations were extracted and prioritized based on frequency, urgency, and strategic importance across all sources.
+
+=== CORE TEAM MEMBERS (Daily Standup Participants) ===
+
+IMPORTANT: For the task lists, ONLY include tasks for the CORE TEAM MEMBERS who would attend a daily standup. These are typically:
+- Direct team members mentioned frequently in the meetings
+- People with clear ownership of deliverables
+- Key decision makers and contributors
+
+If an action item involves someone OUTSIDE the core team (external stakeholders, executives, vendors, etc.), assign ownership of that action to the most appropriate CORE team member who will be responsible for driving it.
+
+Example: Instead of "Sarah (VP Sales) - Review proposal", write "Mike - Follow up with Sarah (VP Sales) on proposal review"
 
 ${insightsContext}
 
@@ -9771,31 +9798,35 @@ ${agentSummaries}
 
 ---
 
-Format the agenda as:
+FORMAT THE AGENDA AS:
 
 # Next Week's Agenda
 
+## How This Agenda Was Developed
+[2-3 paragraph narrative about the multi-agent analysis and societies of thought methodology]
+
 ## Monday Morning Priorities
-[What to tackle first thing Monday]
+[What to tackle first thing Monday - the critical path items]
 
-## Team Member Task Lists
-### [Person Name]
-- [ ] Task 1 (Priority: High)
-- [ ] Task 2 (Priority: Medium)
+## Core Team Task Lists
 
-### [Another Person]
+### [Core Team Member Name]
+- [ ] Task 1 (Priority: Critical/High/Medium)
+- [ ] Task 2 - includes coordinating with [External Person] on X
+
+### [Another Core Team Member]
 - [ ] Their tasks...
 
 ## Key Milestones This Week
 [Important deadlines and checkpoints]
 
-## Dependencies & Blockers to Address
-[Items that may impede progress]
+## Cross-Team Dependencies
+[Items requiring coordination with people outside the core team]
 
-## Recommended Focus Areas
-[Strategic recommendations for the week]
+## Strategic Focus Areas
+[Recommendations for the week based on synthesized intelligence]
 
-Keep it actionable and specific. Identify real team members mentioned in the meetings.`;
+Remember: Keep task ownership with CORE team members only. External dependencies are noted but owned by a core member.`;
 
         console.log('[Agenda] Generating weekly agenda...');
 
@@ -9819,7 +9850,7 @@ Keep it actionable and specific. Identify real team members mentioned in the mee
         } else {
             // Direct GPT call
             const messages = [
-                { role: 'system', content: 'You are an expert executive assistant creating actionable weekly agendas. Focus on identifying team members and their specific tasks.' },
+                { role: 'system', content: 'You are an expert executive assistant who creates sophisticated weekly agendas using multi-agent intelligence synthesis. You understand the "Societies of Thought" methodology where multiple AI agents analyze different meetings and their perspectives are reconciled into unified recommendations. You always start with a narrative explaining HOW the agenda was developed, and you assign all action items to CORE team members only (daily standup participants), noting external dependencies as items for core members to drive.' },
                 { role: 'user', content: agendaPrompt }
             ];
             agendaText = await callGPTWithMessages(messages, 'Weekly Agenda');
