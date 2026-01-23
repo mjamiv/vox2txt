@@ -10183,10 +10183,10 @@ async function downloadInsightsDocx() {
         }));
 
         const statsData = [
-            ['Total API Calls', metrics.promptLogs.length.toString()],
-            ['Input Tokens', metrics.totalInputTokens.toLocaleString()],
-            ['Output Tokens', metrics.totalOutputTokens.toLocaleString()],
-            ['Estimated Cost', `$${metrics.totalCost.toFixed(4)}`]
+            ['Total API Calls', (metrics.promptLogs?.length || 0).toString()],
+            ['Input Tokens', (metrics.totalInputTokens || 0).toLocaleString()],
+            ['Output Tokens', (metrics.totalOutputTokens || 0).toLocaleString()],
+            ['Estimated Cost', `$${(metrics.totalCost || 0).toFixed(4)}`]
         ];
 
         const statsRows = statsData.map(row => new TableRow({
