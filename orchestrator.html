@@ -8,8 +8,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=71">
+    <link rel="stylesheet" href="css/styles.css?v=72">
     <!-- Pyodide is loaded lazily in the REPL Web Worker for Python execution -->
+    <!-- docx.js for DOCX export -->
+    <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a853">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230a0e17' width='32' height='32' rx='6'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23d4a853'%3E⭐%3C/text%3E%3C/svg%3E" type="image/svg+xml">
@@ -42,6 +44,28 @@
                         </div>
                         <p class="about-privacy">🔒 Your API key stays local—data goes directly to OpenAI.</p>
                     </div>
+                </div>
+                <!-- Export Dropdown -->
+                <div class="export-dropdown-container">
+                    <button class="export-btn" id="export-btn" title="Export Options">
+                        <span>📤</span> Export
+                    </button>
+                    <div class="export-dropdown hidden" id="export-dropdown">
+                        <button class="dropdown-item" id="export-session-md" title="Export full session as Markdown with embedded JSON for later import">
+                            <span class="dropdown-icon">📋</span>
+                            <span class="dropdown-label">Full Session (.md)</span>
+                        </button>
+                        <button class="dropdown-item" id="export-chat-history" title="Export chat history as Markdown">
+                            <span class="dropdown-icon">💬</span>
+                            <span class="dropdown-label">Chat History</span>
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" id="import-session-btn" title="Import a previously exported session">
+                            <span class="dropdown-icon">📥</span>
+                            <span class="dropdown-label">Import Session</span>
+                        </button>
+                    </div>
+                    <input type="file" id="import-session-file" class="hidden" accept=".md">
                 </div>
                 <a href="index.html" class="back-link">← Back to Agent Builder</a>
             </div>
@@ -419,8 +443,29 @@
         <!-- Cross-Meeting Insights Section -->
         <section id="insights-section" class="insights-section hidden">
             <div class="section-header">
-                <h2><span>📊</span> Cross-Meeting Insights</h2>
-                <p class="section-desc">Patterns and connections discovered across your meetings</p>
+                <div class="section-header-row">
+                    <div class="section-header-text">
+                        <h2><span>📊</span> Cross-Meeting Insights</h2>
+                        <p class="section-desc">Patterns and connections discovered across your meetings</p>
+                    </div>
+                    <div class="insights-actions">
+                        <button id="generate-audio-update" class="btn-secondary btn-sm" title="Generate audio summary of insights">
+                            <span class="btn-text">🔊 Audio Update</span>
+                            <span class="btn-loader hidden"><span class="spinner-small"></span></span>
+                        </button>
+                        <button id="generate-infographic" class="btn-secondary btn-sm" title="Generate visual infographic">
+                            <span class="btn-text">🎨 Infographic</span>
+                            <span class="btn-loader hidden"><span class="spinner-small"></span></span>
+                        </button>
+                        <button id="generate-weekly-agenda" class="btn-secondary btn-sm" title="Generate next week's agenda with per-person tasks">
+                            <span class="btn-text">📅 Weekly Agenda</span>
+                            <span class="btn-loader hidden"><span class="spinner-small"></span></span>
+                        </button>
+                        <button id="export-insights-docx" class="btn-secondary btn-sm" title="Export insights as Word document">
+                            📄 Export DOCX
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="insights-grid">
@@ -472,6 +517,52 @@
                     <div class="card-content" id="insight-actions">
                         <!-- Action items will be inserted here -->
                     </div>
+                </div>
+            </div>
+
+            <!-- Audio Update Section -->
+            <div class="audio-update-section hidden" id="audio-update-section">
+                <div class="audio-header">
+                    <span class="audio-icon">🔊</span>
+                    <h3>Audio Update</h3>
+                </div>
+                <div class="audio-controls">
+                    <audio id="audio-player" controls></audio>
+                    <button id="download-audio-btn" class="btn-secondary btn-sm" title="Download audio">
+                        📥 Download MP3
+                    </button>
+                </div>
+            </div>
+
+            <!-- Infographic Section -->
+            <div class="infographic-section hidden" id="infographic-section">
+                <div class="infographic-header">
+                    <span class="infographic-icon">🎨</span>
+                    <h3>Cross-Meeting Infographic</h3>
+                </div>
+                <div class="infographic-container">
+                    <img id="infographic-image" alt="Generated infographic" class="infographic-img">
+                </div>
+                <div class="infographic-actions">
+                    <button id="download-infographic-btn" class="btn-secondary btn-sm" title="Download infographic">
+                        📥 Download PNG
+                    </button>
+                </div>
+            </div>
+
+            <!-- Weekly Agenda Section -->
+            <div class="weekly-agenda-section hidden" id="weekly-agenda-section">
+                <div class="agenda-header">
+                    <span class="agenda-icon">📅</span>
+                    <h3>Next Week's Agenda</h3>
+                </div>
+                <div class="agenda-content" id="weekly-agenda-content">
+                    <!-- Generated agenda will be inserted here -->
+                </div>
+                <div class="agenda-actions">
+                    <button id="download-agenda-btn" class="btn-secondary btn-sm" title="Download agenda as Markdown">
+                        📥 Download .md
+                    </button>
                 </div>
             </div>
         </section>
@@ -1006,7 +1097,7 @@
             });
         })();
     </script>
-    <script src="js/orchestrator.js?v=50" type="module"></script>
+    <script src="js/orchestrator.js?v=53" type="module"></script>
 
     <!-- Service Worker Registration with Deferred Update -->
     <script>

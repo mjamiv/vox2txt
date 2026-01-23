@@ -220,6 +220,11 @@ let metricsState = {
     autoCollapseTimeout: null
 };
 
+// Generated content storage
+let generatedAudioBlob = null;
+let generatedInfographicBase64 = null;
+let generatedWeeklyAgenda = null;
+
 let testPromptState = {
     prompts: [],
     selectedCount: 0,
@@ -923,6 +928,33 @@ function initElements() {
         insightRisks: document.getElementById('insight-risks'),
         insightRecommendations: document.getElementById('insight-recommendations'),
         insightActions: document.getElementById('insight-actions'),
+        exportInsightsDocx: document.getElementById('export-insights-docx'),
+        generateAudioUpdateBtn: document.getElementById('generate-audio-update'),
+        generateInfographicBtn: document.getElementById('generate-infographic'),
+        generateWeeklyAgendaBtn: document.getElementById('generate-weekly-agenda'),
+
+        // Audio Update Section
+        audioUpdateSection: document.getElementById('audio-update-section'),
+        audioPlayer: document.getElementById('audio-player'),
+        downloadAudioBtn: document.getElementById('download-audio-btn'),
+
+        // Infographic Section
+        infographicSection: document.getElementById('infographic-section'),
+        infographicImage: document.getElementById('infographic-image'),
+        downloadInfographicBtn: document.getElementById('download-infographic-btn'),
+
+        // Weekly Agenda Section
+        weeklyAgendaSection: document.getElementById('weekly-agenda-section'),
+        weeklyAgendaContent: document.getElementById('weekly-agenda-content'),
+        downloadAgendaBtn: document.getElementById('download-agenda-btn'),
+
+        // Export/Import
+        exportBtn: document.getElementById('export-btn'),
+        exportDropdown: document.getElementById('export-dropdown'),
+        exportSessionMd: document.getElementById('export-session-md'),
+        exportChatHistoryBtn: document.getElementById('export-chat-history'),
+        importSessionBtn: document.getElementById('import-session-btn'),
+        importSessionFile: document.getElementById('import-session-file'),
 
         // Metrics
         metricsCard: document.getElementById('metrics-card'),
@@ -2896,7 +2928,69 @@ function setupEventListeners() {
             }
         });
     }
-    
+
+    // Export Dropdown
+    if (elements.exportBtn && elements.exportDropdown) {
+        elements.exportBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            elements.exportDropdown.classList.toggle('hidden');
+            // Close about dropdown if open
+            elements.aboutDropdown?.classList.add('hidden');
+        });
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!elements.exportBtn.contains(e.target) && !elements.exportDropdown.contains(e.target)) {
+                elements.exportDropdown.classList.add('hidden');
+            }
+        });
+    }
+
+    // Export/Import Actions
+    if (elements.exportInsightsDocx) {
+        elements.exportInsightsDocx.addEventListener('click', downloadInsightsDocx);
+    }
+    if (elements.exportSessionMd) {
+        elements.exportSessionMd.addEventListener('click', () => {
+            elements.exportDropdown?.classList.add('hidden');
+            exportSessionAsMarkdown();
+        });
+    }
+    if (elements.exportChatHistoryBtn) {
+        elements.exportChatHistoryBtn.addEventListener('click', () => {
+            elements.exportDropdown?.classList.add('hidden');
+            exportChatHistoryAsMarkdown();
+        });
+    }
+    if (elements.importSessionBtn) {
+        elements.importSessionBtn.addEventListener('click', () => {
+            elements.exportDropdown?.classList.add('hidden');
+            elements.importSessionFile?.click();
+        });
+    }
+    if (elements.importSessionFile) {
+        elements.importSessionFile.addEventListener('change', handleSessionImport);
+    }
+
+    // Audio, Infographic, and Agenda Generation
+    if (elements.generateAudioUpdateBtn) {
+        elements.generateAudioUpdateBtn.addEventListener('click', generateAudioUpdate);
+    }
+    if (elements.generateInfographicBtn) {
+        elements.generateInfographicBtn.addEventListener('click', generateCrossInsightsInfographic);
+    }
+    if (elements.generateWeeklyAgendaBtn) {
+        elements.generateWeeklyAgendaBtn.addEventListener('click', generateWeeklyAgenda);
+    }
+    if (elements.downloadAudioBtn) {
+        elements.downloadAudioBtn.addEventListener('click', downloadGeneratedAudio);
+    }
+    if (elements.downloadInfographicBtn) {
+        elements.downloadInfographicBtn.addEventListener('click', downloadGeneratedInfographic);
+    }
+    if (elements.downloadAgendaBtn) {
+        elements.downloadAgendaBtn.addEventListener('click', downloadWeeklyAgenda);
+    }
+
     // Model Settings
     if (elements.modelSelect) {
         elements.modelSelect.addEventListener('change', handleModelChange);
@@ -9293,6 +9387,1180 @@ function showButtonLoader(button) {
 function hideButtonLoader(button) {
     button.querySelector('.btn-text')?.classList.remove('hidden');
     button.querySelector('.btn-loader')?.classList.add('hidden');
+}
+
+// ============================================
+// Audio Update Generation
+// ============================================
+
+/**
+ * Generate an audio summary of cross-meeting insights using TTS
+ */
+async function generateAudioUpdate() {
+    if (!state.insights) {
+        showError('No insights available. Generate cross-meeting insights first.');
+        return;
+    }
+
+    const btn = elements.generateAudioUpdateBtn;
+    const btnText = btn?.querySelector('.btn-text');
+    const btnLoader = btn?.querySelector('.btn-loader');
+
+    // Show loading state
+    if (btnText) btnText.classList.add('hidden');
+    if (btnLoader) btnLoader.classList.remove('hidden');
+    if (btn) btn.disabled = true;
+
+    try {
+        // Build a concise summary for TTS
+        const activeAgents = state.agents.filter(a => a.active);
+        const agentNames = activeAgents.slice(0, 3).map(a => a.name).join(', ');
+        const moreText = activeAgents.length > 3 ? ` and ${activeAgents.length - 3} more meetings` : '';
+
+        let script = `Cross-meeting insights summary based on ${activeAgents.length} meetings including ${agentNames}${moreText}. `;
+
+        // Add themes
+        if (state.insights.themes && state.insights.themes.length > 0) {
+            script += `Key themes: ${state.insights.themes.slice(0, 3).join('. ')}. `;
+        }
+
+        // Add action items
+        if (state.insights.actions && state.insights.actions.length > 0) {
+            script += `Priority action items: ${state.insights.actions.slice(0, 3).join('. ')}. `;
+        }
+
+        // Add risks
+        if (state.insights.risks && state.insights.risks.length > 0) {
+            script += `Key risks to watch: ${state.insights.risks.slice(0, 2).join('. ')}. `;
+        }
+
+        // Truncate if too long
+        if (script.length > 1500) {
+            script = script.substring(0, 1497) + '...';
+        }
+
+        console.log('[Audio] Generating TTS for script:', script.length, 'chars');
+
+        // Call OpenAI TTS API
+        const response = await fetch('https://api.openai.com/v1/audio/speech', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini-tts',
+                voice: 'nova',
+                input: script,
+                response_format: 'mp3'
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error?.message || `TTS failed: ${response.status}`);
+        }
+
+        // Get audio blob
+        generatedAudioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(generatedAudioBlob);
+
+        // Update audio player
+        if (elements.audioPlayer) {
+            elements.audioPlayer.src = audioUrl;
+        }
+
+        // Show audio section
+        elements.audioUpdateSection?.classList.remove('hidden');
+
+        console.log('[Audio] TTS generated successfully');
+
+    } catch (error) {
+        console.error('[Audio] TTS generation failed:', error);
+        showError('Failed to generate audio: ' + error.message);
+    } finally {
+        if (btnText) btnText.classList.remove('hidden');
+        if (btnLoader) btnLoader.classList.add('hidden');
+        if (btn) btn.disabled = false;
+    }
+}
+
+/**
+ * Download the generated audio file
+ */
+function downloadGeneratedAudio() {
+    if (!generatedAudioBlob) {
+        showError('No audio generated yet.');
+        return;
+    }
+
+    const url = URL.createObjectURL(generatedAudioBlob);
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `northstar-insights-update-${timestamp}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// ============================================
+// Infographic Generation
+// ============================================
+
+/**
+ * Generate a visual infographic of cross-meeting insights
+ */
+async function generateCrossInsightsInfographic() {
+    if (!state.insights) {
+        showError('No insights available. Generate cross-meeting insights first.');
+        return;
+    }
+
+    const btn = elements.generateInfographicBtn;
+    const btnText = btn?.querySelector('.btn-text');
+    const btnLoader = btn?.querySelector('.btn-loader');
+
+    // Show loading state
+    if (btnText) btnText.classList.add('hidden');
+    if (btnLoader) btnLoader.classList.remove('hidden');
+    if (btn) btn.disabled = true;
+
+    try {
+        const activeAgents = state.agents.filter(a => a.active);
+
+        // Build DALL-E prompt
+        const dallePrompt = `Create a premium business intelligence infographic.
+
+=== STYLE REQUIREMENTS ===
+Premium executive infographic with a BOLD, STRIKING design.
+- BLACK background (#0a0a0a) with GOLD (#d4a853) and YELLOW (#fbbf24) accents
+- WHITE text for readability
+- BOLD condensed headers (Impact/Bebas Neue style)
+- Clean sans-serif body text (Acumin Pro style)
+- STRONG visual hierarchy with clear sections
+- Professional data visualization elements
+
+=== CONTENT TO VISUALIZE ===
+
+TITLE: "Cross-Meeting Intelligence Report"
+SUBTITLE: "Insights from ${activeAgents.length} Meeting Agents"
+
+KEY THEMES (show as icon-labeled cards):
+${state.insights.themes?.slice(0, 4).map((t, i) => `${i + 1}. ${t}`).join('\n') || 'No themes'}
+
+PRIORITY ACTIONS (show as numbered checklist):
+${state.insights.actions?.slice(0, 4).map((a, i) => `${i + 1}. ${a}`).join('\n') || 'No actions'}
+
+KEY RISKS (show with warning indicators):
+${state.insights.risks?.slice(0, 3).map((r, i) => `- ${r}`).join('\n') || 'No risks identified'}
+
+RECOMMENDATIONS (show as highlighted callouts):
+${state.insights.recommendations?.slice(0, 3).map((r, i) => `${i + 1}. ${r}`).join('\n') || 'No recommendations'}
+
+=== LAYOUT RULES ===
+- Landscape orientation (1536x1024)
+- Keep ALL content within safe margins (60px padding)
+- Strong visual hierarchy with clear focal points
+- Professional typography - readable at all sizes
+- Make it visually PREMIUM and EXECUTIVE-READY`;
+
+        console.log('[Infographic] Generating image...');
+
+        const response = await fetch('https://api.openai.com/v1/images/generations', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'gpt-image-1.5',
+                prompt: dallePrompt,
+                n: 1,
+                size: '1536x1024'
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error?.message || `Image generation failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        generatedInfographicBase64 = data.data[0].b64_json;
+
+        // Display the image
+        const imageUrl = `data:image/png;base64,${generatedInfographicBase64}`;
+        if (elements.infographicImage) {
+            elements.infographicImage.src = imageUrl;
+        }
+
+        // Show infographic section
+        elements.infographicSection?.classList.remove('hidden');
+
+        console.log('[Infographic] Generated successfully');
+
+    } catch (error) {
+        console.error('[Infographic] Generation failed:', error);
+        showError('Failed to generate infographic: ' + error.message);
+    } finally {
+        if (btnText) btnText.classList.remove('hidden');
+        if (btnLoader) btnLoader.classList.add('hidden');
+        if (btn) btn.disabled = false;
+    }
+}
+
+/**
+ * Download the generated infographic
+ */
+function downloadGeneratedInfographic() {
+    if (!generatedInfographicBase64) {
+        showError('No infographic generated yet.');
+        return;
+    }
+
+    try {
+        const binaryString = atob(generatedInfographicBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'image/png' });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().slice(0, 10);
+        link.href = url;
+        link.download = `northstar-insights-infographic-${timestamp}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('[Infographic] Download failed:', error);
+        showError('Failed to download infographic.');
+    }
+}
+
+// ============================================
+// Weekly Agenda Generation
+// ============================================
+
+/**
+ * Generate next week's agenda with per-person task lists
+ */
+async function generateWeeklyAgenda() {
+    if (!state.insights && state.agents.filter(a => a.active).length === 0) {
+        showError('Load at least one agent or generate insights first.');
+        return;
+    }
+
+    const btn = elements.generateWeeklyAgendaBtn;
+    const btnText = btn?.querySelector('.btn-text');
+    const btnLoader = btn?.querySelector('.btn-loader');
+
+    // Show loading state
+    if (btnText) btnText.classList.add('hidden');
+    if (btnLoader) btnLoader.classList.remove('hidden');
+    if (btn) btn.disabled = true;
+
+    try {
+        const activeAgents = state.agents.filter(a => a.active);
+
+        // Build context from all active agents
+        let agentSummaries = activeAgents.map(agent => {
+            const summary = agent.payload?.results?.summary || '';
+            const actions = agent.payload?.results?.actionItems || '';
+            const keyPoints = agent.payload?.results?.keyPoints || '';
+            return `
+### ${agent.name}
+Summary: ${summary.substring(0, 300)}...
+Action Items: ${actions.substring(0, 300)}...
+Key Points: ${keyPoints.substring(0, 300)}...`;
+        }).join('\n\n');
+
+        // Include insights if available
+        let insightsContext = '';
+        if (state.insights) {
+            insightsContext = `
+## Cross-Meeting Insights Already Identified:
+- Common Themes: ${state.insights.themes?.slice(0, 5).join('; ') || 'None'}
+- Key Actions: ${state.insights.actions?.slice(0, 5).join('; ') || 'None'}
+- Risks: ${state.insights.risks?.slice(0, 3).join('; ') || 'None'}
+- Recommendations: ${state.insights.recommendations?.slice(0, 3).join('; ') || 'None'}`;
+        }
+
+        const agendaPrompt = `Based on the following meeting data, create a comprehensive NEXT WEEK'S AGENDA.
+
+This agenda should:
+1. Focus on what to prioritize FIRST THING MONDAY
+2. Include a PER-PERSON TASK LIST identifying key team members mentioned and their specific tasks
+3. Organize tasks by priority (Critical, High, Medium)
+4. Include specific deadlines where mentioned
+5. Highlight any dependencies or blockers to address early
+
+${insightsContext}
+
+## Meeting Data from ${activeAgents.length} Agent(s):
+${agentSummaries}
+
+---
+
+Format the agenda as:
+
+# Next Week's Agenda
+
+## Monday Morning Priorities
+[What to tackle first thing Monday]
+
+## Team Member Task Lists
+### [Person Name]
+- [ ] Task 1 (Priority: High)
+- [ ] Task 2 (Priority: Medium)
+
+### [Another Person]
+- [ ] Their tasks...
+
+## Key Milestones This Week
+[Important deadlines and checkpoints]
+
+## Dependencies & Blockers to Address
+[Items that may impede progress]
+
+## Recommended Focus Areas
+[Strategic recommendations for the week]
+
+Keep it actionable and specific. Identify real team members mentioned in the meetings.`;
+
+        console.log('[Agenda] Generating weekly agenda...');
+
+        // Use RLM pipeline if available, otherwise direct call
+        let agendaText;
+
+        if (state.settings.useRLM && rlmPipeline) {
+            // Use RLM for better context understanding
+            const llmCallWrapper = async (systemPrompt, userContent) => {
+                const messages = [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userContent }
+                ];
+                return await callGPTWithMessages(messages, 'Weekly Agenda (RLM)');
+            };
+
+            const result = await rlmPipeline.process(agendaPrompt, llmCallWrapper, {
+                apiKey: state.apiKey
+            });
+            agendaText = result.response;
+        } else {
+            // Direct GPT call
+            const messages = [
+                { role: 'system', content: 'You are an expert executive assistant creating actionable weekly agendas. Focus on identifying team members and their specific tasks.' },
+                { role: 'user', content: agendaPrompt }
+            ];
+            agendaText = await callGPTWithMessages(messages, 'Weekly Agenda');
+        }
+
+        // Store and display
+        generatedWeeklyAgenda = agendaText;
+
+        if (elements.weeklyAgendaContent && typeof marked !== 'undefined') {
+            elements.weeklyAgendaContent.innerHTML = marked.parse(agendaText);
+        } else if (elements.weeklyAgendaContent) {
+            elements.weeklyAgendaContent.textContent = agendaText;
+        }
+
+        // Show agenda section
+        elements.weeklyAgendaSection?.classList.remove('hidden');
+
+        console.log('[Agenda] Weekly agenda generated successfully');
+
+    } catch (error) {
+        console.error('[Agenda] Generation failed:', error);
+        showError('Failed to generate agenda: ' + error.message);
+    } finally {
+        if (btnText) btnText.classList.remove('hidden');
+        if (btnLoader) btnLoader.classList.add('hidden');
+        if (btn) btn.disabled = false;
+    }
+}
+
+/**
+ * Download the weekly agenda as Markdown
+ */
+function downloadWeeklyAgenda() {
+    if (!generatedWeeklyAgenda) {
+        showError('No agenda generated yet.');
+        return;
+    }
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `northstar-weekly-agenda-${timestamp}.md`;
+    downloadTextFile(generatedWeeklyAgenda, filename, 'text/markdown');
+}
+
+// ============================================
+// Export/Import Functions
+// ============================================
+
+/**
+ * Download cross-meeting insights as a Word document
+ */
+async function downloadInsightsDocx() {
+    if (!state.insights) {
+        showError('No insights available to export. Generate insights first.');
+        return;
+    }
+
+    const {
+        Document, Paragraph, TextRun, HeadingLevel, Packer,
+        Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType,
+        PageBreak
+    } = docx;
+
+    const currentDate = new Date().toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    const colors = {
+        black: "000000",
+        darkGray: "333333",
+        gray: "666666",
+        lightGray: "cccccc",
+        white: "ffffff"
+    };
+
+    // Helper: Section heading
+    const createSectionHeading = (text) => {
+        return new Paragraph({
+            children: [
+                new TextRun({
+                    text: text.toUpperCase(),
+                    bold: true,
+                    size: 26,
+                    font: "Calibri"
+                })
+            ],
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 400, after: 200 }
+        });
+    };
+
+    // Helper: Bullet item
+    const createBulletItem = (text, level = 0) => {
+        return new Paragraph({
+            children: [
+                new TextRun({
+                    text: text.replace(/^[-•*▸☐✓]\s*/, '').trim(),
+                    size: 22,
+                    font: "Calibri"
+                })
+            ],
+            bullet: { level: level },
+            spacing: { after: 100, line: 276 }
+        });
+    };
+
+    // Helper: Text paragraph
+    const createTextParagraph = (text) => {
+        return new Paragraph({
+            children: [
+                new TextRun({
+                    text: text,
+                    size: 22,
+                    font: "Calibri"
+                })
+            ],
+            spacing: { after: 200, line: 276 }
+        });
+    };
+
+    // Build document content
+    const children = [];
+
+    // Cover page
+    children.push(new Paragraph({ spacing: { before: 1500 } }));
+    children.push(new Paragraph({
+        children: [
+            new TextRun({
+                text: "CROSS-MEETING INSIGHTS REPORT",
+                bold: true,
+                size: 56,
+                font: "Calibri"
+            })
+        ],
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 }
+    }));
+
+    children.push(new Paragraph({
+        children: [
+            new TextRun({
+                text: currentDate,
+                size: 24,
+                font: "Calibri"
+            })
+        ],
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 600 }
+    }));
+
+    // Active agents count
+    const activeAgents = state.agents.filter(a => a.active);
+    children.push(new Paragraph({
+        children: [
+            new TextRun({ text: "Analysis Based On: ", bold: true, size: 22, font: "Calibri" }),
+            new TextRun({ text: `${activeAgents.length} Meeting Agents`, size: 22, font: "Calibri" })
+        ],
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 }
+    }));
+
+    // Branding
+    children.push(new Paragraph({ spacing: { before: 800 } }));
+    children.push(new Paragraph({
+        children: [
+            new TextRun({
+                text: "Generated by northstar.LM Agent Orchestrator",
+                size: 20,
+                color: colors.gray,
+                font: "Calibri"
+            })
+        ],
+        alignment: AlignmentType.CENTER
+    }));
+
+    // Page break
+    children.push(new Paragraph({ children: [new PageBreak()] }));
+
+    // Contributing Agents Table
+    children.push(createSectionHeading("Contributing Agents"));
+
+    const agentHeaders = ['Agent Name', 'Source Type', 'Date'].map(h => new TableCell({
+        children: [new Paragraph({
+            children: [new TextRun({ text: h, bold: true, size: 20, font: "Calibri" })]
+        })],
+        margins: { top: 80, bottom: 80, left: 100, right: 100 }
+    }));
+
+    const agentRows = activeAgents.map(agent => {
+        const dateStr = agent.payload?.processing?.date || 'Unknown';
+        const sourceType = agent.payload?.source?.type || 'Unknown';
+        return new TableRow({
+            children: [agent.name, sourceType, dateStr].map(cell => new TableCell({
+                children: [new Paragraph({
+                    children: [new TextRun({ text: String(cell), size: 20, font: "Calibri" })]
+                })],
+                margins: { top: 60, bottom: 60, left: 100, right: 100 }
+            }))
+        });
+    });
+
+    children.push(new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+            new TableRow({ children: agentHeaders, tableHeader: true }),
+            ...agentRows
+        ],
+        borders: {
+            top: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+            left: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+            right: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+            insideVertical: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray }
+        }
+    }));
+
+    children.push(new Paragraph({ spacing: { after: 300 } }));
+
+    // Insight Sections
+    const insightSections = [
+        { title: 'Common Themes', items: state.insights.themes },
+        { title: 'Trends & Patterns', items: state.insights.trends },
+        { title: 'Key Risks & Blockers', items: state.insights.risks },
+        { title: 'Recommendations', items: state.insights.recommendations },
+        { title: 'Consolidated Action Items', items: state.insights.actions }
+    ];
+
+    for (const section of insightSections) {
+        children.push(createSectionHeading(section.title));
+        if (section.items && section.items.length > 0) {
+            section.items.forEach(item => {
+                children.push(createBulletItem(item));
+            });
+        } else {
+            children.push(createTextParagraph('No data available.'));
+        }
+        children.push(new Paragraph({ spacing: { after: 300 } }));
+    }
+
+    // Processing Statistics
+    const metrics = calculateMetrics();
+    if (metrics.promptLogs.length > 0) {
+        children.push(createSectionHeading("Processing Statistics"));
+
+        const statsHeaders = ['Metric', 'Value'].map(h => new TableCell({
+            children: [new Paragraph({
+                children: [new TextRun({ text: h, bold: true, size: 20, font: "Calibri" })]
+            })],
+            margins: { top: 80, bottom: 80, left: 100, right: 100 }
+        }));
+
+        const statsData = [
+            ['Total API Calls', metrics.promptLogs.length.toString()],
+            ['Input Tokens', metrics.totalInputTokens.toLocaleString()],
+            ['Output Tokens', metrics.totalOutputTokens.toLocaleString()],
+            ['Estimated Cost', `$${metrics.totalCost.toFixed(4)}`]
+        ];
+
+        const statsRows = statsData.map(row => new TableRow({
+            children: row.map(cell => new TableCell({
+                children: [new Paragraph({
+                    children: [new TextRun({ text: cell, size: 20, font: "Calibri" })]
+                })],
+                margins: { top: 60, bottom: 60, left: 100, right: 100 }
+            }))
+        }));
+
+        children.push(new Table({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            rows: [
+                new TableRow({ children: statsHeaders, tableHeader: true }),
+                ...statsRows
+            ],
+            borders: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+                left: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+                right: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: colors.lightGray }
+            }
+        }));
+    }
+
+    // Create and download document
+    const doc = new Document({
+        sections: [{
+            properties: {},
+            children: children
+        }]
+    });
+
+    try {
+        const blob = await Packer.toBlob(doc);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().slice(0, 10);
+        link.href = url;
+        link.download = `northstar-insights-${timestamp}.docx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        console.log('[Export] Insights DOCX downloaded successfully');
+    } catch (error) {
+        console.error('[Export] DOCX generation failed:', error);
+        showError('Failed to generate DOCX. Please try again.');
+    }
+}
+
+/**
+ * Build comprehensive JSON payload for session export
+ */
+function buildOrchestratorExportPayload() {
+    const activeAgents = state.agents.filter(a => a.active);
+    const timestamp = new Date().toISOString();
+    const sessionId = `orch-${Date.now().toString(36)}`;
+
+    return {
+        sessionType: 'northstar-orchestrator-session',
+        version: '1.0',
+        created: timestamp,
+        sessionId: sessionId,
+        metadata: {
+            agentCount: state.agents.length,
+            activeAgentCount: activeAgents.length,
+            groupCount: state.groups.length,
+            hasChatHistory: state.chatHistory.length > 0,
+            hasInsights: !!state.insights
+        },
+        agents: state.agents.map(agent => ({
+            id: agent.id,
+            name: agent.name,
+            active: agent.active,
+            groupId: agent.groupId || null,
+            payload: agent.payload
+        })),
+        groups: state.groups.map(group => ({
+            id: group.id,
+            name: group.name,
+            color: group.color,
+            agentIds: group.agentIds || []
+        })),
+        insights: state.insights,
+        chatHistory: state.chatHistory.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp || null
+        })),
+        settings: {
+            model: state.settings.model,
+            effort: state.settings.effort,
+            processingMode: state.settings.processingMode,
+            allowModelMixing: state.settings.allowModelMixing,
+            useRLM: state.settings.useRLM,
+            enableShadowPrompt: state.settings.enableShadowPrompt,
+            enableRetrievalPrompt: state.settings.enableRetrievalPrompt,
+            enableFocusShadow: state.settings.enableFocusShadow,
+            enableFocusEpisodes: state.settings.enableFocusEpisodes,
+            enablePromptBudgeting: state.settings.enablePromptBudgeting
+        },
+        metrics: calculateMetrics()
+    };
+}
+
+/**
+ * Escape special Markdown characters
+ */
+function escapeMarkdown(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/\\/g, '\\\\')
+        .replace(/\*/g, '\\*')
+        .replace(/_/g, '\\_')
+        .replace(/\[/g, '\\[')
+        .replace(/\]/g, '\\]')
+        .replace(/\(/g, '\\(')
+        .replace(/\)/g, '\\)')
+        .replace(/~/g, '\\~')
+        .replace(/`/g, '\\`')
+        .replace(/>/g, '\\>')
+        .replace(/#/g, '\\#')
+        .replace(/\|/g, '\\|');
+}
+
+/**
+ * Format insights object as Markdown sections
+ */
+function formatInsightsForMarkdown(insights) {
+    if (!insights) return 'No insights generated yet.';
+
+    let md = '';
+
+    const sections = [
+        { title: 'Common Themes', items: insights.themes },
+        { title: 'Trends & Patterns', items: insights.trends },
+        { title: 'Key Risks & Blockers', items: insights.risks },
+        { title: 'Recommendations', items: insights.recommendations },
+        { title: 'Consolidated Action Items', items: insights.actions }
+    ];
+
+    for (const section of sections) {
+        md += `### ${section.title}\n\n`;
+        if (section.items && section.items.length > 0) {
+            section.items.forEach(item => {
+                md += `- ${item}\n`;
+            });
+        } else {
+            md += '_No data available._\n';
+        }
+        md += '\n';
+    }
+
+    return md;
+}
+
+/**
+ * Format chat messages for Markdown export
+ */
+function formatChatHistoryForMarkdown(chatHistory) {
+    if (!chatHistory || chatHistory.length === 0) {
+        return 'No chat messages yet.';
+    }
+
+    let md = '';
+    chatHistory.forEach((msg, index) => {
+        const role = msg.role === 'user' ? '👤 User' : '🤖 Assistant';
+        const timestamp = msg.timestamp ? ` (${new Date(msg.timestamp).toLocaleString()})` : '';
+        md += `**${role}**${timestamp}\n\n`;
+        md += `${msg.content}\n\n`;
+        if (index < chatHistory.length - 1) {
+            md += '---\n\n';
+        }
+    });
+
+    return md;
+}
+
+/**
+ * Helper to download text content as a file
+ */
+function downloadTextFile(content, filename, mimeType = 'text/plain') {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Export full session as Markdown file with embedded JSON
+ */
+function exportSessionAsMarkdown() {
+    const payload = buildOrchestratorExportPayload();
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const activeAgents = state.agents.filter(a => a.active);
+
+    // Build YAML frontmatter
+    let md = `---
+session_type: northstar-orchestrator-session
+version: "1.0"
+created: "${payload.created}"
+session_id: "${payload.sessionId}"
+agent_count: ${state.agents.length}
+active_agent_count: ${activeAgents.length}
+---
+
+# Orchestrator Session Export
+
+> Exported from northstar.LM Agent Orchestrator on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+
+## Metadata
+
+| Property | Value |
+|----------|-------|
+| Session ID | \`${payload.sessionId}\` |
+| Total Agents | ${state.agents.length} |
+| Active Agents | ${activeAgents.length} |
+| Groups | ${state.groups.length} |
+| Chat Messages | ${state.chatHistory.length} |
+| Has Insights | ${state.insights ? 'Yes' : 'No'} |
+
+## Agents Summary
+
+`;
+
+    // Add agent list
+    if (state.agents.length > 0) {
+        md += '| Agent Name | Status | Source Type | Date |\n';
+        md += '|------------|--------|-------------|------|\n';
+        state.agents.forEach(agent => {
+            const status = agent.active ? '✅ Active' : '⏸️ Inactive';
+            const sourceType = agent.payload?.source?.type || 'Unknown';
+            const date = agent.payload?.processing?.date || 'Unknown';
+            md += `| ${escapeMarkdown(agent.name)} | ${status} | ${sourceType} | ${date} |\n`;
+        });
+    } else {
+        md += '_No agents loaded._\n';
+    }
+
+    // Groups configuration
+    md += '\n## Groups Configuration\n\n';
+    if (state.groups.length > 0) {
+        md += '```json\n';
+        md += JSON.stringify(payload.groups, null, 2);
+        md += '\n```\n';
+    } else {
+        md += '_No groups configured._\n';
+    }
+
+    // Cross-Meeting Insights
+    md += '\n## Cross-Meeting Insights\n\n';
+    md += formatInsightsForMarkdown(state.insights);
+
+    // Chat History
+    md += '\n## Chat History\n\n';
+    md += formatChatHistoryForMarkdown(state.chatHistory);
+
+    // Session Settings
+    md += '\n## Session Settings\n\n';
+    md += '```json\n';
+    md += JSON.stringify(payload.settings, null, 2);
+    md += '\n```\n';
+
+    // Processing Metrics
+    md += '\n## Processing Metrics\n\n';
+    const metrics = calculateMetrics();
+    md += '```json\n';
+    md += JSON.stringify({
+        totalApiCalls: metrics.promptLogs.length,
+        totalInputTokens: metrics.totalInputTokens,
+        totalOutputTokens: metrics.totalOutputTokens,
+        totalCost: metrics.totalCost
+    }, null, 2);
+    md += '\n```\n';
+
+    // Full Export Payload (for import)
+    md += '\n## Full Export Payload\n\n';
+    md += '> This section contains the complete session data for import.\n\n';
+    md += '```json:orchestrator-export\n';
+    md += JSON.stringify(payload, null, 2);
+    md += '\n```\n';
+
+    // Download
+    const filename = `northstar-orchestrator-session-${timestamp}.md`;
+    downloadTextFile(md, filename, 'text/markdown');
+    console.log('[Export] Session exported as Markdown:', filename);
+}
+
+/**
+ * Export chat history as standalone Markdown file
+ */
+function exportChatHistoryAsMarkdown() {
+    if (state.chatHistory.length === 0) {
+        showError('No chat history to export.');
+        return;
+    }
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const processingMode = state.settings.processingMode || 'rlm-hybrid';
+
+    let md = `# Orchestrator Chat History
+
+> Exported from northstar.LM Agent Orchestrator on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+
+**Messages:** ${state.chatHistory.length}
+**Processing Mode:** ${processingMode}
+**Agents:** ${state.agents.filter(a => a.active).length} active
+
+---
+
+`;
+
+    md += formatChatHistoryForMarkdown(state.chatHistory);
+
+    const filename = `northstar-chat-history-${timestamp}.md`;
+    downloadTextFile(md, filename, 'text/markdown');
+    console.log('[Export] Chat history exported:', filename);
+}
+
+/**
+ * Handle session file import
+ */
+async function handleSessionImport(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Reset input for future imports
+    event.target.value = '';
+
+    try {
+        const content = await file.text();
+        const parsed = parseOrchestratorSessionFile(content);
+
+        if (!parsed) {
+            showError('Invalid session file format. Please select a valid orchestrator session export.');
+            return;
+        }
+
+        // Confirm if there's existing data
+        if (state.agents.length > 0 || state.chatHistory.length > 0) {
+            const confirmed = confirm(
+                `This will replace your current session:\n` +
+                `- ${state.agents.length} agents\n` +
+                `- ${state.chatHistory.length} chat messages\n\n` +
+                `Continue with import?`
+            );
+            if (!confirmed) return;
+        }
+
+        await importOrchestratorSession(parsed);
+        showSuccess('Session imported successfully!');
+
+    } catch (error) {
+        console.error('[Import] Session import failed:', error);
+        showError('Failed to import session: ' + error.message);
+    }
+}
+
+/**
+ * Parse orchestrator session file (YAML frontmatter + JSON code blocks)
+ */
+function parseOrchestratorSessionFile(content) {
+    // Try to find the full export payload JSON block
+    const jsonMatch = content.match(/```json:orchestrator-export\s*\n([\s\S]*?)\n```/);
+    if (jsonMatch) {
+        try {
+            const payload = JSON.parse(jsonMatch[1]);
+            if (payload.sessionType === 'northstar-orchestrator-session') {
+                return payload;
+            }
+        } catch (e) {
+            console.warn('[Import] Failed to parse orchestrator-export block:', e);
+        }
+    }
+
+    // Fallback: try to find any large JSON block that looks like a session
+    const jsonBlocks = content.matchAll(/```json\s*\n([\s\S]*?)\n```/g);
+    for (const match of jsonBlocks) {
+        try {
+            const data = JSON.parse(match[1]);
+            if (data.sessionType === 'northstar-orchestrator-session' ||
+                (data.agents && Array.isArray(data.agents))) {
+                return data;
+            }
+        } catch (e) {
+            // Continue to next block
+        }
+    }
+
+    // Check YAML frontmatter for session type validation
+    const yamlMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
+    if (yamlMatch) {
+        const frontmatter = yamlMatch[1];
+        if (!frontmatter.includes('northstar-orchestrator-session')) {
+            console.warn('[Import] File does not appear to be an orchestrator session');
+            return null;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Import orchestrator session from parsed data
+ */
+async function importOrchestratorSession(data) {
+    console.log('[Import] Importing session:', data.sessionId);
+
+    // Clear existing state
+    state.agents = [];
+    state.groups = [];
+    state.insights = null;
+    state.chatHistory = [];
+
+    // Import agents
+    if (data.agents && Array.isArray(data.agents)) {
+        for (const agentData of data.agents) {
+            const agent = {
+                id: agentData.id || `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                name: agentData.name || 'Unnamed Agent',
+                active: agentData.active !== false,
+                groupId: agentData.groupId || null,
+                payload: agentData.payload || {}
+            };
+            state.agents.push(agent);
+        }
+    }
+
+    // Import groups
+    if (data.groups && Array.isArray(data.groups)) {
+        state.groups = data.groups.map(g => ({
+            id: g.id,
+            name: g.name,
+            color: g.color || '#d4a853',
+            agentIds: g.agentIds || []
+        }));
+    }
+
+    // Import insights
+    if (data.insights) {
+        state.insights = {
+            themes: data.insights.themes || [],
+            trends: data.insights.trends || [],
+            risks: data.insights.risks || [],
+            recommendations: data.insights.recommendations || [],
+            actions: data.insights.actions || []
+        };
+    }
+
+    // Import chat history
+    if (data.chatHistory && Array.isArray(data.chatHistory)) {
+        state.chatHistory = data.chatHistory.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp || null
+        }));
+    }
+
+    // Import settings (partial - keep some local settings)
+    if (data.settings) {
+        if (data.settings.model) state.settings.model = data.settings.model;
+        if (data.settings.effort) state.settings.effort = data.settings.effort;
+        if (data.settings.processingMode) {
+            applyProcessingMode(data.settings.processingMode, { persist: true, syncUI: true });
+        }
+    }
+
+    // Update UI
+    renderAgentsUI();
+    renderChatHistory();
+    updateButtonStates();
+    updateContextGauge();
+
+    // Show insights if available
+    if (state.insights) {
+        displayInsights(state.insights);
+        elements.insightsSection?.classList.remove('hidden');
+    }
+
+    // Sync to RLM pipeline
+    syncAgentsToRLM();
+
+    console.log('[Import] Session imported successfully:', {
+        agents: state.agents.length,
+        groups: state.groups.length,
+        chatMessages: state.chatHistory.length,
+        hasInsights: !!state.insights
+    });
+}
+
+/**
+ * Display success toast notification
+ */
+function showSuccess(message) {
+    // Use the brain status element for temporary success messages
+    const statusEl = elements.brainStatus;
+    if (statusEl) {
+        const originalContent = statusEl.innerHTML;
+        statusEl.innerHTML = `<span class="status-dot" style="background: var(--success);"></span> ${message}`;
+        statusEl.style.color = 'var(--success)';
+        setTimeout(() => {
+            statusEl.innerHTML = originalContent;
+            statusEl.style.color = '';
+        }, 3000);
+    }
+}
+
+/**
+ * Render chat history (for import restore)
+ */
+function renderChatHistory() {
+    if (!elements.chatMessages) return;
+
+    // Keep the welcome card
+    const welcomeCard = elements.chatMessages.querySelector('.chat-welcome-card');
+    elements.chatMessages.innerHTML = '';
+    if (welcomeCard) {
+        elements.chatMessages.appendChild(welcomeCard);
+    }
+
+    // Render each message
+    state.chatHistory.forEach(msg => {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${msg.role}-message`;
+
+        const roleIcon = msg.role === 'user' ? '👤' : '🤖';
+        const renderedContent = typeof marked !== 'undefined' && marked.parse
+            ? marked.parse(msg.content)
+            : msg.content;
+
+        messageDiv.innerHTML = `
+            <div class="message-avatar">${roleIcon}</div>
+            <div class="message-content">${renderedContent}</div>
+        `;
+
+        elements.chatMessages.appendChild(messageDiv);
+    });
+
+    // Scroll to bottom
+    elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 }
 
 // ============================================
