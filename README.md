@@ -35,6 +35,18 @@ northstar.LM is a client-side web application that uses OpenAI's AI models to an
 - **RLM Pipeline**: Intelligent query decomposition with source attribution
 - **Processing Modes**: Direct Chat, RLM + Signal-Weighted Memory, or RLM + Hybrid Focus
 - **Knowledge Base Canvas**: Interactive visualization with agent grouping and filtering
+- **Cross-Meeting Insights**: AI-generated themes, trends, risks, recommendations, and consolidated action items
+- **Executive Audio Briefing**: ~3 minute podcast-style update with upbeat, engaging delivery via TTS
+- **Insights Infographic**: Visual summary using DALL-E with premium black/gold executive theme
+- **Weekly Agenda**: RLM-powered agenda generation with:
+  - Methodology narrative explaining multi-agent Societies of Thought analysis
+  - Per-person task lists for core standup team members only
+  - External dependencies assigned to core team owners
+- **Export Options**:
+  - DOCX report with insights and weekly agenda
+  - Full session export (.md) with embedded JSON for later import
+  - Chat history export
+- **Session Import**: Restore agents, groups, insights, chat, and settings from exported sessions
 - **Comprehensive Metrics**: Token usage, costs, response times, and CSV export
 
 ---
@@ -113,6 +125,8 @@ flowchart TB
         E1[Load Multiple Agents]
         E2[RLM Pipeline]
         E3[Cross-Meeting Insights]
+        E4[Audio / Infographic / Agenda]
+        E5[Export DOCX / Session]
     end
 
     A1 --> B1 --> C1
@@ -120,7 +134,7 @@ flowchart TB
     A3 --> B3 --> C1
     C1 --> C2 --> C3
     C3 --> D1 & D2 & D3
-    D3 --> E1 --> E2 --> E3
+    D3 --> E1 --> E2 --> E3 --> E4 --> E5
 
     style Input fill:#1a1f2e,stroke:#d4a853,color:#fff
     style Process fill:#1a2a1a,stroke:#4ade80,color:#fff
@@ -167,8 +181,13 @@ flowchart TB
 1. Export meetings as Agent files from the Builder
 2. Visit the [Orchestrator](https://mjamiv.github.io/vox2txt/orchestrator.html)
 3. Load multiple agent files into the Knowledge Base
-4. Ask cross-meeting questions
-5. Export metrics for analysis
+4. Generate Cross-Meeting Insights (themes, risks, actions)
+5. Ask cross-meeting questions via RLM-powered chat
+6. Generate deliverables:
+   - **Audio Update**: Podcast-style executive briefing
+   - **Infographic**: Visual insights summary
+   - **Weekly Agenda**: Per-person task lists with methodology narrative
+7. Export session or insights as DOCX/Markdown
 
 ---
 
