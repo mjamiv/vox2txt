@@ -9398,7 +9398,7 @@ function hideButtonLoader(button) {
  * Two-step process: GPT generates the script, then TTS converts to audio
  */
 async function generateAudioUpdate() {
-    if (!state.insights && state.agents.filter(a => a.active).length === 0) {
+    if (!state.insights && state.agents.filter(a => a.enabled).length === 0) {
         showError('Load agents or generate insights first.');
         return;
     }
@@ -9413,7 +9413,7 @@ async function generateAudioUpdate() {
     if (btn) btn.disabled = true;
 
     try {
-        const activeAgents = state.agents.filter(a => a.active);
+        const activeAgents = state.agents.filter(a => a.enabled);
         const today = new Date();
         const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
         const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -9472,19 +9472,24 @@ SCRIPT REQUIREMENTS:
 8. **Closing** (5 seconds): Brief, professional sign-off.
 
 STYLE GUIDELINES:
+- Be UPBEAT, ENERGETIC, and POSITIVE - this should feel like exciting news, not a boring report
 - Write for SPOKEN delivery - use natural, conversational language
 - Avoid jargon unless it was specifically used in the meetings
-- Use transitional phrases between sections ("Moving on to...", "Now let's look at...", "Importantly...")
-- Include brief pauses (use "..." or paragraph breaks) for natural pacing
-- Sound confident and authoritative, but not stiff
-- Make it feel like a trusted advisor giving a briefing, not a robot reading a report
+- Use enthusiastic transitional phrases ("Here's something exciting...", "Now for the good stuff...", "And get this...")
+- Include brief pauses (use "..." or paragraph breaks) for natural pacing and emphasis
+- Sound confident, warm, and genuinely interested in sharing this information
+- Celebrate wins and progress - highlight what went well before discussing challenges
+- When discussing risks, frame them as "opportunities to address" not problems
+- Make it feel like catching up with a trusted colleague who's genuinely excited about the team's work
+- Add personality - occasional light humor or relatable observations are welcome
 - Do NOT use markdown formatting, bullet points, or headers - this is a spoken script
 - Do NOT say "bullet point" or "item one, item two" - use natural speech patterns
+- End on an inspiring, forward-looking note
 
 Write the script now:`;
 
         const scriptMessages = [
-            { role: 'system', content: 'You are an expert executive communications specialist who creates engaging, professional audio briefings. Your scripts sound natural and polished, like a premium business podcast.' },
+            { role: 'system', content: 'You are an energetic, charismatic executive communications host who creates engaging audio briefings. Think of yourself as the host of a premium business podcast - warm, personable, and genuinely enthusiastic about sharing insights. Your delivery style is like a mix of a trusted friend and a polished news anchor. You make business updates feel exciting and worth listening to.' },
             { role: 'user', content: scriptPrompt }
         ];
 
@@ -9496,7 +9501,10 @@ Write the script now:`;
 
         console.log('[Audio] Script generated:', script.length, 'chars. Converting to speech...');
 
-        // Step 2: Convert script to audio using TTS
+        // Step 2: Convert script to audio using TTS with voice affect instructions
+        // gpt-4o-mini-tts supports affect control via the input text
+        const voiceInstructions = `[Read the following in an upbeat, warm, and engaging tone. Be enthusiastic and conversational, like a friendly podcast host sharing exciting news with a colleague. Vary your pace - speed up slightly for exciting parts, slow down for important points. Add natural energy and warmth to your voice.]\n\n`;
+
         const ttsResponse = await fetch('https://api.openai.com/v1/audio/speech', {
             method: 'POST',
             headers: {
@@ -9505,10 +9513,10 @@ Write the script now:`;
             },
             body: JSON.stringify({
                 model: 'gpt-4o-mini-tts',
-                voice: 'onyx', // Deep, authoritative voice for executive briefings
-                input: script,
+                voice: 'nova', // Friendly, warm, expressive voice
+                input: voiceInstructions + script,
                 response_format: 'mp3',
-                speed: 0.95 // Slightly slower for clarity
+                speed: 1.0 // Normal speed, let the voice carry the energy
             })
         });
 
@@ -9584,7 +9592,7 @@ async function generateCrossInsightsInfographic() {
     if (btn) btn.disabled = true;
 
     try {
-        const activeAgents = state.agents.filter(a => a.active);
+        const activeAgents = state.agents.filter(a => a.enabled);
 
         // Build DALL-E prompt
         const dallePrompt = `Create a premium business intelligence infographic.
@@ -9707,7 +9715,7 @@ function downloadGeneratedInfographic() {
  * Generate next week's agenda with per-person task lists
  */
 async function generateWeeklyAgenda() {
-    if (!state.insights && state.agents.filter(a => a.active).length === 0) {
+    if (!state.insights && state.agents.filter(a => a.enabled).length === 0) {
         showError('Load at least one agent or generate insights first.');
         return;
     }
@@ -9722,7 +9730,7 @@ async function generateWeeklyAgenda() {
     if (btn) btn.disabled = true;
 
     try {
-        const activeAgents = state.agents.filter(a => a.active);
+        const activeAgents = state.agents.filter(a => a.enabled);
 
         // Build context from all active agents
         let agentSummaries = activeAgents.map(agent => {
@@ -9863,23 +9871,30 @@ function downloadWeeklyAgenda() {
  * Download cross-meeting insights as a Word document
  */
 async function downloadInsightsDocx() {
+    console.log('[Export DOCX] Starting export...');
+
     if (!state.insights) {
         showError('No insights available to export. Generate insights first.');
+        console.log('[Export DOCX] No insights available');
         return;
     }
 
     // Access docx library from window (loaded via CDN)
+    console.log('[Export DOCX] Checking for docx library...', typeof window.docx);
     if (typeof window.docx === 'undefined') {
         showError('DOCX library not loaded. Please refresh the page and try again.');
-        console.error('[Export] docx library not available on window object');
+        console.error('[Export DOCX] docx library not available on window object');
         return;
     }
 
-    const {
-        Document, Paragraph, TextRun, HeadingLevel, Packer,
-        Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType,
-        PageBreak
-    } = window.docx;
+    try {
+        const {
+            Document, Paragraph, TextRun, HeadingLevel, Packer,
+            Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType,
+            PageBreak
+        } = window.docx;
+
+        console.log('[Export DOCX] Library loaded, building document...');
 
     const currentDate = new Date().toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -9969,7 +9984,7 @@ async function downloadInsightsDocx() {
     }));
 
     // Active agents count
-    const activeAgents = state.agents.filter(a => a.active);
+    const activeAgents = state.agents.filter(a => a.enabled);
     children.push(new Paragraph({
         children: [
             new TextRun({ text: "Analysis Based On: ", bold: true, size: 22, font: "Calibri" }),
@@ -10169,15 +10184,16 @@ async function downloadInsightsDocx() {
         }));
     }
 
-    // Create and download document
-    const doc = new Document({
-        sections: [{
-            properties: {},
-            children: children
-        }]
-    });
+        // Create and download document
+        console.log('[Export DOCX] Creating document with', children.length, 'elements');
+        const doc = new Document({
+            sections: [{
+                properties: {},
+                children: children
+            }]
+        });
 
-    try {
+        console.log('[Export DOCX] Packing document...');
         const blob = await Packer.toBlob(doc);
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -10188,10 +10204,11 @@ async function downloadInsightsDocx() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        console.log('[Export] Insights DOCX downloaded successfully');
+        console.log('[Export DOCX] Download initiated successfully');
+
     } catch (error) {
-        console.error('[Export] DOCX generation failed:', error);
-        showError('Failed to generate DOCX. Please try again.');
+        console.error('[Export DOCX] Failed:', error);
+        showError('Failed to generate DOCX: ' + error.message);
     }
 }
 
@@ -10199,7 +10216,7 @@ async function downloadInsightsDocx() {
  * Build comprehensive JSON payload for session export
  */
 function buildOrchestratorExportPayload() {
-    const activeAgents = state.agents.filter(a => a.active);
+    const activeAgents = state.agents.filter(a => a.enabled);
     const timestamp = new Date().toISOString();
     const sessionId = `orch-${Date.now().toString(36)}`;
 
@@ -10344,7 +10361,7 @@ function downloadTextFile(content, filename, mimeType = 'text/plain') {
 function exportSessionAsMarkdown() {
     const payload = buildOrchestratorExportPayload();
     const timestamp = new Date().toISOString().slice(0, 10);
-    const activeAgents = state.agents.filter(a => a.active);
+    const activeAgents = state.agents.filter(a => a.enabled);
 
     // Build YAML frontmatter
     let md = `---
@@ -10456,7 +10473,7 @@ function exportChatHistoryAsMarkdown() {
 
 **Messages:** ${state.chatHistory.length}
 **Processing Mode:** ${processingMode}
-**Agents:** ${state.agents.filter(a => a.active).length} active
+**Agents:** ${state.agents.filter(a => a.enabled).length} active
 
 ---
 
