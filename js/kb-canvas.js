@@ -3,6 +3,12 @@
  *
  * Provides an immersive 3D canvas with mind-map style node connections,
  * drag-and-drop positioning, and animated SVG connections.
+ *
+ * Enhanced with physics-based interactions inspired by Robot Components:
+ * - Dynamic shadow depth during drag
+ * - Grid snapping (hold Shift)
+ * - Velocity tracking for fast-move effects
+ * - Alignment guides
  */
 
 class KBCanvas {
@@ -10,6 +16,7 @@ class KBCanvas {
         this.space = document.getElementById('kb-3d-space');
         this.svg = document.getElementById('kb-connections-svg');
         this.emptyState = document.getElementById('chain-empty-state');
+        this.wrapper = document.querySelector('.kb-canvas-wrapper');
         this.nodes = new Map(); // agentId -> { element, position }
         this.groupHeaders = new Map(); // groupId -> header element
         this.groupContainers = new Map(); // groupId -> { element, connectorNode, bounds }
@@ -27,6 +34,17 @@ class KBCanvas {
         this.onUngroupAgent = null; // Callback for when agent is ungrouped
         this.layoutTimer = null;
         this.groups = []; // Group data from state
+
+        // Phase 2 & 3: Physics and grid snapping
+        this.gridSize = 24; // Match CSS dot grid size
+        this.gridSnapEnabled = false;
+        this.velocity = { x: 0, y: 0 };
+        this.lastDragPos = { x: 0, y: 0 };
+        this.lastDragTime = 0;
+        this.velocityThreshold = 300; // px/s for fast-move effect
+        this.alignmentGuides = { horizontal: null, vertical: null };
+        this.snapIndicator = null;
+        this.shortcutsTooltip = null;
 
         if (this.space && this.svg) {
             this.init();
@@ -50,6 +68,217 @@ class KBCanvas {
         // Resize observer to update connections
         this.resizeObserver = new ResizeObserver(() => this.updateConnections());
         this.resizeObserver.observe(this.space);
+
+        // Phase 2 & 3: Keyboard shortcuts for grid snap
+        document.addEventListener('keydown', this.onKeyDown.bind(this));
+        document.addEventListener('keyup', this.onKeyUp.bind(this));
+
+        // Create alignment guides
+        this.createAlignmentGuides();
+
+        // Create snap indicator
+        this.createSnapIndicator();
+
+        // Create shortcuts tooltip
+        this.createShortcutsTooltip();
+    }
+
+    /**
+     * Create alignment guide elements
+     */
+    createAlignmentGuides() {
+        if (!this.wrapper) return;
+
+        // Horizontal guide
+        const hGuide = document.createElement('div');
+        hGuide.className = 'kb-alignment-guide horizontal';
+        this.wrapper.appendChild(hGuide);
+        this.alignmentGuides.horizontal = hGuide;
+
+        // Vertical guide
+        const vGuide = document.createElement('div');
+        vGuide.className = 'kb-alignment-guide vertical';
+        this.wrapper.appendChild(vGuide);
+        this.alignmentGuides.vertical = vGuide;
+    }
+
+    /**
+     * Create grid snap indicator
+     */
+    createSnapIndicator() {
+        if (!this.wrapper) return;
+
+        const indicator = document.createElement('div');
+        indicator.className = 'kb-snap-indicator';
+        indicator.innerHTML = `
+            <span class="snap-icon">⊞</span>
+            <span>Grid Snap</span>
+            <kbd>Shift</kbd>
+        `;
+        this.wrapper.appendChild(indicator);
+        this.snapIndicator = indicator;
+    }
+
+    /**
+     * Create keyboard shortcuts tooltip
+     */
+    createShortcutsTooltip() {
+        if (!this.wrapper) return;
+
+        const tooltip = document.createElement('div');
+        tooltip.className = 'kb-shortcuts-tooltip';
+        tooltip.innerHTML = `
+            <div class="shortcut-row"><span>Grid snap</span> <kbd>Shift</kbd></div>
+            <div class="shortcut-row"><span>Auto layout</span> <kbd>L</kbd></div>
+        `;
+        this.wrapper.appendChild(tooltip);
+        this.shortcutsTooltip = tooltip;
+    }
+
+    /**
+     * Handle keyboard shortcuts
+     */
+    onKeyDown(e) {
+        // Shift key for grid snap
+        if (e.key === 'Shift' && this.isDragging) {
+            this.gridSnapEnabled = true;
+            this.updateSnapIndicator(true);
+            if (this.dragTarget) {
+                this.dragTarget.classList.add('snap-preview');
+            }
+        }
+
+        // L key for auto-layout (when not in input)
+        if (e.key === 'l' || e.key === 'L') {
+            const activeEl = document.activeElement;
+            if (activeEl?.tagName !== 'INPUT' && activeEl?.tagName !== 'TEXTAREA') {
+                this.autoLayout();
+            }
+        }
+    }
+
+    onKeyUp(e) {
+        if (e.key === 'Shift') {
+            this.gridSnapEnabled = false;
+            this.updateSnapIndicator(false);
+            if (this.dragTarget) {
+                this.dragTarget.classList.remove('snap-preview');
+            }
+        }
+    }
+
+    /**
+     * Update snap indicator visibility
+     */
+    updateSnapIndicator(active) {
+        if (!this.snapIndicator) return;
+
+        if (this.isDragging) {
+            this.snapIndicator.classList.add('visible');
+            this.snapIndicator.classList.toggle('active', active);
+        } else {
+            this.snapIndicator.classList.remove('visible', 'active');
+        }
+    }
+
+    /**
+     * Show alignment guides when nodes align
+     */
+    showAlignmentGuide(type, position) {
+        const guide = this.alignmentGuides[type];
+        if (!guide) return;
+
+        if (type === 'horizontal') {
+            guide.style.top = `${position}px`;
+        } else {
+            guide.style.left = `${position}px`;
+        }
+        guide.classList.add('visible');
+    }
+
+    hideAlignmentGuide(type) {
+        const guide = this.alignmentGuides[type];
+        if (guide) {
+            guide.classList.remove('visible');
+        }
+    }
+
+    hideAllAlignmentGuides() {
+        this.hideAlignmentGuide('horizontal');
+        this.hideAlignmentGuide('vertical');
+    }
+
+    /**
+     * Check for node alignment and show guides
+     */
+    checkAlignment(x, y, nodeWidth, nodeHeight) {
+        const threshold = 8; // Snap threshold in pixels
+        const centerX = x + nodeWidth / 2;
+        const centerY = y + nodeHeight / 2;
+        let alignedH = false;
+        let alignedV = false;
+
+        this.nodes.forEach((nodeData, agentId) => {
+            if (nodeData.element === this.dragTarget) return;
+
+            const otherX = nodeData.position.x;
+            const otherY = nodeData.position.y;
+            const otherCenterX = otherX + nodeWidth / 2;
+            const otherCenterY = otherY + nodeHeight / 2;
+
+            // Check horizontal alignment (centers)
+            if (Math.abs(centerY - otherCenterY) < threshold) {
+                this.showAlignmentGuide('horizontal', otherCenterY);
+                alignedH = true;
+            }
+
+            // Check vertical alignment (centers)
+            if (Math.abs(centerX - otherCenterX) < threshold) {
+                this.showAlignmentGuide('vertical', otherCenterX);
+                alignedV = true;
+            }
+        });
+
+        if (!alignedH) this.hideAlignmentGuide('horizontal');
+        if (!alignedV) this.hideAlignmentGuide('vertical');
+    }
+
+    /**
+     * Snap position to grid
+     */
+    snapToGrid(x, y) {
+        if (!this.gridSnapEnabled) return { x, y };
+
+        return {
+            x: Math.round(x / this.gridSize) * this.gridSize,
+            y: Math.round(y / this.gridSize) * this.gridSize
+        };
+    }
+
+    /**
+     * Calculate velocity from drag movement
+     */
+    updateVelocity(x, y) {
+        const now = performance.now();
+        const dt = (now - this.lastDragTime) / 1000; // seconds
+
+        if (dt > 0 && dt < 0.1) { // Only calculate if reasonable time delta
+            this.velocity.x = (x - this.lastDragPos.x) / dt;
+            this.velocity.y = (y - this.lastDragPos.y) / dt;
+
+            // Check for fast movement
+            const speed = Math.sqrt(this.velocity.x ** 2 + this.velocity.y ** 2);
+            if (this.dragTarget) {
+                if (speed > this.velocityThreshold) {
+                    this.dragTarget.classList.add('fast-move');
+                } else {
+                    this.dragTarget.classList.remove('fast-move');
+                }
+            }
+        }
+
+        this.lastDragPos = { x, y };
+        this.lastDragTime = now;
     }
 
     /**
@@ -108,9 +337,12 @@ class KBCanvas {
         this.space.appendChild(nodeEl);
         this.nodes.set(agent.id, { element: nodeEl, position: pos, groupId: agent.groupId });
 
-        // Update empty state
+        // Update empty state and wrapper class
         if (this.emptyState) {
             this.emptyState.style.display = 'none';
+        }
+        if (this.wrapper) {
+            this.wrapper.classList.add('has-nodes');
         }
 
         // Schedule auto-layout (debounced to handle batch adds)
@@ -464,8 +696,13 @@ class KBCanvas {
             this.updateConnections();
 
             // Show empty state if no nodes
-            if (this.nodes.size === 0 && this.emptyState) {
-                this.emptyState.style.display = 'flex';
+            if (this.nodes.size === 0) {
+                if (this.emptyState) {
+                    this.emptyState.style.display = 'flex';
+                }
+                if (this.wrapper) {
+                    this.wrapper.classList.remove('has-nodes');
+                }
             }
         }, 300);
     }
@@ -1252,9 +1489,27 @@ class KBCanvas {
             y: clientY - rect.top
         };
 
+        // Initialize velocity tracking
+        this.velocity = { x: 0, y: 0 };
+        this.lastDragPos = { x: clientX, y: clientY };
+        this.lastDragTime = performance.now();
+
         nodeEl.classList.add('dragging');
         document.body.style.cursor = 'grabbing';
         document.body.style.userSelect = 'none';
+
+        // Add wrapper class for grid pulse effect
+        if (this.wrapper) {
+            this.wrapper.classList.add('dragging-active');
+        }
+
+        // Show snap indicator
+        this.updateSnapIndicator(this.gridSnapEnabled);
+
+        // Check if shift is already held
+        if (this.gridSnapEnabled) {
+            nodeEl.classList.add('snap-preview');
+        }
     }
 
     moveDrag(clientX, clientY) {
@@ -1262,14 +1517,27 @@ class KBCanvas {
 
         const spaceRect = this.space.getBoundingClientRect();
         const nodeRect = this.dragTarget.getBoundingClientRect();
+        const nodeWidth = nodeRect.width;
+        const nodeHeight = nodeRect.height;
 
         let x = clientX - spaceRect.left - this.dragOffset.x;
         let y = clientY - spaceRect.top - this.dragOffset.y;
 
         // Constrain to container
         const padding = 10;
-        x = Math.max(padding, Math.min(x, spaceRect.width - nodeRect.width - padding));
-        y = Math.max(padding, Math.min(y, spaceRect.height - nodeRect.height - padding));
+        x = Math.max(padding, Math.min(x, spaceRect.width - nodeWidth - padding));
+        y = Math.max(padding, Math.min(y, spaceRect.height - nodeHeight - padding));
+
+        // Apply grid snapping if enabled
+        const snapped = this.snapToGrid(x, y);
+        x = snapped.x;
+        y = snapped.y;
+
+        // Update velocity tracking
+        this.updateVelocity(clientX, clientY);
+
+        // Check for alignment with other nodes
+        this.checkAlignment(x, y, nodeWidth, nodeHeight);
 
         this.dragTarget.style.left = `${x}px`;
         this.dragTarget.style.top = `${y}px`;
@@ -1287,7 +1555,7 @@ class KBCanvas {
         if (!this.isDragging) return;
 
         if (this.dragTarget) {
-            this.dragTarget.classList.remove('dragging');
+            this.dragTarget.classList.remove('dragging', 'fast-move', 'snap-preview');
 
             const agentId = this.dragTarget.dataset.id;
             const nodeData = this.nodes.get(agentId);
@@ -1315,8 +1583,18 @@ class KBCanvas {
 
         this.isDragging = false;
         this.dragTarget = null;
+        this.velocity = { x: 0, y: 0 };
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
+
+        // Remove wrapper class
+        if (this.wrapper) {
+            this.wrapper.classList.remove('dragging-active');
+        }
+
+        // Hide snap indicator and alignment guides
+        this.updateSnapIndicator(false);
+        this.hideAllAlignmentGuides();
     }
 
     /**
@@ -1466,6 +1744,9 @@ class KBCanvas {
 
         if (this.emptyState) {
             this.emptyState.style.display = 'flex';
+        }
+        if (this.wrapper) {
+            this.wrapper.classList.remove('has-nodes');
         }
     }
 

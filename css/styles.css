@@ -5871,24 +5871,60 @@ details[open] .about-toggle {
     overflow: hidden;
 }
 
+/* Dot Grid Pattern - Robot Components Style */
 .ambient-grid {
     position: absolute;
-    inset: -50%;
-    width: 200%;
-    height: 200%;
-    background-image:
-        linear-gradient(rgba(212,168,83,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(212,168,83,0.04) 1px, transparent 1px);
-    background-size: 50px 50px;
-    mask-image: radial-gradient(ellipse at center, black 20%, transparent 70%);
-    -webkit-mask-image: radial-gradient(ellipse at center, black 20%, transparent 70%);
-    animation: ambientDrift 60s linear infinite;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(circle, rgba(212,168,83,0.15) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: 12px 12px;
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
 }
 
-@keyframes ambientDrift {
-    0% { transform: translate(0, 0); }
-    50% { transform: translate(25px, 25px); }
-    100% { transform: translate(0, 0); }
+/* Grid intensifies when canvas is active (has nodes) */
+.kb-canvas-wrapper.has-nodes .ambient-grid {
+    opacity: 0.8;
+}
+
+/* Subtle grid pulse near cursor during drag */
+.kb-canvas-wrapper.dragging-active .ambient-grid {
+    animation: gridPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes gridPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 0.9; }
+}
+
+/* Alignment guides that appear when nodes align */
+.kb-alignment-guide {
+    position: absolute;
+    background: rgba(212,168,83,0.4);
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.kb-alignment-guide.visible {
+    opacity: 1;
+}
+
+.kb-alignment-guide.horizontal {
+    height: 1px;
+    left: 0;
+    right: 0;
+    box-shadow: 0 0 8px rgba(212,168,83,0.6);
+}
+
+.kb-alignment-guide.vertical {
+    width: 1px;
+    top: 0;
+    bottom: 0;
+    box-shadow: 0 0 8px rgba(212,168,83,0.6);
 }
 
 /* 3D Space Container */
@@ -6001,6 +6037,100 @@ details[open] .about-toggle {
     color: var(--accent-primary);
 }
 
+/* Grid Snap Indicator */
+.kb-snap-indicator {
+    position: absolute;
+    bottom: var(--space-sm);
+    left: var(--space-sm);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(26,35,50,0.9);
+    border: 1px solid rgba(212,168,83,0.3);
+    border-radius: var(--radius-sm);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    backdrop-filter: blur(4px);
+    z-index: 10;
+    opacity: 0;
+    transform: translateY(5px);
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+
+.kb-snap-indicator.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.kb-snap-indicator.active {
+    border-color: rgba(212,168,83,0.6);
+    color: var(--accent-primary);
+    background: rgba(212,168,83,0.1);
+}
+
+.kb-snap-indicator .snap-icon {
+    font-size: 0.8rem;
+}
+
+.kb-snap-indicator kbd {
+    display: inline-block;
+    padding: 1px 4px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 0.6rem;
+}
+
+/* Keyboard shortcuts tooltip */
+.kb-shortcuts-tooltip {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    padding: 8px 12px;
+    background: rgba(26,35,50,0.95);
+    border: 1px solid rgba(212,168,83,0.3);
+    border-radius: var(--radius-sm);
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    backdrop-filter: blur(4px);
+    z-index: 10;
+    opacity: 0;
+    transform: translateY(-5px);
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+
+.kb-shortcuts-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.kb-shortcuts-tooltip .shortcut-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.kb-shortcuts-tooltip .shortcut-row:last-child {
+    margin-bottom: 0;
+}
+
+.kb-shortcuts-tooltip kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 0.6rem;
+    min-width: 18px;
+    text-align: center;
+}
+
 /* 3D Node Cards */
 .agent-node-3d {
     position: absolute;
@@ -6010,17 +6140,77 @@ details[open] .about-toggle {
     touch-action: none;
 }
 
+/* Enhanced dragging state - Phase 2: Dynamic Shadow & Depth */
 .agent-node-3d.dragging {
     cursor: grabbing;
     z-index: 100;
+    /* Smooth transition for lift effect */
+    transition: none !important;
 }
 
 .agent-node-3d.dragging .node-card {
-    transform: scale(1.05);
+    transform: scale(1.08) translateY(-4px);
+    box-shadow:
+        /* Primary shadow - deeper and more diffuse */
+        0 20px 50px rgba(0,0,0,0.5),
+        0 10px 25px rgba(0,0,0,0.3),
+        /* Glow effect intensified */
+        0 0 40px rgba(212,168,83,0.4),
+        0 0 20px rgba(96,165,250,0.2),
+        /* Inner highlight */
+        inset 0 2px 0 rgba(255,255,255,0.15),
+        inset 0 0 20px rgba(212,168,83,0.1);
+    border-color: rgba(212,168,83,0.7);
+    /* Animation for pulsing glow while dragging */
+    animation: dragGlow 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes dragGlow {
+    from {
+        box-shadow:
+            0 20px 50px rgba(0,0,0,0.5),
+            0 10px 25px rgba(0,0,0,0.3),
+            0 0 40px rgba(212,168,83,0.4),
+            0 0 20px rgba(96,165,250,0.2),
+            inset 0 2px 0 rgba(255,255,255,0.15),
+            inset 0 0 20px rgba(212,168,83,0.1);
+    }
+    to {
+        box-shadow:
+            0 25px 60px rgba(0,0,0,0.55),
+            0 12px 30px rgba(0,0,0,0.35),
+            0 0 50px rgba(212,168,83,0.5),
+            0 0 25px rgba(96,165,250,0.25),
+            inset 0 2px 0 rgba(255,255,255,0.18),
+            inset 0 0 25px rgba(212,168,83,0.12);
+    }
+}
+
+/* Fast-moving node trail effect */
+.agent-node-3d.dragging.fast-move .node-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(212,168,83,0.2), transparent);
+    opacity: 0.5;
+    transform: scale(1.1);
+    filter: blur(8px);
+    animation: trailFade 0.3s ease-out;
+}
+
+@keyframes trailFade {
+    from { opacity: 0.6; transform: scale(1.15); }
+    to { opacity: 0; transform: scale(1.05); }
+}
+
+/* Node about to snap to grid */
+.agent-node-3d.snap-preview .node-card {
+    border-color: rgba(212,168,83,0.9);
     box-shadow:
         0 15px 35px rgba(0,0,0,0.4),
-        0 0 25px rgba(212,168,83,0.3),
-        inset 0 0 15px rgba(212,168,83,0.08);
+        0 0 30px rgba(212,168,83,0.5),
+        inset 0 0 15px rgba(212,168,83,0.15);
 }
 
 .node-card {
