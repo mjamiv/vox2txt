@@ -427,9 +427,6 @@ async function init() {
         resultAgenda: document.getElementById('result-agenda'),
         agendaSection: document.getElementById('agenda-section'),
 
-        // Agenda
-        makeAgendaBtn: document.getElementById('make-agenda-btn'),
-
         // Export Dropdown
         exportMenuBtn: document.getElementById('export-menu-btn'),
         exportDropdown: document.getElementById('export-dropdown'),
@@ -651,12 +648,6 @@ function setupEventListeners() {
             closeGenerateDropdown();
         });
     }
-    if (elements.makeAgendaBtn) {
-        elements.makeAgendaBtn.addEventListener('click', () => {
-            generateAgenda();
-            closeGenerateDropdown();
-        });
-    }
 
     // Close dropdowns when clicking outside
     document.addEventListener('click', (e) => {
@@ -783,14 +774,6 @@ function setupEventListeners() {
     if (elements.exportAgentBtn) {
         elements.exportAgentBtn.addEventListener('click', () => {
             showAgentNameModal();
-            closeExportDropdown();
-        });
-    }
-
-    // Make Agenda (in dropdown)
-    if (elements.makeAgendaBtn) {
-        elements.makeAgendaBtn.addEventListener('click', () => {
-            generateAgenda();
             closeExportDropdown();
         });
     }
@@ -2245,6 +2228,9 @@ function displayResults() {
 
     // Scroll to results
     elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Auto-generate agenda in background
+    generateAgenda();
 }
 
 // ============================================
@@ -3517,14 +3503,7 @@ function formatAudioTime(seconds) {
 async function generateAgenda() {
     if (!state.results) return;
 
-    const btn = elements.makeAgendaBtn;
-    const btnText = btn?.querySelector('.btn-text');
-    const btnLoader = btn?.querySelector('.btn-loader');
-
-    // Show loading state
-    if (btnText) btnText.classList.add('hidden');
-    if (btnLoader) btnLoader.classList.remove('hidden');
-    if (btn) btn.disabled = true;
+    console.log('[Agenda] Auto-generating agenda...');
 
     try {
         let agendaText;
@@ -3564,19 +3543,15 @@ Keep it brief - 4-6 sections max, 1-2 bullets each.`;
         // Display the agenda in the result card
         elements.resultAgenda.innerHTML = marked.parse(agendaText);
 
-        // Open the agenda section
-        elements.agendaSection.open = true;
+        console.log('[Agenda] Agenda generated successfully');
 
         // Update metrics display
         displayMetrics();
 
     } catch (error) {
         console.error('Agenda generation error:', error);
-        showError(error.message || 'Failed to generate agenda.');
-    } finally {
-        if (btnText) btnText.classList.remove('hidden');
-        if (btnLoader) btnLoader.classList.add('hidden');
-        if (btn) btn.disabled = false;
+        // Show error in the agenda section instead of popup
+        elements.resultAgenda.innerHTML = `<p class="muted">Failed to generate agenda: ${error.message}</p>`;
     }
 }
 

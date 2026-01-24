@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=64">
+    <link rel="stylesheet" href="css/styles.css?v=65">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a853">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230a0e17' width='32' height='32' rx='6'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23d4a853'%3E⭐%3C/text%3E%3C/svg%3E" type="image/svg+xml">
@@ -276,7 +276,7 @@
 
             <!-- Results Cards (Full Width) -->
             <div class="results-cards">
-                <details class="result-card" id="keypoints-section" open>
+                <details class="result-card" id="keypoints-section">
                     <summary class="card-header card-header-collapsible">
                         <span class="card-icon">&#128161;</span>
                         <h3>Key Points</h3>
@@ -287,7 +287,7 @@
                     </div>
                 </details>
 
-                <details class="result-card" id="actions-section" open>
+                <details class="result-card" id="actions-section">
                     <summary class="card-header card-header-collapsible">
                         <span class="card-icon">&#9989;</span>
                         <h3>Action Items</h3>
@@ -305,7 +305,7 @@
                         <span class="collapse-toggle">▼</span>
                     </summary>
                     <div class="card-content" id="result-agenda">
-                        <p class="muted">Use Export menu to generate an agenda for your next meeting.</p>
+                        <p class="muted agenda-loading"><span class="spinner-small"></span> Generating agenda...</p>
                     </div>
                 </details>
             </div><!-- /.results-cards -->
@@ -343,10 +343,6 @@
                         <button class="dropdown-item" id="generate-infographic-menu-btn" title="Generate infographic">
                             <span class="dropdown-icon">🖼️</span>
                             <span class="dropdown-label">Infographic</span>
-                        </button>
-                        <button class="dropdown-item" id="make-agenda-btn" title="Generate meeting agenda">
-                            <span class="dropdown-icon">📋</span>
-                            <span class="dropdown-label">Meeting Agenda</span>
                         </button>
                     </div>
                 </div>
@@ -393,15 +389,19 @@
             </div>
 
             <!-- Infographic (shows after generation via Export menu) -->
-            <div id="infographic-container" class="infographic-container hidden">
-                <div class="infographic-header">
-                    <span>🖼️</span> Meeting Infographic
+            <details id="infographic-container" class="result-card infographic-card hidden" open>
+                <summary class="card-header card-header-collapsible">
+                    <span class="card-icon">🖼️</span>
+                    <h3>Meeting Infographic</h3>
+                    <span class="collapse-toggle">▼</span>
+                </summary>
+                <div class="card-content infographic-content">
+                    <img id="infographic-image" alt="Meeting Infographic" />
+                    <button id="download-infographic-btn" class="btn-secondary" title="Download infographic as PNG image">
+                        <span>&#128229;</span> Download Image
+                    </button>
                 </div>
-                <img id="infographic-image" alt="Meeting Infographic" />
-                <button id="download-infographic-btn" class="btn-secondary" title="Download infographic as PNG image">
-                    <span>&#128229;</span> Download Image
-                </button>
-            </div>
+            </details>
 
         </section>
 
@@ -648,7 +648,7 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/app.js?v=69" type="module"></script>
+    <script src="js/app.js?v=70" type="module"></script>
 
     <!-- Service Worker Registration with Auto-Update -->
     <script>
