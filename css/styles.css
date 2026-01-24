@@ -7240,6 +7240,21 @@ details[open] .about-toggle {
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Advanced Action Row */
+.advanced-action-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.advanced-action-row .action-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
 /* KB View Toggle */
 .kb-view-toggle {
     display: flex;

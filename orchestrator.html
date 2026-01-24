@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=74">
+    <link rel="stylesheet" href="css/styles.css?v=75">
     <!-- Pyodide is loaded lazily in the REPL Web Worker for Python execution -->
     <!-- docx.js for DOCX export -->
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
@@ -262,9 +262,6 @@
                         </span>
                     </div>
                     <div class="chatbot-header-actions">
-                        <button id="run-test-prompting-btn" class="btn-secondary btn-sm run-test-btn" title="Run test prompting">
-                            Run Tests
-                        </button>
                         <button id="clear-cache-btn" class="btn-text btn-sm chatbot-clear-btn" title="Clear chat history and query cache">
                             Clear
                         </button>
@@ -491,10 +488,18 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Test Prompting Button -->
+                            <div class="advanced-action-row">
+                                <button id="run-test-prompting-btn" class="btn-secondary btn-sm" title="Run test prompting suite">
+                                    Run Test Prompting
+                                </button>
+                                <span class="action-hint">Evaluate orchestrator with test queries</span>
+                            </div>
                         </div>
                     </div>
                 </details>
-                
+
                 <!-- Chat Messages Area -->
                 <div class="chatbot-messages" id="chat-messages">
                     <div class="chat-welcome-card">
