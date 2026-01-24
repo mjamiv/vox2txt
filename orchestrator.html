@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=75">
+    <link rel="stylesheet" href="css/styles.css?v=76">
     <!-- Pyodide is loaded lazily in the REPL Web Worker for Python execution -->
     <!-- docx.js for DOCX export -->
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
@@ -585,70 +585,77 @@
             </div>
 
             <div class="insights-grid">
-                <div class="insight-card insight-themes">
-                    <div class="card-header">
+                <details class="insight-card insight-themes" open>
+                    <summary class="card-header">
                         <h3>Common Themes</h3>
-                    </div>
+                        <span class="collapse-icon">▼</span>
+                    </summary>
                     <div class="card-content" id="insight-themes">
                         <!-- Themes will be inserted here -->
                     </div>
-                </div>
+                </details>
 
-                <div class="insight-card insight-trends">
-                    <div class="card-header">
+                <details class="insight-card insight-trends" open>
+                    <summary class="card-header">
                         <h3>Trends & Patterns</h3>
-                    </div>
+                        <span class="collapse-icon">▼</span>
+                    </summary>
                     <div class="card-content" id="insight-trends">
                         <!-- Trends will be inserted here -->
                     </div>
-                </div>
+                </details>
 
-                <div class="insight-card insight-risks">
-                    <div class="card-header">
+                <details class="insight-card insight-risks" open>
+                    <summary class="card-header">
                         <h3>Key Risks & Blockers</h3>
-                    </div>
+                        <span class="collapse-icon">▼</span>
+                    </summary>
                     <div class="card-content" id="insight-risks">
                         <!-- Risks will be inserted here -->
                     </div>
-                </div>
+                </details>
 
-                <div class="insight-card insight-recommendations">
-                    <div class="card-header">
+                <details class="insight-card insight-recommendations" open>
+                    <summary class="card-header">
                         <h3>Recommendations</h3>
-                    </div>
+                        <span class="collapse-icon">▼</span>
+                    </summary>
                     <div class="card-content" id="insight-recommendations">
                         <!-- Recommendations will be inserted here -->
                     </div>
-                </div>
+                </details>
 
-                <div class="insight-card insight-actions full-width">
-                    <div class="card-header">
+                <details class="insight-card insight-actions full-width" open>
+                    <summary class="card-header">
                         <h3>Consolidated Action Items</h3>
-                    </div>
+                        <span class="collapse-icon">▼</span>
+                    </summary>
                     <div class="card-content" id="insight-actions">
                         <!-- Action items will be inserted here -->
                     </div>
-                </div>
+                </details>
             </div>
 
             <!-- Audio Update Section -->
-            <div class="audio-update-section hidden" id="audio-update-section">
-                <div class="audio-header">
+            <details class="audio-update-section hidden" id="audio-update-section" open>
+                <summary class="collapsible-header">
                     <h3>Audio Update</h3>
-                </div>
+                    <span class="collapse-icon">▼</span>
+                </summary>
                 <div class="audio-controls">
                     <audio id="audio-player" controls></audio>
                     <button id="download-audio-btn" class="btn-secondary btn-sm" title="Download audio">
                         Download MP3
                     </button>
                 </div>
-            </div>
+            </details>
 
             <!-- Infographic Section -->
-            <div class="infographic-section hidden" id="infographic-section">
-                <div class="infographic-header">
+            <details class="infographic-section hidden" id="infographic-section" open>
+                <summary class="collapsible-header">
                     <h3>Cross-Meeting Infographic</h3>
-                </div>
+                    <span class="collapse-icon">▼</span>
+                </summary>
                 <div class="infographic-container">
                     <img id="infographic-image" alt="Generated infographic" class="infographic-img">
                 </div>
@@ -657,13 +664,14 @@
                         Download PNG
                     </button>
                 </div>
-            </div>
+            </details>
 
             <!-- Weekly Agenda Section -->
-            <div class="weekly-agenda-section hidden" id="weekly-agenda-section">
-                <div class="agenda-header">
+            <details class="weekly-agenda-section hidden" id="weekly-agenda-section" open>
+                <summary class="collapsible-header">
                     <h3>Next Week's Agenda</h3>
-                </div>
+                    <span class="collapse-icon">▼</span>
+                </summary>
                 <div class="agenda-content" id="weekly-agenda-content">
                     <!-- Generated agenda will be inserted here -->
                 </div>
@@ -672,7 +680,7 @@
                         Download .md
                     </button>
                 </div>
-            </div>
+            </details>
         </section>
 
 

@@ -5487,6 +5487,56 @@ details[open] .about-toggle {
 }
 
 /* Audio Update Section (Orchestrator) */
+/* Collapsible Section Header (shared) */
+.collapsible-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    padding-bottom: var(--space-sm);
+    margin-bottom: var(--space-md);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.collapsible-header::-webkit-details-marker {
+    display: none;
+}
+
+.collapsible-header:hover {
+    opacity: 0.85;
+}
+
+.collapsible-header h3 {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    color: var(--accent-primary);
+    margin: 0;
+}
+
+.collapsible-header .collapse-icon {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+details[open] > .collapsible-header .collapse-icon {
+    transform: rotate(0deg);
+}
+
+details:not([open]) > .collapsible-header .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+details:not([open]) > .collapsible-header {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+/* Audio Update Section (Orchestrator) */
 .audio-update-section {
     margin-top: var(--space-xl);
     padding: var(--space-lg);
@@ -5558,6 +5608,10 @@ details[open] .about-toggle {
     margin-bottom: var(--space-md);
 }
 
+.infographic-container {
+    margin-top: var(--space-md);
+}
+
 .infographic-img {
     width: 100%;
     max-width: 800px;
@@ -5569,6 +5623,7 @@ details[open] .about-toggle {
 .infographic-actions {
     display: flex;
     gap: var(--space-sm);
+    margin-top: var(--space-md);
 }
 
 /* Weekly Agenda Section (Orchestrator) */
@@ -5596,6 +5651,10 @@ details[open] .about-toggle {
 
 .agenda-icon {
     font-size: 1.4rem;
+}
+
+.agenda-actions {
+    margin-top: var(--space-md);
 }
 
 .agenda-content {
@@ -8733,10 +8792,44 @@ details[open] .about-toggle {
 .insight-card .card-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-sm);
-    margin-bottom: var(--space-md);
     padding-bottom: var(--space-sm);
     border-bottom: 1px solid rgba(212, 168, 83, 0.1);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.insight-card .card-header::-webkit-details-marker {
+    display: none;
+}
+
+.insight-card .card-header:hover {
+    opacity: 0.85;
+}
+
+.insight-card .card-content {
+    padding-top: var(--space-md);
+}
+
+.insight-card .collapse-icon {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+.insight-card[open] .collapse-icon {
+    transform: rotate(0deg);
+}
+
+.insight-card:not([open]) .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+.insight-card:not([open]) .card-header {
+    border-bottom: none;
+    padding-bottom: 0;
 }
 
 .insight-card .card-icon {
@@ -8748,6 +8841,7 @@ details[open] .about-toggle {
     font-size: 1.2rem;
     letter-spacing: 0.05em;
     color: var(--accent-primary);
+    margin: 0;
 }
 
 .insight-list {
