@@ -34,23 +34,31 @@ northstar.LM is a client-side web application that uses OpenAI's AI models to an
 - **Professional Export**: DOCX reports and portable agent files (.md)
 
 ### Agent Orchestrator
+- **Simplified Settings**: Three preset modes replace complex configuration
+  - **Quick**: Fast responses, lower cost (Direct Chat)
+  - **Balanced**: Recommended for most queries (RLM + Signal-Weighted Memory)
+  - **Deep**: Thorough multi-agent reasoning (RLM + Hybrid Focus)
+- **Active Agent Chips**: Visual indicators showing which agents are active, click to toggle
+- **Knowledge Base Views**: Toggle between interactive Canvas and sortable List view
 - **Multi-Agent Analysis**: Load and query multiple meeting agents simultaneously
 - **RLM Pipeline**: Intelligent query decomposition with source attribution
-- **Processing Modes**: Direct Chat, RLM + Signal-Weighted Memory, or RLM + Hybrid Focus
-- **Knowledge Base Canvas**: Interactive visualization with agent grouping and filtering
-- **Cross-Meeting Insights**: AI-generated themes, trends, risks, recommendations, and consolidated action items
+- **Cross-Meeting Insights**: Collapsible cards for themes, trends, risks, recommendations, and actions
+  - Color-coded borders by category (gold/blue/red/purple/green)
+  - Click headers to expand/collapse individual sections
 - **Executive Audio Briefing**: ~3 minute podcast-style update with upbeat, engaging delivery via TTS
 - **Insights Infographic**: Visual summary using DALL-E with premium black/gold executive theme
 - **Weekly Agenda**: RLM-powered agenda generation with:
   - Methodology narrative explaining multi-agent Societies of Thought analysis
   - Per-person task lists for core standup team members only
   - External dependencies assigned to core team owners
+- **Advanced Options**: Collapsible drawer with model settings, context gauge, and test prompting
 - **Export Options**:
   - DOCX report with insights and weekly agenda
   - Full session export (.md) with embedded JSON for later import
   - Chat history export
 - **Session Import**: Restore agents, groups, insights, chat, and settings from exported sessions
 - **Comprehensive Metrics**: Token usage, costs, response times, and CSV export
+- **Toast Notifications**: Non-intrusive feedback for actions and errors
 
 ---
 
@@ -88,11 +96,15 @@ Comprehensive stress testing validates RLM's ability to maintain conversation co
 Toggle between **Direct** and **RLM** modes for chat and agenda generation. RLM is enabled by default, providing enhanced context handling via signal-weighted memory.
 
 ### Agent Orchestrator
-Three processing modes available:
+Three preset modes simplify configuration:
 
-1. **Direct Chat** — Single LLM call with combined context. Best for quick, single-turn queries.
-2. **RLM + Signal-Weighted Memory** — RLM routing with state block, working window, and retrieved slices. Best balance of cost, quality, and latency.
-3. **RLM + Hybrid Focus** — RLM with focus tracking and shadow diagnostics for tuning and evaluation.
+| Preset | Mode | Best For |
+|--------|------|----------|
+| **Quick** | Direct Chat | Fast, single-turn queries |
+| **Balanced** | RLM + Signal-Weighted Memory | Most queries (recommended) |
+| **Deep** | RLM + Hybrid Focus | Complex multi-agent analysis |
+
+Advanced users can access detailed settings (model selection, effort level, individual toggles) via the **Advanced Options** drawer.
 
 ---
 
@@ -185,14 +197,16 @@ flowchart TB
 ### Agent Orchestrator
 1. Export meetings as Agent files from the Builder
 2. Visit the [Orchestrator](https://mjamiv.github.io/vox2txt/orchestrator.html)
-3. Load multiple agent files into the Knowledge Base
-4. Generate Cross-Meeting Insights (themes, risks, actions)
-5. Ask cross-meeting questions via RLM-powered chat
-6. Generate deliverables:
+3. Load agent files into the Knowledge Base (drag & drop or click to upload)
+4. Select a preset mode: **Quick**, **Balanced** (default), or **Deep**
+5. Use the chat to ask cross-meeting questions
+6. Click agent chips to toggle agents on/off for focused queries
+7. Generate Cross-Meeting Insights (collapsible cards for each category)
+8. Generate deliverables:
    - **Audio Update**: Podcast-style executive briefing
    - **Infographic**: Visual insights summary
    - **Weekly Agenda**: Per-person task lists with methodology narrative
-7. Export session or insights as DOCX/Markdown
+9. Export session or insights as DOCX/Markdown
 
 ---
 
