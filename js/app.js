@@ -88,7 +88,7 @@ const chatWidgetState = {
     isExpanded: false,
     isDragging: false,
     position: { x: null, y: null },
-    anchor: 'bottom-right',  // 'bottom-right', 'bottom-left', 'top-right', 'top-left'
+    anchor: 'bottom-left',  // 'bottom-right', 'bottom-left', 'top-right', 'top-left'
     unreadCount: 0,
     dragOffset: { x: 0, y: 0 }
 };
@@ -452,6 +452,14 @@ async function init() {
         audioPlayerContainer: document.getElementById('audio-player-container'),
         audioPlayer: document.getElementById('audio-player'),
         downloadAudioBtn: document.getElementById('download-audio-btn'),
+        audioPlayBtn: document.getElementById('audio-play-btn'),
+        audioProgressBar: document.getElementById('audio-progress-bar'),
+        audioProgressFill: document.getElementById('audio-progress-fill'),
+        audioProgressHandle: document.getElementById('audio-progress-handle'),
+        audioCurrentTime: document.getElementById('audio-current-time'),
+        audioDuration: document.getElementById('audio-duration'),
+        audioVolumeBtn: document.getElementById('audio-volume-btn'),
+        audioVolumeSlider: document.getElementById('audio-volume-slider'),
         
         // Infographic
         infographicPrompt: document.getElementById('infographic-prompt'),
@@ -530,7 +538,8 @@ async function init() {
         chatWidgetMinimize: document.getElementById('chat-widget-minimize'),
         chatWidgetHeader: document.getElementById('chat-widget-header'),
         chatUnreadBadge: document.getElementById('chat-unread-badge'),
-        anchorZones: document.getElementById('anchor-zones')
+        anchorZones: document.getElementById('anchor-zones'),
+        chatReminder: document.getElementById('chat-reminder')
     };
 
     loadSavedApiKey();
@@ -674,6 +683,9 @@ function setupEventListeners() {
     if (elements.downloadAudioBtn) {
         elements.downloadAudioBtn.addEventListener('click', downloadAudio);
     }
+
+    // Custom Audio Player Controls
+    initAudioPlayerControls();
 
     // Infographic (from dedicated section, if exists)
     if (elements.generateInfographicBtn) {
@@ -3341,6 +3353,165 @@ function downloadAudio() {
 }
 
 // ============================================
+// CUSTOM AUDIO PLAYER CONTROLS
+// ============================================
+function initAudioPlayerControls() {
+    if (!elements.audioPlayer) return;
+
+    // Play/Pause button
+    if (elements.audioPlayBtn) {
+        elements.audioPlayBtn.addEventListener('click', toggleAudioPlayback);
+    }
+
+    // Progress bar click to seek
+    if (elements.audioProgressBar) {
+        elements.audioProgressBar.addEventListener('click', seekAudio);
+    }
+
+    // Volume slider
+    if (elements.audioVolumeSlider) {
+        elements.audioVolumeSlider.addEventListener('input', handleVolumeChange);
+    }
+
+    // Volume button (mute/unmute)
+    if (elements.audioVolumeBtn) {
+        elements.audioVolumeBtn.addEventListener('click', toggleMute);
+    }
+
+    // Audio element events
+    elements.audioPlayer.addEventListener('timeupdate', updateAudioProgress);
+    elements.audioPlayer.addEventListener('loadedmetadata', updateAudioDuration);
+    elements.audioPlayer.addEventListener('ended', handleAudioEnded);
+    elements.audioPlayer.addEventListener('play', updatePlayButtonState);
+    elements.audioPlayer.addEventListener('pause', updatePlayButtonState);
+}
+
+function toggleAudioPlayback() {
+    if (!elements.audioPlayer) return;
+
+    if (elements.audioPlayer.paused) {
+        elements.audioPlayer.play();
+    } else {
+        elements.audioPlayer.pause();
+    }
+}
+
+function updatePlayButtonState() {
+    if (!elements.audioPlayBtn) return;
+
+    const playIcon = elements.audioPlayBtn.querySelector('.play-icon');
+    const pauseIcon = elements.audioPlayBtn.querySelector('.pause-icon');
+
+    if (elements.audioPlayer.paused) {
+        playIcon?.classList.remove('hidden');
+        pauseIcon?.classList.add('hidden');
+    } else {
+        playIcon?.classList.add('hidden');
+        pauseIcon?.classList.remove('hidden');
+    }
+}
+
+function updateAudioProgress() {
+    if (!elements.audioPlayer || !elements.audioProgressFill) return;
+
+    const { currentTime, duration } = elements.audioPlayer;
+    if (!duration || isNaN(duration)) return;
+
+    const percentage = (currentTime / duration) * 100;
+    elements.audioProgressFill.style.width = percentage + '%';
+
+    if (elements.audioProgressHandle) {
+        elements.audioProgressHandle.style.left = percentage + '%';
+    }
+
+    if (elements.audioCurrentTime) {
+        elements.audioCurrentTime.textContent = formatAudioTime(currentTime);
+    }
+}
+
+function updateAudioDuration() {
+    if (!elements.audioPlayer || !elements.audioDuration) return;
+
+    const { duration } = elements.audioPlayer;
+    if (!duration || isNaN(duration)) return;
+
+    elements.audioDuration.textContent = formatAudioTime(duration);
+}
+
+function seekAudio(e) {
+    if (!elements.audioPlayer || !elements.audioProgressBar) return;
+
+    const rect = elements.audioProgressBar.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+
+    elements.audioPlayer.currentTime = percentage * elements.audioPlayer.duration;
+}
+
+function handleVolumeChange(e) {
+    if (!elements.audioPlayer) return;
+
+    const volume = parseFloat(e.target.value);
+    elements.audioPlayer.volume = volume;
+    updateVolumeIcon(volume);
+}
+
+function toggleMute() {
+    if (!elements.audioPlayer || !elements.audioVolumeSlider) return;
+
+    if (elements.audioPlayer.volume > 0) {
+        elements.audioPlayer.dataset.previousVolume = elements.audioPlayer.volume;
+        elements.audioPlayer.volume = 0;
+        elements.audioVolumeSlider.value = 0;
+    } else {
+        const previousVolume = parseFloat(elements.audioPlayer.dataset.previousVolume) || 1;
+        elements.audioPlayer.volume = previousVolume;
+        elements.audioVolumeSlider.value = previousVolume;
+    }
+    updateVolumeIcon(elements.audioPlayer.volume);
+}
+
+function updateVolumeIcon(volume) {
+    if (!elements.audioVolumeBtn) return;
+
+    const highIcon = elements.audioVolumeBtn.querySelector('.volume-high');
+    const lowIcon = elements.audioVolumeBtn.querySelector('.volume-low');
+    const mutedIcon = elements.audioVolumeBtn.querySelector('.volume-muted');
+
+    highIcon?.classList.add('hidden');
+    lowIcon?.classList.add('hidden');
+    mutedIcon?.classList.add('hidden');
+
+    if (volume === 0) {
+        mutedIcon?.classList.remove('hidden');
+    } else if (volume < 0.5) {
+        lowIcon?.classList.remove('hidden');
+    } else {
+        highIcon?.classList.remove('hidden');
+    }
+}
+
+function handleAudioEnded() {
+    updatePlayButtonState();
+    if (elements.audioProgressFill) {
+        elements.audioProgressFill.style.width = '0%';
+    }
+    if (elements.audioProgressHandle) {
+        elements.audioProgressHandle.style.left = '0%';
+    }
+    if (elements.audioCurrentTime) {
+        elements.audioCurrentTime.textContent = '0:00';
+    }
+}
+
+function formatAudioTime(seconds) {
+    if (isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// ============================================
 // AGENDA GENERATION
 // ============================================
 async function generateAgenda() {
@@ -4107,6 +4278,14 @@ function initChatWidget() {
         elements.chatWidgetMinimize.addEventListener('click', collapseChatWidget);
     }
 
+    // Chat reminder click - expand widget
+    if (elements.chatReminder) {
+        elements.chatReminder.addEventListener('click', () => {
+            hideChatReminder();
+            expandChatWidget();
+        });
+    }
+
     // Drag handlers for header
     if (elements.chatWidgetHeader) {
         elements.chatWidgetHeader.addEventListener('mousedown', startWidgetDrag);
@@ -4127,7 +4306,7 @@ function loadChatWidgetState() {
         const saved = localStorage.getItem('chat_widget_state');
         if (saved) {
             const parsed = JSON.parse(saved);
-            chatWidgetState.anchor = parsed.anchor || 'bottom-right';
+            chatWidgetState.anchor = parsed.anchor || 'bottom-left';
             chatWidgetState.isExpanded = parsed.isExpanded || false;
             chatWidgetState.position = parsed.position || { x: null, y: null };
         }
@@ -4185,6 +4364,13 @@ function showChatWidget() {
     if (!elements.chatWidget) return;
     elements.chatWidget.classList.remove('hidden');
     console.log('[ChatWidget] Shown');
+
+    // Show chat reminder after 5 seconds if user hasn't opened chat
+    setTimeout(() => {
+        if (!chatWidgetState.isExpanded) {
+            showChatReminder();
+        }
+    }, 5000);
 }
 
 function hideChatWidget() {
@@ -4202,6 +4388,9 @@ function expandChatWidget() {
     chatWidgetState.unreadCount = 0;
     updateUnreadBadge();
 
+    // Hide chat reminder if shown
+    hideChatReminder();
+
     saveChatWidgetState();
     console.log('[ChatWidget] Expanded');
 
@@ -4217,6 +4406,37 @@ function collapseChatWidget() {
     elements.chatWidget.classList.add('collapsed');
     saveChatWidgetState();
     console.log('[ChatWidget] Collapsed');
+}
+
+// ============================================
+// Chat Reminder Notification
+// ============================================
+function showChatReminder() {
+    // Only show once per session
+    if (sessionStorage.getItem('chat_reminder_shown')) return;
+    // Don't show if already expanded
+    if (chatWidgetState.isExpanded) return;
+    if (!elements.chatReminder) return;
+
+    // Position based on widget anchor
+    elements.chatReminder.classList.remove('anchor-left', 'anchor-right');
+    if (chatWidgetState.anchor.includes('left')) {
+        elements.chatReminder.classList.add('anchor-left');
+    } else {
+        elements.chatReminder.classList.add('anchor-right');
+    }
+
+    elements.chatReminder.classList.remove('hidden');
+    sessionStorage.setItem('chat_reminder_shown', 'true');
+    console.log('[ChatWidget] Reminder shown');
+
+    // Auto-dismiss after 8 seconds
+    setTimeout(hideChatReminder, 8000);
+}
+
+function hideChatReminder() {
+    if (!elements.chatReminder) return;
+    elements.chatReminder.classList.add('hidden');
 }
 
 function updateUnreadBadge() {

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=63">
+    <link rel="stylesheet" href="css/styles.css?v=64">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a853">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230a0e17' width='32' height='32' rx='6'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23d4a853'%3E⭐%3C/text%3E%3C/svg%3E" type="image/svg+xml">
@@ -358,12 +358,38 @@
             <!-- Audio Briefing (shows after generation via Export menu) -->
             <div id="audio-player-container" class="audio-player-container hidden">
                 <div class="audio-player-header">
-                    <span>🎧</span> Audio Briefing
+                    <span class="card-icon">🎧</span>
+                    <h3>Audio Briefing</h3>
                 </div>
-                <audio id="audio-player" controls></audio>
-                <button id="download-audio-btn" class="btn-secondary" title="Download audio briefing as MP3 file">
-                    <span>&#128229;</span> Download MP3
-                </button>
+                <div class="audio-player-controls">
+                    <button class="audio-play-btn" id="audio-play-btn" title="Play/Pause">
+                        <span class="play-icon">▶</span>
+                        <span class="pause-icon hidden">⏸</span>
+                    </button>
+                    <div class="audio-progress-container">
+                        <div class="audio-progress-bar" id="audio-progress-bar">
+                            <div class="audio-progress-fill" id="audio-progress-fill"></div>
+                            <div class="audio-progress-handle" id="audio-progress-handle"></div>
+                        </div>
+                        <div class="audio-time">
+                            <span id="audio-current-time">0:00</span>
+                            <span class="audio-time-separator">/</span>
+                            <span id="audio-duration">0:00</span>
+                        </div>
+                    </div>
+                    <div class="audio-volume-container">
+                        <button class="audio-volume-btn" id="audio-volume-btn" title="Mute/Unmute">
+                            <span class="volume-high">🔊</span>
+                            <span class="volume-low hidden">🔉</span>
+                            <span class="volume-muted hidden">🔇</span>
+                        </button>
+                        <input type="range" class="audio-volume-slider" id="audio-volume-slider" min="0" max="1" step="0.05" value="1">
+                    </div>
+                    <button class="audio-download-btn" id="download-audio-btn" title="Download MP3">
+                        <span>⬇</span>
+                    </button>
+                </div>
+                <audio id="audio-player" hidden></audio>
             </div>
 
             <!-- Infographic (shows after generation via Export menu) -->
@@ -494,6 +520,15 @@
         </div>
     </div>
 
+    <!-- Chat Reminder Notification -->
+    <div id="chat-reminder" class="chat-reminder hidden">
+        <div class="chat-reminder-content">
+            <span class="chat-reminder-icon">💡</span>
+            <p>Have questions about your meeting? Click here to chat with your data!</p>
+        </div>
+        <div class="chat-reminder-arrow"></div>
+    </div>
+
     <!-- Anchor Zones (for drag-snap positioning) -->
     <div class="anchor-zones hidden" id="anchor-zones">
         <div class="anchor-zone" data-position="top-left"></div>
@@ -613,7 +648,7 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/app.js?v=68" type="module"></script>
+    <script src="js/app.js?v=69" type="module"></script>
 
     <!-- Service Worker Registration with Auto-Update -->
     <script>
