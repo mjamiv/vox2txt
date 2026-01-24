@@ -1200,78 +1200,341 @@ section {
     border-color: rgba(239, 68, 68, 0.3);
 }
 
-/* Two-Column Results Layout */
-.results-two-column {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-lg);
-    margin-bottom: var(--space-lg);
-}
-
-@media (min-width: 900px) {
-    .results-two-column {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-
-.results-left-column {
+/* Results Cards Layout (Full Width) */
+.results-cards {
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
+    margin-bottom: var(--space-lg);
 }
 
-.results-right-column {
+/* ============================================
+   FLOATING CHAT WIDGET
+   ============================================ */
+
+.chat-widget {
+    position: fixed;
+    z-index: 1001;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.chat-widget.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* Collapsed State: Toggle Button */
+.chat-widget-toggle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    border: none;
+    cursor: pointer;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 20px rgba(212, 168, 83, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
 }
 
-/* Chat Panel (inside right column) */
-.chat-panel {
-    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(26, 35, 50, 0.9) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+.chat-widget-toggle:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 25px rgba(212, 168, 83, 0.5), 0 3px 12px rgba(0, 0, 0, 0.4);
+}
+
+.chat-widget-toggle:active {
+    transform: scale(0.95);
+}
+
+.chat-toggle-icon {
+    line-height: 1;
+}
+
+/* Unread Badge */
+.chat-unread-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: badge-pulse 2s infinite;
+}
+
+.chat-unread-badge.hidden {
+    display: none;
+}
+
+@keyframes badge-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* Collapsed: Hide panel, show toggle */
+.chat-widget.collapsed .chat-widget-panel {
+    display: none;
+}
+
+.chat-widget.collapsed .chat-widget-toggle {
+    display: flex;
+}
+
+/* Expanded: Show panel, hide toggle */
+.chat-widget:not(.collapsed) .chat-widget-toggle {
+    display: none;
+}
+
+.chat-widget:not(.collapsed) .chat-widget-panel {
+    display: flex;
+}
+
+/* Widget Panel */
+.chat-widget-panel {
+    width: 400px;
+    height: 500px;
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(26, 35, 50, 0.98) 100%);
+    border: 1px solid rgba(212, 168, 83, 0.3);
     border-radius: var(--radius-lg);
-    padding: var(--space-md);
-    height: 100%;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
-    min-height: 400px;
+    overflow: hidden;
 }
 
-.chat-panel-header {
+/* Widget Header (Draggable) */
+.chat-widget-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: var(--space-sm);
-    border-bottom: 1px solid rgba(212, 168, 83, 0.15);
-    margin-bottom: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(212, 168, 83, 0.1);
+    border-bottom: 1px solid rgba(212, 168, 83, 0.2);
+    cursor: grab;
+    user-select: none;
 }
 
-.chat-panel-header h3 {
-    font-family: var(--font-display);
-    font-size: 1.1rem;
-    letter-spacing: 0.05em;
-    color: var(--accent-primary);
-    margin: 0;
+.chat-widget-header:active {
+    cursor: grabbing;
+}
+
+.chat-widget.dragging .chat-widget-header {
+    cursor: grabbing;
+}
+
+.chat-widget.dragging {
+    transition: none !important;
+    box-shadow: 0 12px 50px rgba(0, 0, 0, 0.6), 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.chat-widget-title {
     display: flex;
     align-items: center;
     gap: var(--space-xs);
 }
 
-.chat-panel .chat-container {
+.chat-widget-title h3 {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    color: var(--accent-primary);
+    margin: 0;
+}
+
+.chat-widget-controls {
+    display: flex;
+    gap: var(--space-xs);
+}
+
+.btn-widget-control {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-widget-control:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+/* Widget Body */
+.chat-widget-body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    border: none;
+    overflow: hidden;
+    min-height: 0; /* Allow flex children to shrink */
 }
 
-.chat-panel .chat-messages {
+.chat-widget-body .chat-messages {
     flex: 1;
     overflow-y: auto;
-    margin-bottom: var(--space-md);
-    max-height: 350px;
+    padding: var(--space-md);
+    height: auto;
+    min-height: 0; /* Allow shrinking */
+}
+
+.chat-widget-body .chat-input-area {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.chat-widget-body .voice-controls-row {
+    flex-shrink: 0;
+}
+
+.chat-widget-body .realtime-panel {
+    flex-shrink: 0;
+}
+
+.chat-widget-body .voice-recording-status {
+    flex-shrink: 0;
+}
+
+/* Anchor Positioning */
+.chat-widget.anchor-bottom-right {
+    bottom: 24px;
+    right: 24px;
+}
+
+.chat-widget.anchor-bottom-left {
+    bottom: 24px;
+    left: 24px;
+}
+
+.chat-widget.anchor-top-right {
+    top: 24px;
+    right: 24px;
+}
+
+.chat-widget.anchor-top-left {
+    top: 24px;
+    left: 24px;
+}
+
+/* Free Position (when dragged) */
+.chat-widget.free-position {
+    /* Position set via inline styles */
+}
+
+/* Anchor Zones (Visual feedback during drag) */
+.anchor-zones {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.anchor-zones.hidden {
+    display: none;
+}
+
+.anchor-zone {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    background: rgba(212, 168, 83, 0.1);
+    border: 2px dashed rgba(212, 168, 83, 0.3);
+    border-radius: var(--radius-lg);
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.anchor-zone.active {
+    opacity: 1;
+    background: rgba(212, 168, 83, 0.2);
+    border-color: var(--accent-primary);
+}
+
+.anchor-zone[data-position="top-left"] {
+    top: 16px;
+    left: 16px;
+}
+
+.anchor-zone[data-position="top-right"] {
+    top: 16px;
+    right: 16px;
+}
+
+.anchor-zone[data-position="bottom-left"] {
+    bottom: 16px;
+    left: 16px;
+}
+
+.anchor-zone[data-position="bottom-right"] {
+    bottom: 16px;
+    right: 16px;
+}
+
+/* Mobile: Bottom Sheet */
+@media (max-width: 768px) {
+    .chat-widget {
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: auto !important;
+    }
+
+    .chat-widget.collapsed {
+        bottom: 16px !important;
+        right: 16px !important;
+        left: auto !important;
+    }
+
+    .chat-widget-toggle {
+        width: 52px;
+        height: 52px;
+    }
+
+    .chat-widget-panel {
+        width: 100%;
+        height: 70vh;
+        max-height: 70vh;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        border-bottom: none;
+    }
+
+    .chat-widget-header {
+        cursor: default;
+        padding: var(--space-md);
+    }
+
+    /* Swipe handle indicator */
+    .chat-widget-header::before {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
+    }
+
+    .anchor-zones {
+        display: none !important;
+    }
 }
 
 /* Results Action Bar */
@@ -1810,6 +2073,31 @@ details.result-card:not([open]) .card-content {
     height: 1px;
     background: rgba(255, 255, 255, 0.1);
     margin: var(--space-xs) 0;
+}
+
+/* Generate Dropdown */
+.generate-dropdown-container {
+    position: relative;
+}
+
+.generate-dropdown-container .btn-primary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.generate-dropdown-container.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.btn-generate {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+.btn-generate:hover {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 1) 0%, rgba(168, 85, 247, 1) 100%);
+    border-color: rgba(168, 85, 247, 0.8);
 }
 
 /* Error Section */
@@ -4187,17 +4475,9 @@ details[open] .about-toggle {
         padding: var(--space-xs) var(--space-sm);
     }
 
-    /* Two-column layout stacks on mobile */
-    .results-two-column {
-        grid-template-columns: 1fr;
-    }
-
-    .chat-panel {
-        min-height: 350px;
-    }
-
-    .chat-panel-header h3 {
-        font-size: 1rem;
+    /* Results cards are always full width */
+    .results-cards {
+        gap: var(--space-md);
     }
 
     /* Action bar mobile */
@@ -4210,11 +4490,13 @@ details[open] .about-toggle {
         width: 100%;
     }
 
-    .results-action-bar .export-dropdown-container {
+    .results-action-bar .export-dropdown-container,
+    .results-action-bar .generate-dropdown-container {
         width: 100%;
     }
 
-    .results-action-bar .export-dropdown-container button {
+    .results-action-bar .export-dropdown-container button,
+    .results-action-bar .generate-dropdown-container button {
         width: 100%;
     }
 

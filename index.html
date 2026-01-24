@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=60">
+    <link rel="stylesheet" href="css/styles.css?v=62">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a853">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230a0e17' width='32' height='32' rx='6'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23d4a853'%3E⭐%3C/text%3E%3C/svg%3E" type="image/svg+xml">
@@ -271,148 +271,41 @@
                 </div>
             </div>
 
-            <!-- Two-Column Layout -->
-            <div class="results-two-column">
-
-                <!-- Left Column: Key Points & Action Items -->
-                <div class="results-left-column">
-                    <details class="result-card" id="keypoints-section" open>
-                        <summary class="card-header card-header-collapsible">
-                            <span class="card-icon">&#128161;</span>
-                            <h3>Key Points</h3>
-                            <span class="collapse-toggle">▼</span>
-                        </summary>
-                        <div class="card-content" id="result-keypoints">
-                            <!-- Key points will be inserted here -->
-                        </div>
-                    </details>
-
-                    <details class="result-card" id="actions-section" open>
-                        <summary class="card-header card-header-collapsible">
-                            <span class="card-icon">&#9989;</span>
-                            <h3>Action Items</h3>
-                            <span class="collapse-toggle">▼</span>
-                        </summary>
-                        <div class="card-content" id="result-actions">
-                            <!-- Action items will be inserted here -->
-                        </div>
-                    </details>
-
-                    <details class="result-card" id="agenda-section">
-                        <summary class="card-header card-header-collapsible">
-                            <span class="card-icon">📋</span>
-                            <h3>Next Meeting Agenda</h3>
-                            <span class="collapse-toggle">▼</span>
-                        </summary>
-                        <div class="card-content" id="result-agenda">
-                            <p class="muted">Use Export menu to generate an agenda for your next meeting.</p>
-                        </div>
-                    </details>
-                </div>
-
-                <!-- Right Column: Chat -->
-                <div class="results-right-column">
-                    <div class="chat-panel" id="chat-section">
-                        <div class="chat-panel-header">
-                            <h3><span>💬</span> Ask Questions</h3>
-                            <button id="clear-chat-btn" class="btn-clear-chat" title="Clear chat history">
-                                <span>🗑️</span>
-                            </button>
-                        </div>
-
-                <div class="chat-container">
-                    <div class="chat-messages" id="chat-messages">
-                        <div class="chat-welcome">
-                            <div class="chat-welcome-icon">🤖</div>
-                            <div class="chat-welcome-text">
-                                <strong>Meeting Assistant</strong>
-                                <p>I have access to your transcript and analysis. Ask me about decisions, action items, specific topics, or anything else from the meeting.</p>
-                            </div>
-                        </div>
+            <!-- Results Cards (Full Width) -->
+            <div class="results-cards">
+                <details class="result-card" id="keypoints-section" open>
+                    <summary class="card-header card-header-collapsible">
+                        <span class="card-icon">&#128161;</span>
+                        <h3>Key Points</h3>
+                        <span class="collapse-toggle">▼</span>
+                    </summary>
+                    <div class="card-content" id="result-keypoints">
+                        <!-- Key points will be inserted here -->
                     </div>
-                    
-                    <div class="chat-input-area">
-                        <input type="text" id="chat-input" placeholder="Type your question here..." autocomplete="off" />
+                </details>
 
-                        <!-- Voice Input Button -->
-                        <button id="voice-input-btn" class="btn-voice" title="Hold to speak">
-                            <span class="voice-icon">🎤</span>
-                            <span class="voice-recording hidden">
-                                <span class="recording-dot"></span>
-                            </span>
-                        </button>
-
-                        <button id="chat-send-btn" class="btn-chat-send" title="Send message">
-                            <span class="btn-text">➤</span>
-                            <span class="btn-loader hidden">
-                                <span class="spinner-small"></span>
-                            </span>
-                        </button>
+                <details class="result-card" id="actions-section" open>
+                    <summary class="card-header card-header-collapsible">
+                        <span class="card-icon">&#9989;</span>
+                        <h3>Action Items</h3>
+                        <span class="collapse-toggle">▼</span>
+                    </summary>
+                    <div class="card-content" id="result-actions">
+                        <!-- Action items will be inserted here -->
                     </div>
+                </details>
 
-                    <!-- Voice Controls Row -->
-                    <div class="voice-controls-row">
-                        <!-- Voice Response Toggle -->
-                        <div class="voice-response-toggle">
-                            <label class="toggle-inline">
-                                <input type="checkbox" id="voice-response-toggle" checked>
-                                <span>Speak responses</span>
-                            </label>
-                        </div>
-
-                        <!-- Voice Mode Selector -->
-                        <div class="voice-mode-selector">
-                            <button class="voice-mode-btn active" data-mode="push-to-talk" title="Hold mic button to speak">
-                                🎤 Push-to-Talk
-                            </button>
-                            <button class="voice-mode-btn" data-mode="realtime" title="Continuous conversation (higher cost)">
-                                🎙️ Real-time
-                            </button>
-                        </div>
+                <details class="result-card" id="agenda-section">
+                    <summary class="card-header card-header-collapsible">
+                        <span class="card-icon">📋</span>
+                        <h3>Next Meeting Agenda</h3>
+                        <span class="collapse-toggle">▼</span>
+                    </summary>
+                    <div class="card-content" id="result-agenda">
+                        <p class="muted">Use Export menu to generate an agenda for your next meeting.</p>
                     </div>
-
-                    <!-- Real-time Mode Warning & Controls (hidden by default) -->
-                    <div id="realtime-panel" class="realtime-panel hidden">
-                        <div class="realtime-warning">
-                            <span class="warning-icon">⚠️</span>
-                            <span class="warning-text">Real-time mode costs ~$0.30/min. Auto-stops after 5s of silence.</span>
-                        </div>
-                        <div class="realtime-controls">
-                            <button id="start-realtime-btn" class="btn-realtime start">
-                                <span class="btn-icon">🎙️</span>
-                                <span class="btn-text">Start Conversation</span>
-                            </button>
-                            <button id="stop-realtime-btn" class="btn-realtime stop hidden">
-                                <span class="btn-icon">⏹️</span>
-                                <span class="btn-text">End Conversation</span>
-                            </button>
-                        </div>
-                        <div id="realtime-status" class="realtime-status hidden">
-                            <div class="realtime-status-indicator">
-                                <span class="status-dot pulsing"></span>
-                                <span class="status-text" id="realtime-status-text">Connecting...</span>
-                            </div>
-                            <div class="realtime-cost">
-                                <span class="cost-label">Session cost:</span>
-                                <span class="cost-value" id="realtime-cost">$0.00</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Voice Recording Status (shown when recording in push-to-talk mode) -->
-                    <div id="voice-recording-status" class="voice-recording-status hidden">
-                        <div class="voice-status-content">
-                            <span class="voice-status-text" id="voice-status-text">Preparing...</span>
-                            <div class="voice-volume-meter">
-                                <div class="voice-volume-bar" id="voice-volume-bar"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                    </div><!-- /.chat-panel -->
-                </div><!-- /.results-right-column -->
-
-            </div><!-- /.results-two-column -->
+                </details>
+            </div><!-- /.results-cards -->
 
             <!-- Action Bar -->
             <div class="results-action-bar">
@@ -432,21 +325,25 @@
                             <span class="dropdown-label">Agent File</span>
                             <span class="dropdown-hint">.md</span>
                         </button>
-                        <div class="dropdown-divider"></div>
+                    </div>
+                </div>
+                <div class="generate-dropdown-container">
+                    <button id="generate-menu-btn" class="btn-primary btn-generate">
+                        <span>✨</span> Generate
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div id="generate-dropdown" class="export-dropdown hidden">
                         <button class="dropdown-item" id="generate-audio-menu-btn" title="Generate audio briefing">
                             <span class="dropdown-icon">🎧</span>
                             <span class="dropdown-label">Audio Briefing</span>
-                            <span class="dropdown-hint">Generate</span>
                         </button>
                         <button class="dropdown-item" id="generate-infographic-menu-btn" title="Generate infographic">
                             <span class="dropdown-icon">🖼️</span>
                             <span class="dropdown-label">Infographic</span>
-                            <span class="dropdown-hint">Generate</span>
                         </button>
                         <button class="dropdown-item" id="make-agenda-btn" title="Generate meeting agenda">
                             <span class="dropdown-icon">📋</span>
                             <span class="dropdown-label">Meeting Agenda</span>
-                            <span class="dropdown-hint">Generate</span>
                         </button>
                     </div>
                 </div>
@@ -489,6 +386,118 @@
         </section>
 
     </main>
+
+    <!-- Floating Chat Widget -->
+    <div id="chat-widget" class="chat-widget collapsed hidden">
+        <!-- Collapsed: Chat bubble button -->
+        <button id="chat-widget-toggle" class="chat-widget-toggle" title="Open chat">
+            <span class="chat-toggle-icon">💬</span>
+            <span class="chat-unread-badge hidden" id="chat-unread-badge">0</span>
+        </button>
+
+        <!-- Expanded: Full chat panel -->
+        <div class="chat-widget-panel">
+            <div class="chat-widget-header" id="chat-widget-header">
+                <div class="chat-widget-title">
+                    <span>💬</span>
+                    <h3>Ask Questions</h3>
+                </div>
+                <div class="chat-widget-controls">
+                    <button id="clear-chat-btn" class="btn-widget-control" title="Clear chat history">🗑️</button>
+                    <button id="chat-widget-minimize" class="btn-widget-control" title="Minimize chat">▼</button>
+                </div>
+            </div>
+
+            <div class="chat-widget-body">
+                <div class="chat-messages" id="chat-messages">
+                    <div class="chat-welcome">
+                        <div class="chat-welcome-icon">🤖</div>
+                        <div class="chat-welcome-text">
+                            <strong>Meeting Assistant</strong>
+                            <p>I have access to your transcript and analysis. Ask me about decisions, action items, specific topics, or anything else from the meeting.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Type your question here..." autocomplete="off" />
+                    <button id="voice-input-btn" class="btn-voice" title="Hold to speak">
+                        <span class="voice-icon">🎤</span>
+                        <span class="voice-recording hidden">
+                            <span class="recording-dot"></span>
+                        </span>
+                    </button>
+                    <button id="chat-send-btn" class="btn-chat-send" title="Send message">
+                        <span class="btn-text">➤</span>
+                        <span class="btn-loader hidden">
+                            <span class="spinner-small"></span>
+                        </span>
+                    </button>
+                </div>
+
+                <div class="voice-controls-row">
+                    <div class="voice-response-toggle">
+                        <label class="toggle-inline">
+                            <input type="checkbox" id="voice-response-toggle" checked>
+                            <span>Speak responses</span>
+                        </label>
+                    </div>
+                    <div class="voice-mode-selector">
+                        <button class="voice-mode-btn active" data-mode="push-to-talk" title="Hold mic button to speak">
+                            🎤 Push-to-Talk
+                        </button>
+                        <button class="voice-mode-btn" data-mode="realtime" title="Continuous conversation (higher cost)">
+                            🎙️ Real-time
+                        </button>
+                    </div>
+                </div>
+
+                <div id="realtime-panel" class="realtime-panel hidden">
+                    <div class="realtime-warning">
+                        <span class="warning-icon">⚠️</span>
+                        <span class="warning-text">Real-time mode costs ~$0.30/min. Auto-stops after 5s of silence.</span>
+                    </div>
+                    <div class="realtime-controls">
+                        <button id="start-realtime-btn" class="btn-realtime start">
+                            <span class="btn-icon">🎙️</span>
+                            <span class="btn-text">Start Conversation</span>
+                        </button>
+                        <button id="stop-realtime-btn" class="btn-realtime stop hidden">
+                            <span class="btn-icon">⏹️</span>
+                            <span class="btn-text">End Conversation</span>
+                        </button>
+                    </div>
+                    <div id="realtime-status" class="realtime-status hidden">
+                        <div class="realtime-status-indicator">
+                            <span class="status-dot pulsing"></span>
+                            <span class="status-text" id="realtime-status-text">Connecting...</span>
+                        </div>
+                        <div class="realtime-cost">
+                            <span class="cost-label">Session cost:</span>
+                            <span class="cost-value" id="realtime-cost">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="voice-recording-status" class="voice-recording-status hidden">
+                    <div class="voice-status-content">
+                        <span class="voice-status-text" id="voice-status-text">Preparing...</span>
+                        <div class="voice-volume-meter">
+                            <div class="voice-volume-bar" id="voice-volume-bar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anchor Zones (for drag-snap positioning) -->
+    <div class="anchor-zones hidden" id="anchor-zones">
+        <div class="anchor-zone" data-position="top-left"></div>
+        <div class="anchor-zone" data-position="top-right"></div>
+        <div class="anchor-zone" data-position="bottom-left"></div>
+        <div class="anchor-zone" data-position="bottom-right"></div>
+    </div>
 
     <div class="metrics-card hidden" id="metrics-card">
         <div class="metrics-card-header">
@@ -601,7 +610,7 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/app.js?v=65" type="module"></script>
+    <script src="js/app.js?v=67" type="module"></script>
 
     <!-- Service Worker Registration with Auto-Update -->
     <script>

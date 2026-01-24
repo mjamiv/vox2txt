@@ -81,6 +81,18 @@ const state = {
     urlContent: null // Stores fetched URL content
 };
 
+// ============================================
+// Chat Widget State
+// ============================================
+const chatWidgetState = {
+    isExpanded: false,
+    isDragging: false,
+    position: { x: null, y: null },
+    anchor: 'bottom-right',  // 'bottom-right', 'bottom-left', 'top-right', 'top-left'
+    unreadCount: 0,
+    dragOffset: { x: 0, y: 0 }
+};
+
 const GPT_52_MODEL = 'gpt-5.2-2025-12-11';
 
 function isCorsError(error) {
@@ -421,6 +433,10 @@ async function init() {
         // Export Dropdown
         exportMenuBtn: document.getElementById('export-menu-btn'),
         exportDropdown: document.getElementById('export-dropdown'),
+
+        // Generate Dropdown
+        generateMenuBtn: document.getElementById('generate-menu-btn'),
+        generateDropdown: document.getElementById('generate-dropdown'),
         generateAudioMenuBtn: document.getElementById('generate-audio-menu-btn'),
         generateInfographicMenuBtn: document.getElementById('generate-infographic-menu-btn'),
 
@@ -506,7 +522,15 @@ async function init() {
         settingsVoiceResponse: document.getElementById('settings-voice-response'),
         settingsVoice: document.getElementById('settings-voice'),
         settingsShowMetrics: document.getElementById('settings-show-metrics'),
-        settingsDebugMode: document.getElementById('settings-debug-mode')
+        settingsDebugMode: document.getElementById('settings-debug-mode'),
+
+        // Floating Chat Widget
+        chatWidget: document.getElementById('chat-widget'),
+        chatWidgetToggle: document.getElementById('chat-widget-toggle'),
+        chatWidgetMinimize: document.getElementById('chat-widget-minimize'),
+        chatWidgetHeader: document.getElementById('chat-widget-header'),
+        chatUnreadBadge: document.getElementById('chat-unread-badge'),
+        anchorZones: document.getElementById('anchor-zones')
     };
 
     loadSavedApiKey();
@@ -520,6 +544,9 @@ async function init() {
     // Initialize RLM pipeline
     rlmPipeline = getRLMPipeline();
     console.log('[RLM] Pipeline initialized for Agent Builder');
+
+    // Initialize chat widget
+    initChatWidget();
 }
 
 function loadSavedApiKey() {
@@ -598,24 +625,44 @@ function setupEventListeners() {
             closeExportDropdown();
         });
     }
+
+    // Generate Dropdown
+    if (elements.generateMenuBtn) {
+        elements.generateMenuBtn.addEventListener('click', toggleGenerateDropdown);
+    }
     if (elements.generateAudioMenuBtn) {
         elements.generateAudioMenuBtn.addEventListener('click', () => {
             generateAudioBriefing();
-            closeExportDropdown();
+            closeGenerateDropdown();
         });
     }
     if (elements.generateInfographicMenuBtn) {
         elements.generateInfographicMenuBtn.addEventListener('click', () => {
             generateInfographic();
-            closeExportDropdown();
+            closeGenerateDropdown();
         });
     }
-    // Close dropdown when clicking outside
+    if (elements.makeAgendaBtn) {
+        elements.makeAgendaBtn.addEventListener('click', () => {
+            generateAgenda();
+            closeGenerateDropdown();
+        });
+    }
+
+    // Close dropdowns when clicking outside
     document.addEventListener('click', (e) => {
+        // Close export dropdown
         if (elements.exportDropdown && !elements.exportDropdown.classList.contains('hidden')) {
             const container = document.querySelector('.export-dropdown-container');
             if (container && !container.contains(e.target)) {
                 closeExportDropdown();
+            }
+        }
+        // Close generate dropdown
+        if (elements.generateDropdown && !elements.generateDropdown.classList.contains('hidden')) {
+            const container = document.querySelector('.generate-dropdown-container');
+            if (container && !container.contains(e.target)) {
+                closeGenerateDropdown();
             }
         }
     });
@@ -815,6 +862,8 @@ function toggleExportDropdown() {
     }
 
     if (elements.exportDropdown) {
+        // Close generate dropdown if open
+        closeGenerateDropdown();
         elements.exportDropdown.classList.toggle('hidden');
         const container = document.querySelector('.export-dropdown-container');
         if (container) {
@@ -827,6 +876,34 @@ function closeExportDropdown() {
     if (elements.exportDropdown) {
         elements.exportDropdown.classList.add('hidden');
         const container = document.querySelector('.export-dropdown-container');
+        if (container) {
+            container.classList.remove('open');
+        }
+    }
+}
+
+function toggleGenerateDropdown() {
+    // On mobile, show bottom sheet instead
+    if (window.innerWidth <= 600) {
+        showGenerateBottomSheet();
+        return;
+    }
+
+    if (elements.generateDropdown) {
+        // Close export dropdown if open
+        closeExportDropdown();
+        elements.generateDropdown.classList.toggle('hidden');
+        const container = document.querySelector('.generate-dropdown-container');
+        if (container) {
+            container.classList.toggle('open', !elements.generateDropdown.classList.contains('hidden'));
+        }
+    }
+}
+
+function closeGenerateDropdown() {
+    if (elements.generateDropdown) {
+        elements.generateDropdown.classList.add('hidden');
+        const container = document.querySelector('.generate-dropdown-container');
         if (container) {
             container.classList.remove('open');
         }
@@ -856,21 +933,6 @@ function showExportBottomSheet() {
                     <span class="sheet-icon">🤖</span>
                     <span class="sheet-label">Agent File</span>
                     <span class="sheet-hint">.md</span>
-                </button>
-                <button class="sheet-item" data-action="audio">
-                    <span class="sheet-icon">🎧</span>
-                    <span class="sheet-label">Audio Briefing</span>
-                    <span class="sheet-hint">Generate</span>
-                </button>
-                <button class="sheet-item" data-action="infographic">
-                    <span class="sheet-icon">🖼️</span>
-                    <span class="sheet-label">Infographic</span>
-                    <span class="sheet-hint">Generate</span>
-                </button>
-                <button class="sheet-item" data-action="agenda">
-                    <span class="sheet-icon">📋</span>
-                    <span class="sheet-label">Meeting Agenda</span>
-                    <span class="sheet-hint">Generate</span>
                 </button>
             </div>
         </div>
@@ -907,6 +969,67 @@ function showExportBottomSheet() {
     document.addEventListener('keydown', handleEscape);
 }
 
+function showGenerateBottomSheet() {
+    // Remove any existing bottom sheet
+    const existing = document.querySelector('.bottom-sheet-overlay');
+    if (existing) existing.remove();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'bottom-sheet-overlay';
+    sheet.innerHTML = `
+        <div class="bottom-sheet">
+            <div class="bottom-sheet-handle"></div>
+            <div class="bottom-sheet-header">
+                <h3>Generate</h3>
+            </div>
+            <div class="bottom-sheet-content">
+                <button class="sheet-item" data-action="audio">
+                    <span class="sheet-icon">🎧</span>
+                    <span class="sheet-label">Audio Briefing</span>
+                </button>
+                <button class="sheet-item" data-action="infographic">
+                    <span class="sheet-icon">🖼️</span>
+                    <span class="sheet-label">Infographic</span>
+                </button>
+                <button class="sheet-item" data-action="agenda">
+                    <span class="sheet-icon">📋</span>
+                    <span class="sheet-label">Meeting Agenda</span>
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(sheet);
+
+    // Animate in
+    requestAnimationFrame(() => {
+        sheet.classList.add('visible');
+    });
+
+    // Close on overlay click
+    sheet.addEventListener('click', (e) => {
+        if (e.target === sheet) {
+            closeBottomSheet(sheet);
+        }
+    });
+
+    // Handle actions
+    sheet.querySelectorAll('.sheet-item').forEach(item => {
+        item.addEventListener('click', () => {
+            handleGenerateAction(item.dataset.action);
+            closeBottomSheet(sheet);
+        });
+    });
+
+    // Close on escape key
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closeBottomSheet(sheet);
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
 function closeBottomSheet(sheet) {
     if (sheet) {
         sheet.classList.remove('visible');
@@ -924,6 +1047,13 @@ function handleExportAction(action) {
         case 'agent':
             showAgentNameModal();
             break;
+        default:
+            console.warn('Unknown export action:', action);
+    }
+}
+
+function handleGenerateAction(action) {
+    switch (action) {
         case 'audio':
             generateAudioBriefing();
             break;
@@ -934,7 +1064,7 @@ function handleExportAction(action) {
             generateAgenda();
             break;
         default:
-            console.warn('Unknown export action:', action);
+            console.warn('Unknown generate action:', action);
     }
 }
 
@@ -2097,7 +2227,10 @@ function displayResults() {
     
     // Display metrics
     displayMetrics();
-    
+
+    // Show floating chat widget
+    showChatWidget();
+
     // Scroll to results
     elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -3014,7 +3147,10 @@ function resetForNewAnalysis() {
     
     // Hide results section
     elements.resultsSection.classList.add('hidden');
-    
+
+    // Hide chat widget
+    hideChatWidget();
+
     // Reset audio briefing section
     if (elements.audioPlayerContainer) elements.audioPlayerContainer.classList.add('hidden');
     if (elements.audioPlayer) elements.audioPlayer.src = '';
@@ -3854,11 +3990,16 @@ function appendChatMessage(role, content) {
     
     messageDiv.appendChild(avatar);
     messageDiv.appendChild(contentDiv);
-    
+
     elements.chatMessages.appendChild(messageDiv);
-    
+
     // Scroll to bottom
     elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+
+    // Increment unread count if widget is collapsed and message is from assistant
+    if (role === 'assistant' && !chatWidgetState.isExpanded) {
+        incrementUnreadCount();
+    }
 }
 
 function formatChatContent(content) {
@@ -3941,6 +4082,278 @@ function restoreChatHistoryUI() {
     state.chatHistory.forEach(message => {
         appendChatMessage(message.role, message.content);
     });
+}
+
+// ============================================
+// Floating Chat Widget
+// ============================================
+
+function initChatWidget() {
+    if (!elements.chatWidget) return;
+
+    // Load saved position/state
+    loadChatWidgetState();
+
+    // Apply initial position
+    applyChatWidgetPosition();
+
+    // Toggle button click - expand widget
+    if (elements.chatWidgetToggle) {
+        elements.chatWidgetToggle.addEventListener('click', expandChatWidget);
+    }
+
+    // Minimize button click - collapse widget
+    if (elements.chatWidgetMinimize) {
+        elements.chatWidgetMinimize.addEventListener('click', collapseChatWidget);
+    }
+
+    // Drag handlers for header
+    if (elements.chatWidgetHeader) {
+        elements.chatWidgetHeader.addEventListener('mousedown', startWidgetDrag);
+        elements.chatWidgetHeader.addEventListener('touchstart', startWidgetDrag, { passive: false });
+    }
+
+    // Global move/end handlers
+    document.addEventListener('mousemove', moveWidgetDrag);
+    document.addEventListener('mouseup', endWidgetDrag);
+    document.addEventListener('touchmove', moveWidgetDrag, { passive: false });
+    document.addEventListener('touchend', endWidgetDrag);
+
+    console.log('[ChatWidget] Initialized with anchor:', chatWidgetState.anchor);
+}
+
+function loadChatWidgetState() {
+    try {
+        const saved = localStorage.getItem('chat_widget_state');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            chatWidgetState.anchor = parsed.anchor || 'bottom-right';
+            chatWidgetState.isExpanded = parsed.isExpanded || false;
+            chatWidgetState.position = parsed.position || { x: null, y: null };
+        }
+    } catch (e) {
+        console.warn('[ChatWidget] Failed to load saved state:', e);
+    }
+}
+
+function saveChatWidgetState() {
+    try {
+        localStorage.setItem('chat_widget_state', JSON.stringify({
+            anchor: chatWidgetState.anchor,
+            isExpanded: chatWidgetState.isExpanded,
+            position: chatWidgetState.position
+        }));
+    } catch (e) {
+        console.warn('[ChatWidget] Failed to save state:', e);
+    }
+}
+
+function applyChatWidgetPosition() {
+    if (!elements.chatWidget) return;
+
+    // Remove all anchor classes
+    elements.chatWidget.classList.remove(
+        'anchor-top-left', 'anchor-top-right',
+        'anchor-bottom-left', 'anchor-bottom-right',
+        'free-position'
+    );
+
+    // Apply anchor or free position
+    if (chatWidgetState.position.x !== null && chatWidgetState.position.y !== null) {
+        elements.chatWidget.classList.add('free-position');
+        elements.chatWidget.style.left = chatWidgetState.position.x + 'px';
+        elements.chatWidget.style.top = chatWidgetState.position.y + 'px';
+        elements.chatWidget.style.right = 'auto';
+        elements.chatWidget.style.bottom = 'auto';
+    } else {
+        elements.chatWidget.classList.add('anchor-' + chatWidgetState.anchor);
+        elements.chatWidget.style.left = '';
+        elements.chatWidget.style.top = '';
+        elements.chatWidget.style.right = '';
+        elements.chatWidget.style.bottom = '';
+    }
+
+    // Apply expanded/collapsed state
+    if (chatWidgetState.isExpanded) {
+        elements.chatWidget.classList.remove('collapsed');
+    } else {
+        elements.chatWidget.classList.add('collapsed');
+    }
+}
+
+function showChatWidget() {
+    if (!elements.chatWidget) return;
+    elements.chatWidget.classList.remove('hidden');
+    console.log('[ChatWidget] Shown');
+}
+
+function hideChatWidget() {
+    if (!elements.chatWidget) return;
+    elements.chatWidget.classList.add('hidden');
+    console.log('[ChatWidget] Hidden');
+}
+
+function expandChatWidget() {
+    if (!elements.chatWidget) return;
+    chatWidgetState.isExpanded = true;
+    elements.chatWidget.classList.remove('collapsed');
+
+    // Clear unread count
+    chatWidgetState.unreadCount = 0;
+    updateUnreadBadge();
+
+    saveChatWidgetState();
+    console.log('[ChatWidget] Expanded');
+
+    // Focus input
+    if (elements.chatInput) {
+        setTimeout(() => elements.chatInput.focus(), 100);
+    }
+}
+
+function collapseChatWidget() {
+    if (!elements.chatWidget) return;
+    chatWidgetState.isExpanded = false;
+    elements.chatWidget.classList.add('collapsed');
+    saveChatWidgetState();
+    console.log('[ChatWidget] Collapsed');
+}
+
+function updateUnreadBadge() {
+    if (!elements.chatUnreadBadge) return;
+
+    if (chatWidgetState.unreadCount > 0) {
+        elements.chatUnreadBadge.textContent = chatWidgetState.unreadCount > 99 ? '99+' : chatWidgetState.unreadCount;
+        elements.chatUnreadBadge.classList.remove('hidden');
+    } else {
+        elements.chatUnreadBadge.classList.add('hidden');
+    }
+}
+
+function incrementUnreadCount() {
+    if (chatWidgetState.isExpanded) return;
+    chatWidgetState.unreadCount++;
+    updateUnreadBadge();
+}
+
+// Drag handlers
+function startWidgetDrag(e) {
+    // Skip on mobile
+    if (window.innerWidth <= 768) return;
+
+    // Only drag from header, not from buttons
+    if (e.target.closest('.btn-widget-control')) return;
+
+    e.preventDefault();
+    chatWidgetState.isDragging = true;
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    const rect = elements.chatWidget.getBoundingClientRect();
+    chatWidgetState.dragOffset.x = clientX - rect.left;
+    chatWidgetState.dragOffset.y = clientY - rect.top;
+
+    elements.chatWidget.classList.add('dragging');
+
+    // Show anchor zones
+    if (elements.anchorZones) {
+        elements.anchorZones.classList.remove('hidden');
+    }
+}
+
+function moveWidgetDrag(e) {
+    if (!chatWidgetState.isDragging) return;
+
+    e.preventDefault();
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    const newX = clientX - chatWidgetState.dragOffset.x;
+    const newY = clientY - chatWidgetState.dragOffset.y;
+
+    // Set free position
+    elements.chatWidget.classList.remove(
+        'anchor-top-left', 'anchor-top-right',
+        'anchor-bottom-left', 'anchor-bottom-right'
+    );
+    elements.chatWidget.classList.add('free-position');
+    elements.chatWidget.style.left = newX + 'px';
+    elements.chatWidget.style.top = newY + 'px';
+    elements.chatWidget.style.right = 'auto';
+    elements.chatWidget.style.bottom = 'auto';
+
+    // Check anchor zones
+    checkAnchorZones(clientX, clientY);
+}
+
+function endWidgetDrag(e) {
+    if (!chatWidgetState.isDragging) return;
+
+    chatWidgetState.isDragging = false;
+    elements.chatWidget.classList.remove('dragging');
+
+    // Hide anchor zones
+    if (elements.anchorZones) {
+        elements.anchorZones.classList.add('hidden');
+        // Clear active states
+        elements.anchorZones.querySelectorAll('.anchor-zone').forEach(zone => {
+            zone.classList.remove('active');
+        });
+    }
+
+    // Check if snapping to anchor
+    const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+
+    const anchor = getClosestAnchor(clientX, clientY);
+    if (anchor) {
+        // Snap to anchor
+        chatWidgetState.anchor = anchor;
+        chatWidgetState.position = { x: null, y: null };
+    } else {
+        // Keep free position
+        const rect = elements.chatWidget.getBoundingClientRect();
+        chatWidgetState.position = { x: rect.left, y: rect.top };
+    }
+
+    applyChatWidgetPosition();
+    saveChatWidgetState();
+}
+
+function checkAnchorZones(x, y) {
+    if (!elements.anchorZones) return;
+
+    const threshold = 80;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const zones = elements.anchorZones.querySelectorAll('.anchor-zone');
+    zones.forEach(zone => {
+        const pos = zone.dataset.position;
+        let isActive = false;
+
+        if (pos === 'top-left' && x < threshold && y < threshold) isActive = true;
+        if (pos === 'top-right' && x > vw - threshold && y < threshold) isActive = true;
+        if (pos === 'bottom-left' && x < threshold && y > vh - threshold) isActive = true;
+        if (pos === 'bottom-right' && x > vw - threshold && y > vh - threshold) isActive = true;
+
+        zone.classList.toggle('active', isActive);
+    });
+}
+
+function getClosestAnchor(x, y) {
+    const threshold = 80;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    if (x < threshold && y < threshold) return 'top-left';
+    if (x > vw - threshold && y < threshold) return 'top-right';
+    if (x < threshold && y > vh - threshold) return 'bottom-left';
+    if (x > vw - threshold && y > vh - threshold) return 'bottom-right';
+
+    return null;
 }
 
 // ============================================
