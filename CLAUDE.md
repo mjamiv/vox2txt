@@ -273,8 +273,17 @@ const state = {
 - `chatWithRLM()` - Process chat queries through RLM pipeline
 - `syncMeetingToRLM()` - Load meeting data into RLM context store
 - `updateChatModeUI()` - Update Direct/RLM toggle visual state
-- `generateAgenda()` - Create simplified half-page agenda (uses RLM when enabled)
+- `generateAgenda()` - Auto-generates half-page agenda when analysis completes (uses RLM when enabled)
 - `generateInfographic()` - Generate visual infographic using preset or custom style
+- **Custom Audio Player**
+  - `initAudioPlayerControls()` - Set up custom audio player event listeners
+  - `toggleAudioPlayback()` - Play/pause control
+  - `updateAudioProgress()` - Update progress bar and time display
+  - `seekAudio()` - Click-to-seek on progress bar
+  - `handleVolumeChange()` / `toggleMute()` - Volume and mute controls
+- **Chat Reminder**
+  - `showChatReminder()` - Shows tooltip 5 seconds after results (once per session)
+  - `hideChatReminder()` - Dismisses the reminder tooltip
 - **Voice Chat (Push-to-Talk)**
   - `startVoiceRecording()` - Begin audio capture with volume visualization
   - `stopVoiceRecording()` - Stop recording and process audio
@@ -322,8 +331,10 @@ currentMetrics.gptOutputTokens += usage.completion_tokens || 0;
 - CSS variables in `:root` for theming
 - Color scheme: Dark navy (`#0a0e17`) with gold accents (`#d4a853`)
 - Fonts: 'Bebas Neue' for display, 'Source Sans 3' for body
-- Collapsible sections use native `<details>` elements
+- Collapsible sections use native `<details>` elements (Key Points, Action Items, Agenda, Infographic default collapsed)
 - Chat markdown: gold arrow markers, gold headings, styled code blocks
+- Custom audio player with gold circular play button, progress bar, volume slider
+- Floating chat widget defaults to bottom-left with reminder tooltip
 
 ## Deployment
 

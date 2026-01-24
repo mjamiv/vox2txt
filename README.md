@@ -22,12 +22,15 @@ northstar.LM is a client-side web application that uses OpenAI's AI models to an
 ### Agent Builder
 - **Multi-format Input**: Audio (MP3, WAV, M4A), Video (MP4, WebM), PDF, Images, Text, URLs
 - **AI Analysis**: Summaries, key points, action items, sentiment analysis via GPT-5.2
+- **Auto-Generated Agenda**: Next meeting agenda created automatically after analysis
 - **Voice Chat**: Two modes for voice interaction with meeting content
   - **Push-to-Talk**: Hold mic → Whisper transcription → Chat → TTS response (~$0.02/exchange)
   - **Real-time**: Continuous voice conversation via OpenAI Realtime API (~$0.30/min)
-- **RLM-Powered Chat**: Direct/RLM toggle for chat and agenda generation
-- **Audio Briefing**: 2-minute executive summaries with customizable TTS voices
-- **Meeting Infographic**: 4 style presets (Executive, Dashboard, Action Board, Timeline) with black/gold theme, or custom prompts
+- **RLM-Powered Chat**: Direct/RLM toggle for intelligent context handling
+- **Custom Audio Player**: Styled player with play/pause, progress bar, volume control, and download
+- **Meeting Infographic**: 4 style presets (Executive, Dashboard, Action Board, Timeline) with black/gold theme
+- **Collapsible Results**: Key Points, Action Items, Agenda, and Infographic in expandable cards
+- **Chat Reminder**: Tooltip appears after analysis to encourage interaction
 - **Professional Export**: DOCX reports and portable agent files (.md)
 
 ### Agent Orchestrator
@@ -173,9 +176,11 @@ flowchart TB
 2. Enter your OpenAI API key (stored locally)
 3. Upload audio, video, PDF, image, or paste text
 4. Click **Analyze Meeting**
-5. Review KPI dashboard and analysis results
-6. Use chat to ask follow-up questions (RLM enabled by default)
-7. Export as DOCX report or Agent file
+5. Review KPI dashboard, summary, and auto-generated agenda
+6. Expand Key Points, Action Items, or Infographic sections as needed
+7. Use the floating chat widget to ask follow-up questions
+8. Generate Audio Briefing or Infographic from the Generate menu
+9. Export as DOCX report or Agent file
 
 ### Agent Orchestrator
 1. Export meetings as Agent files from the Builder
