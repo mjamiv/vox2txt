@@ -3347,13 +3347,13 @@ async function generateAgenda() {
     if (!state.results) return;
 
     const btn = elements.makeAgendaBtn;
-    const btnText = btn.querySelector('.btn-text');
-    const btnLoader = btn.querySelector('.btn-loader');
+    const btnText = btn?.querySelector('.btn-text');
+    const btnLoader = btn?.querySelector('.btn-loader');
 
     // Show loading state
-    btnText.classList.add('hidden');
-    btnLoader.classList.remove('hidden');
-    btn.disabled = true;
+    if (btnText) btnText.classList.add('hidden');
+    if (btnLoader) btnLoader.classList.remove('hidden');
+    if (btn) btn.disabled = true;
 
     try {
         let agendaText;
@@ -3403,9 +3403,9 @@ Keep it brief - 4-6 sections max, 1-2 bullets each.`;
         console.error('Agenda generation error:', error);
         showError(error.message || 'Failed to generate agenda.');
     } finally {
-        btnText.classList.remove('hidden');
-        btnLoader.classList.add('hidden');
-        btn.disabled = false;
+        if (btnText) btnText.classList.remove('hidden');
+        if (btnLoader) btnLoader.classList.add('hidden');
+        if (btn) btn.disabled = false;
     }
 }
 
