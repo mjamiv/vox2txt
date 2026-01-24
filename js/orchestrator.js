@@ -97,6 +97,46 @@ const PROCESSING_MODE_CONFIG = {
     }
 };
 
+// ============================================
+// Chat Mode Presets (User-Friendly Settings)
+// ============================================
+
+const CHAT_PRESETS = {
+    quick: {
+        label: 'Quick',
+        description: 'Fast responses, lower cost',
+        settings: {
+            model: GPT_52_MODEL,
+            effort: 'none',
+            processingMode: 'direct',
+            allowModelMixing: false
+        }
+    },
+    balanced: {
+        label: 'Balanced',
+        description: 'Recommended for most queries',
+        settings: {
+            model: GPT_52_MODEL,
+            effort: 'low',
+            processingMode: 'rlm-swm',
+            allowModelMixing: true
+        }
+    },
+    deep: {
+        label: 'Deep',
+        description: 'Thorough multi-agent reasoning',
+        settings: {
+            model: GPT_52_MODEL,
+            effort: 'medium',
+            processingMode: 'rlm-hybrid',
+            allowModelMixing: true
+        }
+    }
+};
+
+// Current KB view mode: 'canvas' or 'list'
+let kbViewMode = 'canvas';
+
 // Model pricing (per 1M tokens) - Standard tier
 const PRICING = {
     'gpt-5.2': { input: 1.75, output: 14.00 },      // Full reasoning model (legacy alias)
@@ -164,6 +204,63 @@ function deriveProcessingMode(settings) {
         return 'rlm-hybrid';
     }
     return 'rlm-swm';
+}
+
+/**
+ * Apply a chat mode preset
+ * @param {string} presetName - 'quick', 'balanced', or 'deep'
+ */
+function applyPreset(presetName) {
+    const preset = CHAT_PRESETS[presetName];
+    if (!preset) {
+        console.warn('[Presets] Unknown preset:', presetName);
+        return;
+    }
+
+    // Apply preset settings
+    state.settings.model = preset.settings.model;
+    state.settings.effort = preset.settings.effort;
+    state.settings.allowModelMixing = preset.settings.allowModelMixing;
+
+    // Apply processing mode (which sets RLM flags)
+    applyProcessingMode(preset.settings.processingMode, { persist: false, syncUI: false, updatePipeline: false });
+
+    // Save and update
+    saveSettings();
+    updateSettingsUI();
+    applyRlmFeatureFlags();
+    updatePresetButtonsUI(presetName);
+    updateContextGauge();
+
+    console.log('[Presets] Applied preset:', presetName, preset.settings);
+}
+
+/**
+ * Update the preset button UI to show active state
+ */
+function updatePresetButtonsUI(activePreset) {
+    if (!elements.chatModeSelector) return;
+
+    elements.chatModeSelector.querySelectorAll('.mode-btn').forEach(btn => {
+        const mode = btn.dataset.mode;
+        btn.classList.toggle('active', mode === activePreset);
+    });
+}
+
+/**
+ * Determine which preset matches current settings
+ */
+function detectActivePreset() {
+    const { processingMode, effort } = state.settings;
+
+    if (processingMode === 'direct' && effort === 'none') {
+        return 'quick';
+    }
+    if (processingMode === 'rlm-hybrid' && (effort === 'medium' || effort === 'high')) {
+        return 'deep';
+    }
+    // Default to balanced for rlm-swm or any other combination
+    return 'balanced';
 }
 
 function applyProcessingMode(mode, { persist = true, syncUI = true, updatePipeline = true } = {}) {
@@ -996,6 +1093,24 @@ function initElements() {
         focusEpisodesToggle: document.getElementById('focus-episodes-toggle'),
         promptBudgetToggle: document.getElementById('prompt-budget-toggle'),
         memoryDebugToggle: document.getElementById('memory-debug-toggle'),
+
+        // Chat Mode Presets
+        chatModeSelector: document.getElementById('chat-mode-selector'),
+
+        // Active Agents Row
+        activeAgentsRow: document.getElementById('active-agents-row'),
+        activeAgentsChips: document.getElementById('active-agents-chips'),
+
+        // KB View Toggle
+        kbViewToggle: document.getElementById('kb-view-toggle'),
+        kbListView: document.getElementById('kb-list-view'),
+        agentListTbody: document.getElementById('agent-list-tbody'),
+
+        // Advanced Settings Drawer
+        advancedSettingsDrawer: document.getElementById('advanced-settings-drawer'),
+
+        // Toast Container
+        toastContainer: document.getElementById('toast-container'),
 
         // Context Window Gauge
         contextGauge: document.getElementById('context-gauge'),
@@ -2682,6 +2797,11 @@ function init() {
     setupGroupingEventListeners();
     updateSettingsUI();
     applyRlmFeatureFlags();
+
+    // Set active preset based on current settings
+    const activePreset = detectActivePreset();
+    updatePresetButtonsUI(activePreset);
+
     updateUI();
     window.__orchestratorInitialized = true;
 }
@@ -2755,6 +2875,30 @@ function setupEventListeners() {
         elements.clearCacheBtn.addEventListener('click', clearChatAndCache);
     }
     elements.clearAllBtn.addEventListener('click', clearAllAgents);
+
+    // Chat Mode Preset Selector
+    if (elements.chatModeSelector) {
+        elements.chatModeSelector.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                if (mode) {
+                    applyPreset(mode);
+                }
+            });
+        });
+    }
+
+    // KB View Toggle
+    if (elements.kbViewToggle) {
+        elements.kbViewToggle.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.view;
+                if (view) {
+                    setKBViewMode(view);
+                }
+            });
+        });
+    }
 
     // Generate Insights
     elements.generateInsightsBtn.addEventListener('click', generateCrossInsights);
@@ -3630,14 +3774,19 @@ function clearChatAndCache() {
     if (elements.chatMessages) {
         elements.chatMessages.innerHTML = `
             <div class="chat-welcome-card">
-                <div class="welcome-avatar">🤖</div>
+                <div class="welcome-avatar">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/>
+                        <path d="M12 14c-4.418 0-8 2.239-8 5v3h16v-3c0-2.761-3.582-5-8-5z"/>
+                    </svg>
+                </div>
                 <div class="welcome-content">
                     <p class="welcome-title">Hello! I'm your Orchestrator AI</p>
                     <p class="welcome-text">I have access to your knowledge base. Ask me about decisions, action items, patterns, or insights from your meeting agents.</p>
                     <div class="welcome-suggestions">
-                        <button class="suggestion-chip" data-query="What are the key action items across all meetings?">📋 Key action items</button>
-                        <button class="suggestion-chip" data-query="What common themes appear in these meetings?">🔗 Common themes</button>
-                        <button class="suggestion-chip" data-query="Summarize the main decisions made">✅ Main decisions</button>
+                        <button class="suggestion-chip" data-query="What are the key action items across all meetings?">Key action items</button>
+                        <button class="suggestion-chip" data-query="What common themes appear in these meetings?">Common themes</button>
+                        <button class="suggestion-chip" data-query="Summarize the main decisions made">Main decisions</button>
                     </div>
                 </div>
             </div>
@@ -3682,6 +3831,10 @@ function updateUI() {
     updateSectionsVisibility();
     syncAgentsToRLM();
     updateContextGauge();
+    // Update list view if active
+    if (kbViewMode === 'list') {
+        renderAgentListView();
+    }
     saveState(); // Save state after UI updates
 }
 
@@ -3844,10 +3997,10 @@ function updateAgentName(index, newName) {
 function updateBrainStatus() {
     const brainStatusEl = elements.brainStatus || document.getElementById('brain-status');
     if (!brainStatusEl) return;
-    
+
     const activeCount = state.agents.filter(a => a.enabled).length;
     const statusDot = brainStatusEl.querySelector('.status-dot') || document.createElement('span');
-    
+
     if (activeCount === 0) {
         brainStatusEl.innerHTML = '<span class="status-dot"></span> Waiting for agents...';
         brainStatusEl.classList.remove('ready');
@@ -3858,6 +4011,175 @@ function updateBrainStatus() {
         brainStatusEl.innerHTML = `<span class="status-dot"></span> Ready • ${activeCount} agents active`;
         brainStatusEl.classList.add('ready');
     }
+
+    // Also update active agents chips
+    renderActiveAgentChips();
+}
+
+/**
+ * Render active agent chips in the chat header
+ */
+function renderActiveAgentChips() {
+    if (!elements.activeAgentsChips || !elements.activeAgentsRow) return;
+
+    const agents = state.agents;
+    const maxVisible = 4;
+
+    if (agents.length === 0) {
+        elements.activeAgentsRow.classList.add('hidden');
+        return;
+    }
+
+    elements.activeAgentsRow.classList.remove('hidden');
+
+    const visibleAgents = agents.slice(0, maxVisible);
+    const overflowCount = agents.length - maxVisible;
+
+    const chipsHtml = visibleAgents.map((agent, index) => `
+        <button class="active-agent-chip ${agent.enabled ? '' : 'disabled'}"
+                data-index="${index}"
+                title="${agent.enabled ? 'Click to disable' : 'Click to enable'}">
+            <span class="chip-status"></span>
+            <span class="chip-name">${escapeHtml(agent.displayName || agent.filename)}</span>
+        </button>
+    `).join('');
+
+    const overflowHtml = overflowCount > 0
+        ? `<span class="active-agent-chip agents-overflow-chip">+${overflowCount} more</span>`
+        : '';
+
+    elements.activeAgentsChips.innerHTML = chipsHtml + overflowHtml;
+
+    // Add click handlers
+    elements.activeAgentsChips.querySelectorAll('.active-agent-chip:not(.agents-overflow-chip)').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const index = parseInt(chip.dataset.index);
+            toggleAgent(index);
+        });
+    });
+}
+
+/**
+ * Render agent list view (table format)
+ */
+function renderAgentListView() {
+    if (!elements.agentListTbody) return;
+
+    if (state.agents.length === 0) {
+        elements.agentListTbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    No agents loaded. <a href="index.html" style="color: var(--accent-primary);">Go to Agent Builder</a> to create agents.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    const rowsHtml = state.agents.map((agent, index) => `
+        <tr data-index="${index}">
+            <td class="agent-name">${escapeHtml(agent.displayName || agent.filename)}</td>
+            <td class="agent-source">${agent.source || 'Unknown'}</td>
+            <td>${agent.date || 'No date'}</td>
+            <td>
+                <span class="agent-status ${agent.enabled ? 'active' : 'disabled'}">
+                    ${agent.enabled ? 'Active' : 'Disabled'}
+                </span>
+            </td>
+            <td class="agent-actions">
+                <button class="agent-action-btn toggle-btn" data-index="${index}" title="${agent.enabled ? 'Disable' : 'Enable'}">
+                    ${agent.enabled ? 'Disable' : 'Enable'}
+                </button>
+                <button class="agent-action-btn danger remove-btn" data-index="${index}" title="Remove">
+                    Remove
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    elements.agentListTbody.innerHTML = rowsHtml;
+
+    // Add event handlers
+    elements.agentListTbody.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            toggleAgent(parseInt(btn.dataset.index));
+        });
+    });
+
+    elements.agentListTbody.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            removeAgent(parseInt(btn.dataset.index));
+        });
+    });
+}
+
+/**
+ * Toggle KB view mode between canvas and list
+ */
+function setKBViewMode(mode) {
+    kbViewMode = mode;
+
+    // Update toggle buttons
+    if (elements.kbViewToggle) {
+        elements.kbViewToggle.querySelectorAll('.view-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === mode);
+        });
+    }
+
+    // Toggle visibility
+    if (elements.kb3dSpace) {
+        elements.kb3dSpace.style.display = mode === 'canvas' ? 'block' : 'none';
+    }
+    if (elements.kbListView) {
+        elements.kbListView.classList.toggle('hidden', mode !== 'list');
+    }
+
+    // Render list view if switching to it
+    if (mode === 'list') {
+        renderAgentListView();
+    }
+}
+
+/**
+ * Show a toast notification
+ * @param {string} message - Message to display
+ * @param {'success'|'error'|'warning'} type - Toast type
+ * @param {number} duration - Duration in ms (default 4000)
+ */
+function showToast(message, type = 'success', duration = 4000) {
+    if (!elements.toastContainer) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const icons = {
+        success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>',
+        error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>',
+        warning: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>'
+    };
+
+    toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || icons.success}</span>
+        <span class="toast-message">${message}</span>
+        <button class="toast-dismiss" aria-label="Dismiss">×</button>
+    `;
+
+    elements.toastContainer.appendChild(toast);
+
+    // Dismiss handler
+    const dismiss = () => {
+        toast.classList.add('exiting');
+        setTimeout(() => toast.remove(), 300);
+    };
+
+    toast.querySelector('.toast-dismiss').addEventListener('click', dismiss);
+
+    // Auto-dismiss
+    if (duration > 0) {
+        setTimeout(dismiss, duration);
+    }
+
+    return toast;
 }
 
 function autoResizeTextarea() {
