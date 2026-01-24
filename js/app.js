@@ -374,41 +374,25 @@ async function init() {
         
         // Tabs
         tabBtns: document.querySelectorAll('.tab-btn'),
-        audioTab: document.getElementById('audio-tab'),
-        pdfTab: document.getElementById('pdf-tab'),
+        uploadTab: document.getElementById('upload-tab'),
         textTab: document.getElementById('text-tab'),
-        
-        // Audio Upload
-        dropZone: document.getElementById('drop-zone'),
-        audioFileInput: document.getElementById('audio-file'),
-        fileInfo: document.getElementById('file-info'),
-        fileName: document.querySelector('.file-name'),
-        removeFileBtn: document.querySelector('.remove-file'),
-        
-        // PDF Upload
-        pdfDropZone: document.getElementById('pdf-drop-zone'),
-        pdfFileInput: document.getElementById('pdf-file'),
-        pdfFileInfo: document.getElementById('pdf-file-info'),
-        pdfFileName: document.querySelector('.pdf-file-name'),
-        removePdfFileBtn: document.querySelector('.remove-pdf-file'),
+        urlTab: document.getElementById('url-tab'),
+        importTab: document.getElementById('import-tab'),
 
-        // Image Upload
-        imageTab: document.getElementById('image-tab'),
-        imageDropZone: document.getElementById('image-drop-zone'),
-        imageFileInput: document.getElementById('image-file'),
-        imageFileInfo: document.getElementById('image-file-info'),
-        imageFileName: document.querySelector('.image-file-name'),
-        removeImageFileBtn: document.querySelector('.remove-image-file'),
+        // Unified Upload
+        unifiedDropZone: document.getElementById('unified-drop-zone'),
+        unifiedFileInput: document.getElementById('unified-file'),
+        unifiedFileInfo: document.getElementById('unified-file-info'),
+        fileTypeIcon: document.getElementById('file-type-icon'),
+        selectedFileName: document.getElementById('selected-file-name'),
+        fileTypeBadge: document.getElementById('file-type-badge'),
+        removeUnifiedFileBtn: document.getElementById('remove-unified-file'),
         imagePreview: document.getElementById('image-preview'),
         imagePreviewImg: document.getElementById('image-preview-img'),
 
-        // Video Upload
-        videoTab: document.getElementById('video-tab'),
-        videoDropZone: document.getElementById('video-drop-zone'),
-        videoFileInput: document.getElementById('video-file'),
-        videoFileInfo: document.getElementById('video-file-info'),
-        videoFileName: document.querySelector('.video-file-name'),
-        removeVideoFileBtn: document.querySelector('.remove-video-file'),
+        // Agent Import
+        agentDropZone: document.getElementById('agent-drop-zone'),
+        agentFileInput: document.getElementById('agent-file'),
 
         // Text Input
         textInput: document.getElementById('text-input'),
@@ -425,7 +409,6 @@ async function init() {
         
         // Results
         resultsSection: document.getElementById('results-section'),
-        resultsNav: document.getElementById('results-nav'),
         resultSummary: document.getElementById('result-summary'),
         resultKeypoints: document.getElementById('result-keypoints'),
         resultActions: document.getElementById('result-actions'),
@@ -434,7 +417,13 @@ async function init() {
 
         // Agenda
         makeAgendaBtn: document.getElementById('make-agenda-btn'),
-        
+
+        // Export Dropdown
+        exportMenuBtn: document.getElementById('export-menu-btn'),
+        exportDropdown: document.getElementById('export-dropdown'),
+        generateAudioMenuBtn: document.getElementById('generate-audio-menu-btn'),
+        generateInfographicMenuBtn: document.getElementById('generate-infographic-menu-btn'),
+
         // Error
         errorSection: document.getElementById('error-section'),
         errorMessage: document.getElementById('error-message'),
@@ -460,9 +449,6 @@ async function init() {
         chatMessages: document.getElementById('chat-messages'),
         chatInput: document.getElementById('chat-input'),
         chatSendBtn: document.getElementById('chat-send-btn'),
-        chatModeToggle: document.getElementById('chat-mode-toggle'),
-        modeDirectLabel: document.getElementById('mode-direct-label'),
-        modeRlmLabel: document.getElementById('mode-rlm-label'),
         clearChatBtn: document.getElementById('clear-chat-btn'),
 
         // Voice Chat
@@ -489,10 +475,8 @@ async function init() {
         urlPreviewContent: document.getElementById('url-preview-content'),
         clearUrlBtn: document.querySelector('.clear-url-btn'),
         
-        // Agent Import/Export
+        // Agent Export
         exportAgentBtn: document.getElementById('export-agent-btn'),
-        importAgentBtn: document.getElementById('import-agent-btn'),
-        agentFileInput: document.getElementById('agent-file'),
         
         // Agent Name Modal
         agentNameModal: document.getElementById('agent-name-modal'),
@@ -510,10 +494,23 @@ async function init() {
         
         // About Dropdown
         aboutBtn: document.getElementById('about-btn'),
-        aboutDropdown: document.getElementById('about-dropdown')
+        aboutDropdown: document.getElementById('about-dropdown'),
+
+        // Settings Panel
+        settingsBtn: document.getElementById('settings-btn'),
+        settingsPanel: document.getElementById('settings-panel'),
+        settingsOverlay: document.getElementById('settings-overlay'),
+        settingsClose: document.getElementById('settings-close'),
+        settingsApiKey: document.getElementById('settings-api-key'),
+        settingsToggleKey: document.getElementById('settings-toggle-key'),
+        settingsVoiceResponse: document.getElementById('settings-voice-response'),
+        settingsVoice: document.getElementById('settings-voice'),
+        settingsShowMetrics: document.getElementById('settings-show-metrics'),
+        settingsDebugMode: document.getElementById('settings-debug-mode')
     };
-    
+
     loadSavedApiKey();
+    loadSettings();
     setupEventListeners();
     updateAnalyzeButton();
 
@@ -564,76 +561,93 @@ function setupEventListeners() {
     elements.tabBtns.forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
-    
-    // Audio Drag and Drop
-    // Note: Click to browse is handled natively by <label for="audio-file">
-    elements.dropZone.addEventListener('dragover', handleDragOver);
-    elements.dropZone.addEventListener('dragleave', handleDragLeave);
-    elements.dropZone.addEventListener('drop', handleDrop);
-    elements.audioFileInput.addEventListener('change', handleFileSelect);
-    elements.removeFileBtn.addEventListener('click', removeSelectedFile);
-    
-    // PDF Drag and Drop
-    elements.pdfDropZone.addEventListener('click', (e) => {
-        // Trigger file input on click (explicit handler for cross-browser support)
-        e.preventDefault();
-        elements.pdfFileInput.click();
-    });
-    elements.pdfDropZone.addEventListener('dragover', handlePdfDragOver);
-    elements.pdfDropZone.addEventListener('dragleave', handlePdfDragLeave);
-    elements.pdfDropZone.addEventListener('drop', handlePdfDrop);
-    elements.pdfFileInput.addEventListener('change', handlePdfFileSelect);
-    elements.removePdfFileBtn.addEventListener('click', removeSelectedPdfFile);
 
-    // Image Drag and Drop
-    elements.imageDropZone.addEventListener('click', (e) => {
-        e.preventDefault();
-        elements.imageFileInput.click();
-    });
-    elements.imageDropZone.addEventListener('dragover', handleImageDragOver);
-    elements.imageDropZone.addEventListener('dragleave', handleImageDragLeave);
-    elements.imageDropZone.addEventListener('drop', handleImageDrop);
-    elements.imageFileInput.addEventListener('change', handleImageFileSelect);
-    elements.removeImageFileBtn.addEventListener('click', removeSelectedImageFile);
+    // Unified File Upload
+    if (elements.unifiedDropZone) {
+        elements.unifiedDropZone.addEventListener('dragover', handleUnifiedDragOver);
+        elements.unifiedDropZone.addEventListener('dragleave', handleUnifiedDragLeave);
+        elements.unifiedDropZone.addEventListener('drop', handleUnifiedDrop);
+    }
+    if (elements.unifiedFileInput) {
+        elements.unifiedFileInput.addEventListener('change', handleUnifiedFileSelect);
+    }
+    if (elements.removeUnifiedFileBtn) {
+        elements.removeUnifiedFileBtn.addEventListener('click', clearUnifiedFile);
+    }
 
-    // Video Drag and Drop
-    elements.videoDropZone.addEventListener('click', (e) => {
-        e.preventDefault();
-        elements.videoFileInput.click();
-    });
-    elements.videoDropZone.addEventListener('dragover', handleVideoDragOver);
-    elements.videoDropZone.addEventListener('dragleave', handleVideoDragLeave);
-    elements.videoDropZone.addEventListener('drop', handleVideoDrop);
-    elements.videoFileInput.addEventListener('change', handleVideoFileSelect);
-    elements.removeVideoFileBtn.addEventListener('click', removeSelectedVideoFile);
+    // Agent Import
+    if (elements.agentFileInput) {
+        elements.agentFileInput.addEventListener('change', handleAgentFileSelect);
+    }
 
     // Text Input
     elements.textInput.addEventListener('input', updateAnalyzeButton);
     
     // Actions
     elements.analyzeBtn.addEventListener('click', startAnalysis);
-    elements.downloadBtn.addEventListener('click', downloadDocx);
     elements.newAnalysisBtn.addEventListener('click', resetForNewAnalysis);
     elements.dismissErrorBtn.addEventListener('click', hideError);
-    
-    // Audio Briefing
-    elements.generateAudioBtn.addEventListener('click', generateAudioBriefing);
-    elements.downloadAudioBtn.addEventListener('click', downloadAudio);
-    
-    // Infographic
-    elements.generateInfographicBtn.addEventListener('click', generateInfographic);
-    elements.downloadInfographicBtn.addEventListener('click', downloadInfographic);
 
-    // Infographic Preset Selection
-    elements.infographicPresetBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Update selection state
-            elements.infographicPresetBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            selectedInfographicPreset = btn.dataset.preset;
-            console.log('[Infographic] Preset selected:', selectedInfographicPreset);
+    // Export Dropdown
+    if (elements.exportMenuBtn) {
+        elements.exportMenuBtn.addEventListener('click', toggleExportDropdown);
+    }
+    if (elements.downloadBtn) {
+        elements.downloadBtn.addEventListener('click', () => {
+            downloadDocx();
+            closeExportDropdown();
         });
+    }
+    if (elements.generateAudioMenuBtn) {
+        elements.generateAudioMenuBtn.addEventListener('click', () => {
+            generateAudioBriefing();
+            closeExportDropdown();
+        });
+    }
+    if (elements.generateInfographicMenuBtn) {
+        elements.generateInfographicMenuBtn.addEventListener('click', () => {
+            generateInfographic();
+            closeExportDropdown();
+        });
+    }
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (elements.exportDropdown && !elements.exportDropdown.classList.contains('hidden')) {
+            const container = document.querySelector('.export-dropdown-container');
+            if (container && !container.contains(e.target)) {
+                closeExportDropdown();
+            }
+        }
     });
+
+    // Audio Briefing (from dedicated section, if exists)
+    if (elements.generateAudioBtn) {
+        elements.generateAudioBtn.addEventListener('click', generateAudioBriefing);
+    }
+    if (elements.downloadAudioBtn) {
+        elements.downloadAudioBtn.addEventListener('click', downloadAudio);
+    }
+
+    // Infographic (from dedicated section, if exists)
+    if (elements.generateInfographicBtn) {
+        elements.generateInfographicBtn.addEventListener('click', generateInfographic);
+    }
+    if (elements.downloadInfographicBtn) {
+        elements.downloadInfographicBtn.addEventListener('click', downloadInfographic);
+    }
+
+    // Infographic Preset Selection (if preset buttons exist)
+    if (elements.infographicPresetBtns && elements.infographicPresetBtns.length > 0) {
+        elements.infographicPresetBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Update selection state
+                elements.infographicPresetBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedInfographicPreset = btn.dataset.preset;
+                console.log('[Infographic] Preset selected:', selectedInfographicPreset);
+            });
+        });
+    }
 
     // Chat with Data
     elements.chatSendBtn.addEventListener('click', sendChatMessage);
@@ -643,15 +657,6 @@ function setupEventListeners() {
             sendChatMessage();
         }
     });
-
-    // Chat Mode Toggle (Direct vs RLM)
-    if (elements.chatModeToggle) {
-        elements.chatModeToggle.addEventListener('change', (e) => {
-            state.chatMode = e.target.checked ? 'rlm' : 'direct';
-            updateChatModeUI();
-            console.log('[Chat] Mode switched to:', state.chatMode);
-        });
-    }
 
     // Voice Input - Push-to-talk
     if (elements.voiceInputBtn) {
@@ -715,13 +720,21 @@ function setupEventListeners() {
     elements.urlInput.addEventListener('input', updateAnalyzeButton);
     elements.clearUrlBtn.addEventListener('click', clearUrlContent);
     
-    // Agent Import/Export
-    elements.exportAgentBtn.addEventListener('click', showAgentNameModal);
-    elements.importAgentBtn.addEventListener('click', () => elements.agentFileInput.click());
-    elements.agentFileInput.addEventListener('change', handleAgentFileSelect);
+    // Agent Export (in dropdown)
+    if (elements.exportAgentBtn) {
+        elements.exportAgentBtn.addEventListener('click', () => {
+            showAgentNameModal();
+            closeExportDropdown();
+        });
+    }
 
-    // Make Agenda
-    elements.makeAgendaBtn.addEventListener('click', generateAgenda);
+    // Make Agenda (in dropdown)
+    if (elements.makeAgendaBtn) {
+        elements.makeAgendaBtn.addEventListener('click', () => {
+            generateAgenda();
+            closeExportDropdown();
+        });
+    }
 
     // Agent Name Modal
     elements.modalCloseBtn.addEventListener('click', hideAgentNameModal);
@@ -752,95 +765,176 @@ function setupEventListeners() {
             }
         });
     }
-    
-    // Results Navigation
-    setupResultsNav();
-    
-    // Wearable Modal (Coming Soon)
-    initWearableModal();
+
+    // Settings Panel
+    if (elements.settingsBtn) {
+        elements.settingsBtn.addEventListener('click', openSettingsPanel);
+    }
+    if (elements.settingsClose) {
+        elements.settingsClose.addEventListener('click', closeSettingsPanel);
+    }
+    if (elements.settingsOverlay) {
+        elements.settingsOverlay.addEventListener('click', closeSettingsPanel);
+    }
+    if (elements.settingsToggleKey) {
+        elements.settingsToggleKey.addEventListener('click', toggleSettingsApiKeyVisibility);
+    }
+    if (elements.settingsApiKey) {
+        elements.settingsApiKey.addEventListener('change', saveSettingsApiKey);
+        elements.settingsApiKey.addEventListener('blur', saveSettingsApiKey);
+    }
+    if (elements.settingsVoiceResponse) {
+        elements.settingsVoiceResponse.addEventListener('change', saveSettings);
+    }
+    if (elements.settingsVoice) {
+        elements.settingsVoice.addEventListener('change', saveSettings);
+    }
+    if (elements.settingsShowMetrics) {
+        elements.settingsShowMetrics.addEventListener('change', handleMetricsToggle);
+    }
+    if (elements.settingsDebugMode) {
+        elements.settingsDebugMode.addEventListener('change', saveSettings);
+    }
+    // Close settings panel with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && elements.settingsPanel && elements.settingsPanel.classList.contains('visible')) {
+            closeSettingsPanel();
+        }
+    });
+
 }
 
 // ============================================
-// Results Navigation & Scroll Spy
+// Export Dropdown & Mobile Bottom Sheet
 // ============================================
-function setupResultsNav() {
-    if (!elements.resultsNav) return;
-    
-    // Handle nav pill clicks
-    const navPills = elements.resultsNav.querySelectorAll('.nav-pill');
-    navPills.forEach(pill => {
-        pill.addEventListener('click', (e) => {
-            e.preventDefault();
-            const targetId = pill.getAttribute('data-section');
-            const targetElement = document.getElementById(targetId);
-            
-            if (targetElement) {
-                // Smooth scroll to section
-                const navHeight = elements.resultsNav.offsetHeight;
-                const targetPosition = targetElement.getBoundingClientRect().top + window.scrollY - navHeight - 20;
-                
-                window.scrollTo({
-                    top: targetPosition,
-                    behavior: 'smooth'
-                });
-                
-                // Update active state
-                updateActiveNavPill(targetId);
-            }
-        });
-    });
-    
-    // Scroll spy - update active pill based on scroll position
-    let scrollTimeout;
-    window.addEventListener('scroll', () => {
-        if (scrollTimeout) {
-            window.cancelAnimationFrame(scrollTimeout);
+function toggleExportDropdown() {
+    // On mobile, show bottom sheet instead
+    if (window.innerWidth <= 600) {
+        showExportBottomSheet();
+        return;
+    }
+
+    if (elements.exportDropdown) {
+        elements.exportDropdown.classList.toggle('hidden');
+        const container = document.querySelector('.export-dropdown-container');
+        if (container) {
+            container.classList.toggle('open', !elements.exportDropdown.classList.contains('hidden'));
         }
-        scrollTimeout = window.requestAnimationFrame(() => {
-            updateNavOnScroll();
-        });
-    });
+    }
 }
 
-function updateActiveNavPill(sectionId) {
-    if (!elements.resultsNav) return;
-    
-    const navPills = elements.resultsNav.querySelectorAll('.nav-pill');
-    navPills.forEach(pill => {
-        pill.classList.remove('active');
-        if (pill.getAttribute('data-section') === sectionId) {
-            pill.classList.add('active');
-            // Scroll the pill into view if needed (for mobile)
-            pill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+function closeExportDropdown() {
+    if (elements.exportDropdown) {
+        elements.exportDropdown.classList.add('hidden');
+        const container = document.querySelector('.export-dropdown-container');
+        if (container) {
+            container.classList.remove('open');
         }
-    });
+    }
 }
 
-function updateNavOnScroll() {
-    if (!elements.resultsNav || elements.resultsSection.classList.contains('hidden')) return;
-    
-    const navPills = elements.resultsNav.querySelectorAll('.nav-pill');
-    const navHeight = elements.resultsNav.offsetHeight;
-    const scrollPosition = window.scrollY + navHeight + 100; // Offset for better UX
-    
-    let currentSection = null;
-    
-    navPills.forEach(pill => {
-        const sectionId = pill.getAttribute('data-section');
-        const section = document.getElementById(sectionId);
-        
-        if (section) {
-            const sectionTop = section.offsetTop;
-            const sectionBottom = sectionTop + section.offsetHeight;
-            
-            if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
-                currentSection = sectionId;
-            }
+function showExportBottomSheet() {
+    // Remove any existing bottom sheet
+    const existing = document.querySelector('.bottom-sheet-overlay');
+    if (existing) existing.remove();
+
+    const sheet = document.createElement('div');
+    sheet.className = 'bottom-sheet-overlay';
+    sheet.innerHTML = `
+        <div class="bottom-sheet">
+            <div class="bottom-sheet-handle"></div>
+            <div class="bottom-sheet-header">
+                <h3>Export</h3>
+            </div>
+            <div class="bottom-sheet-content">
+                <button class="sheet-item" data-action="docx">
+                    <span class="sheet-icon">📄</span>
+                    <span class="sheet-label">Word Document</span>
+                    <span class="sheet-hint">.docx</span>
+                </button>
+                <button class="sheet-item" data-action="agent">
+                    <span class="sheet-icon">🤖</span>
+                    <span class="sheet-label">Agent File</span>
+                    <span class="sheet-hint">.md</span>
+                </button>
+                <button class="sheet-item" data-action="audio">
+                    <span class="sheet-icon">🎧</span>
+                    <span class="sheet-label">Audio Briefing</span>
+                    <span class="sheet-hint">Generate</span>
+                </button>
+                <button class="sheet-item" data-action="infographic">
+                    <span class="sheet-icon">🖼️</span>
+                    <span class="sheet-label">Infographic</span>
+                    <span class="sheet-hint">Generate</span>
+                </button>
+                <button class="sheet-item" data-action="agenda">
+                    <span class="sheet-icon">📋</span>
+                    <span class="sheet-label">Meeting Agenda</span>
+                    <span class="sheet-hint">Generate</span>
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(sheet);
+
+    // Animate in
+    requestAnimationFrame(() => {
+        sheet.classList.add('visible');
+    });
+
+    // Close on overlay click
+    sheet.addEventListener('click', (e) => {
+        if (e.target === sheet) {
+            closeBottomSheet(sheet);
         }
     });
-    
-    if (currentSection) {
-        updateActiveNavPill(currentSection);
+
+    // Handle actions
+    sheet.querySelectorAll('.sheet-item').forEach(item => {
+        item.addEventListener('click', () => {
+            handleExportAction(item.dataset.action);
+            closeBottomSheet(sheet);
+        });
+    });
+
+    // Close on escape key
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closeBottomSheet(sheet);
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
+function closeBottomSheet(sheet) {
+    if (sheet) {
+        sheet.classList.remove('visible');
+        setTimeout(() => {
+            sheet.remove();
+        }, 300);
+    }
+}
+
+function handleExportAction(action) {
+    switch (action) {
+        case 'docx':
+            downloadDocx();
+            break;
+        case 'agent':
+            showAgentNameModal();
+            break;
+        case 'audio':
+            generateAudioBriefing();
+            break;
+        case 'infographic':
+            generateInfographic();
+            break;
+        case 'agenda':
+            generateAgenda();
+            break;
+        default:
+            console.warn('Unknown export action:', action);
     }
 }
 
@@ -883,39 +977,147 @@ function showTemporaryMessage(btn, message, original) {
 // Tab Switching
 // ============================================
 function switchTab(tab) {
-    // Handle wearable tab specially - show modal instead of switching
-    if (tab === 'wearable') {
-        showWearableModal();
-        return;
+    // Map 'upload' tab to actual input mode based on selected file, or default to 'audio'
+    if (tab === 'upload') {
+        // Keep current inputMode if a file is selected, otherwise reset
+        if (!state.selectedFile && !state.selectedPdfFile && !state.selectedImageFile && !state.selectedVideoFile) {
+            state.inputMode = 'audio'; // Default mode for upload tab
+        }
+    } else if (tab === 'import') {
+        // Import tab doesn't change input mode, it's handled separately
+    } else {
+        state.inputMode = tab;
     }
-    
-    state.inputMode = tab;
 
     elements.tabBtns.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tab);
     });
 
-    elements.audioTab.classList.toggle('active', tab === 'audio');
-    elements.pdfTab.classList.toggle('active', tab === 'pdf');
-    elements.imageTab.classList.toggle('active', tab === 'image');
-    elements.videoTab.classList.toggle('active', tab === 'video');
-    elements.textTab.classList.toggle('active', tab === 'text');
-    elements.urlTab.classList.toggle('active', tab === 'url');
-    
-    const wearableTab = document.getElementById('wearable-tab');
-    if (wearableTab) {
-        wearableTab.classList.toggle('active', tab === 'wearable');
-    }
+    // Toggle tab panes
+    if (elements.uploadTab) elements.uploadTab.classList.toggle('active', tab === 'upload');
+    if (elements.textTab) elements.textTab.classList.toggle('active', tab === 'text');
+    if (elements.urlTab) elements.urlTab.classList.toggle('active', tab === 'url');
+    if (elements.importTab) elements.importTab.classList.toggle('active', tab === 'import');
 
     updateAnalyzeButton();
 }
 
 // ============================================
-// File Handling
+// Unified File Handling
+// ============================================
+function handleUnifiedDragOver(e) {
+    e.preventDefault();
+    if (elements.unifiedDropZone) elements.unifiedDropZone.classList.add('dragover');
+}
+
+function handleUnifiedDragLeave(e) {
+    e.preventDefault();
+    if (elements.unifiedDropZone) elements.unifiedDropZone.classList.remove('dragover');
+}
+
+function handleUnifiedDrop(e) {
+    e.preventDefault();
+    if (elements.unifiedDropZone) elements.unifiedDropZone.classList.remove('dragover');
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleUnifiedFileSelect({ target: { files: files } });
+    }
+}
+
+function handleUnifiedFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const extension = file.name.split('.').pop().toLowerCase();
+    const mimeType = file.type;
+
+    // Detect file type and set appropriate state
+    if (['mp3', 'wav', 'm4a', 'ogg', 'oga', 'flac', 'mpga'].includes(extension) ||
+        mimeType.startsWith('audio/')) {
+        // Audio file
+        state.inputMode = 'audio';
+        state.selectedFile = file;
+        state.exportMeta.source.audio = getFileMeta(file);
+        showUnifiedFileInfo(file, '🎵', 'Audio');
+    }
+    else if (['mp4', 'webm', 'mpeg'].includes(extension) ||
+             mimeType.startsWith('video/')) {
+        // Video file
+        state.inputMode = 'video';
+        state.selectedVideoFile = file;
+        state.exportMeta.source.video = getFileMeta(file);
+        showUnifiedFileInfo(file, '🎬', 'Video');
+    }
+    else if (extension === 'pdf' || mimeType === 'application/pdf') {
+        // PDF file
+        state.inputMode = 'pdf';
+        state.selectedPdfFile = file;
+        state.exportMeta.source.pdf = getFileMeta(file);
+        showUnifiedFileInfo(file, '📄', 'PDF');
+    }
+    else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension) ||
+             mimeType.startsWith('image/')) {
+        // Image file
+        state.inputMode = 'image';
+        state.selectedImageFile = file;
+        state.exportMeta.source.image = getFileMeta(file);
+        showUnifiedFileInfo(file, '🖼️', 'Image');
+        showImagePreview(file);
+    }
+    else {
+        showError('Unsupported file type. Please upload audio, video, PDF, or image.');
+        return;
+    }
+
+    updateAnalyzeButton();
+}
+
+function showUnifiedFileInfo(file, icon, typeBadge) {
+    if (elements.fileTypeIcon) elements.fileTypeIcon.textContent = icon;
+    if (elements.selectedFileName) elements.selectedFileName.textContent = file.name;
+    if (elements.fileTypeBadge) elements.fileTypeBadge.textContent = typeBadge;
+    if (elements.unifiedFileInfo) elements.unifiedFileInfo.classList.remove('hidden');
+    if (elements.unifiedDropZone) elements.unifiedDropZone.style.display = 'none';
+}
+
+function showImagePreview(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        if (elements.imagePreviewImg) {
+            elements.imagePreviewImg.src = e.target.result;
+            state.selectedImageBase64 = e.target.result;
+        }
+        if (elements.imagePreview) elements.imagePreview.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearUnifiedFile() {
+    state.selectedFile = null;
+    state.selectedPdfFile = null;
+    state.selectedImageFile = null;
+    state.selectedImageBase64 = null;
+    state.selectedVideoFile = null;
+    state.exportMeta.source.audio = null;
+    state.exportMeta.source.pdf = null;
+    state.exportMeta.source.image = null;
+    state.exportMeta.source.video = null;
+
+    if (elements.unifiedFileInfo) elements.unifiedFileInfo.classList.add('hidden');
+    if (elements.unifiedDropZone) elements.unifiedDropZone.style.display = 'block';
+    if (elements.imagePreview) elements.imagePreview.classList.add('hidden');
+    if (elements.unifiedFileInput) elements.unifiedFileInput.value = '';
+
+    updateAnalyzeButton();
+}
+
+// ============================================
+// Legacy File Handling (for backward compatibility)
 // ============================================
 function handleDragOver(e) {
     e.preventDefault();
-    elements.dropZone.classList.add('dragover');
+    if (elements.dropZone) elements.dropZone.classList.add('dragover');
 }
 
 function handleDragLeave(e) {
@@ -1901,67 +2103,43 @@ function displayResults() {
 }
 
 // ============================================
-// KPI Dashboard
+// Summary Bar Metrics
 // ============================================
 function updateKPIDashboard() {
     if (!state.results) return;
-    
-    // Sentiment KPI
+
+    // Sentiment metric badge
     const kpiSentiment = document.getElementById('kpi-sentiment');
     if (kpiSentiment) {
         const sentimentText = state.results.sentiment.trim();
         const sentimentLower = sentimentText.toLowerCase();
-        
+
         // Determine sentiment class
-        let sentimentClass = 'neutral';
+        let sentimentClass = '';
         if (sentimentLower.includes('positive') || sentimentLower.includes('optimistic') || sentimentLower.includes('constructive')) {
             sentimentClass = 'positive';
         } else if (sentimentLower.includes('negative') || sentimentLower.includes('concern') || sentimentLower.includes('frustrated')) {
             sentimentClass = 'negative';
         }
-        
+
         // Extract short sentiment (first word or two)
-        const shortSentiment = sentimentText.split(/[,.:;]/)[0].trim().substring(0, 20);
-        kpiSentiment.textContent = shortSentiment || 'Neutral';
-        kpiSentiment.className = `kpi-value ${sentimentClass}`;
+        const shortSentiment = sentimentText.split(/[,.:;]/)[0].trim().substring(0, 15);
+        kpiSentiment.textContent = `📊 ${shortSentiment || 'Neutral'}`;
+        kpiSentiment.className = `metric-badge metric-sentiment ${sentimentClass}`;
     }
-    
-    // Words Analyzed KPI
-    const kpiWords = document.getElementById('kpi-words');
-    if (kpiWords && state.results.transcription) {
-        const wordCount = state.results.transcription.split(/\s+/).filter(w => w.length > 0).length;
-        kpiWords.textContent = formatNumber(wordCount);
-    }
-    
-    // Key Points Count KPI
+
+    // Key Points Count metric badge
     const kpiKeypoints = document.getElementById('kpi-keypoints');
     if (kpiKeypoints && state.results.keyPoints) {
         const keyPointsCount = state.results.keyPoints.split('\n').filter(line => line.trim().length > 0).length;
-        kpiKeypoints.textContent = keyPointsCount.toString();
+        kpiKeypoints.textContent = `💡 ${keyPointsCount}`;
     }
-    
-    // Action Items Count KPI
+
+    // Action Items Count metric badge
     const kpiActions = document.getElementById('kpi-actions');
     if (kpiActions && state.results.actionItems) {
         const actionsCount = state.results.actionItems.split('\n').filter(line => line.trim().length > 0).length;
-        kpiActions.textContent = actionsCount.toString();
-    }
-    
-    // Read Time KPI (average 200 words per minute)
-    const kpiReadtime = document.getElementById('kpi-readtime');
-    if (kpiReadtime && state.results.transcription) {
-        const wordCount = state.results.transcription.split(/\s+/).filter(w => w.length > 0).length;
-        const readTimeMinutes = Math.ceil(wordCount / 200);
-        kpiReadtime.textContent = readTimeMinutes <= 1 ? '< 1 min' : `${readTimeMinutes} min`;
-    }
-    
-    // Topics KPI - extract main topics from key points
-    const kpiTopics = document.getElementById('kpi-topics');
-    if (kpiTopics && state.results.keyPoints) {
-        // Count key points as proxy for topics, or could do more sophisticated extraction
-        const keyPointsLines = state.results.keyPoints.split('\n').filter(line => line.trim().length > 0);
-        const topicCount = Math.min(keyPointsLines.length, 10); // Cap at 10 topics
-        kpiTopics.textContent = topicCount.toString();
+        kpiActions.textContent = `✅ ${actionsCount}`;
     }
 }
 
@@ -2826,38 +3004,34 @@ function resetForNewAnalysis() {
     }
     if (elements.agendaSection) elements.agendaSection.open = false;
     
-    // Reset KPI dashboard values
+    // Reset summary bar metric badges
     const kpiSentiment = document.getElementById('kpi-sentiment');
-    const kpiWords = document.getElementById('kpi-words');
     const kpiKeypoints = document.getElementById('kpi-keypoints');
     const kpiActions = document.getElementById('kpi-actions');
-    const kpiReadtime = document.getElementById('kpi-readtime');
-    const kpiTopics = document.getElementById('kpi-topics');
-    if (kpiSentiment) { kpiSentiment.textContent = '-'; kpiSentiment.className = 'kpi-value'; }
-    if (kpiWords) kpiWords.textContent = '-';
-    if (kpiKeypoints) kpiKeypoints.textContent = '-';
-    if (kpiActions) kpiActions.textContent = '-';
-    if (kpiReadtime) kpiReadtime.textContent = '-';
-    if (kpiTopics) kpiTopics.textContent = '-';
+    if (kpiSentiment) { kpiSentiment.textContent = '📊 --'; kpiSentiment.className = 'metric-badge metric-sentiment'; }
+    if (kpiKeypoints) kpiKeypoints.textContent = '💡 --';
+    if (kpiActions) kpiActions.textContent = '✅ --';
     
     // Hide results section
     elements.resultsSection.classList.add('hidden');
     
     // Reset audio briefing section
-    elements.audioPlayerContainer.classList.add('hidden');
-    elements.audioPlayer.src = '';
-    elements.audioPrompt.value = '';
-    
+    if (elements.audioPlayerContainer) elements.audioPlayerContainer.classList.add('hidden');
+    if (elements.audioPlayer) elements.audioPlayer.src = '';
+    if (elements.audioPrompt) elements.audioPrompt.value = '';
+
     // Reset infographic section
-    elements.infographicContainer.classList.add('hidden');
-    elements.infographicImage.src = '';
-    elements.infographicPrompt.value = '';
+    if (elements.infographicContainer) elements.infographicContainer.classList.add('hidden');
+    if (elements.infographicImage) elements.infographicImage.src = '';
+    if (elements.infographicPrompt) elements.infographicPrompt.value = '';
 
     // Reset infographic preset to default
     selectedInfographicPreset = 'executive';
-    elements.infographicPresetBtns.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.preset === 'executive');
-    });
+    if (elements.infographicPresetBtns && elements.infographicPresetBtns.length > 0) {
+        elements.infographicPresetBtns.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.preset === 'executive');
+        });
+    }
 
     updateAnalyzeButton();
     
@@ -2898,22 +3072,24 @@ function hideError() {
 // ============================================
 async function generateAudioBriefing() {
     if (!state.results) return;
-    
+
+    // Show loading indicator (if button exists from old UI)
     const btn = elements.generateAudioBtn;
-    const btnText = btn.querySelector('.btn-text');
-    const btnLoader = btn.querySelector('.btn-loader');
-    
-    // Show loading state
-    btnText.classList.add('hidden');
-    btnLoader.classList.remove('hidden');
-    btn.disabled = true;
-    
+    if (btn) {
+        const btnText = btn.querySelector('.btn-text');
+        const btnLoader = btn.querySelector('.btn-loader');
+        if (btnText) btnText.classList.add('hidden');
+        if (btnLoader) btnLoader.classList.remove('hidden');
+        btn.disabled = true;
+    }
+
+    // Show a processing message
+    console.log('[Audio] Generating audio briefing...');
+
     try {
-        // Step 1: Generate executive briefing script using GPT
-        const customStyle = elements.audioPrompt?.value?.trim();
-        const styleInstruction = customStyle 
-            ? `\n\nIMPORTANT: Use this style/tone: "${customStyle}"`
-            : '';
+        // Use default upbeat style
+        const customStyle = 'upbeat and engaging';
+        const styleInstruction = `\n\nIMPORTANT: Use this style/tone: "${customStyle}"`;
         
         const scriptPrompt = `You are an expert at creating concise executive briefings. 
 Based on the following meeting analysis, create a 2-minute audio script (approximately 300 words) that:
@@ -2943,7 +3119,7 @@ Sentiment: ${state.results.sentiment}`;
         );
         
         // Step 2: Convert script to speech using TTS API
-        const selectedVoice = elements.voiceSelect.value;
+        const selectedVoice = elements.voiceSelect?.value || 'nova';
         const audioBlob = await textToSpeech(script, selectedVoice);
         const audioDataUrl = await fileToBase64(audioBlob);
         const audioParts = splitDataUrl(audioDataUrl);
@@ -2973,9 +3149,14 @@ Sentiment: ${state.results.sentiment}`;
         console.error('Audio generation error:', error);
         showError(error.message || 'Failed to generate audio briefing.');
     } finally {
-        btnText.classList.remove('hidden');
-        btnLoader.classList.add('hidden');
-        btn.disabled = false;
+        // Reset button state if it exists
+        if (btn) {
+            const btnText = btn.querySelector('.btn-text');
+            const btnLoader = btn.querySelector('.btn-loader');
+            if (btnText) btnText.classList.remove('hidden');
+            if (btnLoader) btnLoader.classList.add('hidden');
+            btn.disabled = false;
+        }
     }
 }
 
@@ -3098,24 +3279,22 @@ Keep it brief - 4-6 sections max, 1-2 bullets each.`;
 async function generateInfographic() {
     if (!state.results) return;
 
-    const customPrompt = elements.infographicPrompt.value.trim();
-    const preset = INFOGRAPHIC_PRESETS[selectedInfographicPreset];
+    // Use default executive preset
+    const preset = INFOGRAPHIC_PRESETS['executive'];
+    const styleDescription = preset.style;
+    const styleName = preset.name;
 
-    // Determine style: custom prompt overrides preset
-    const isCustom = customPrompt.length > 0;
-    const styleDescription = isCustom ? customPrompt : preset.style;
-    const styleName = isCustom ? 'Custom' : preset.name;
+    console.log(`[Infographic] Generating with preset: executive`);
 
-    console.log(`[Infographic] Generating with ${isCustom ? 'custom prompt' : `preset: ${selectedInfographicPreset}`}`);
-
+    // Show loading state if button exists (from old UI)
     const btn = elements.generateInfographicBtn;
-    const btnText = btn.querySelector('.btn-text');
-    const btnLoader = btn.querySelector('.btn-loader');
-
-    // Show loading state
-    btnText.classList.add('hidden');
-    btnLoader.classList.remove('hidden');
-    btn.disabled = true;
+    if (btn) {
+        const btnText = btn.querySelector('.btn-text');
+        const btnLoader = btn.querySelector('.btn-loader');
+        if (btnText) btnText.classList.add('hidden');
+        if (btnLoader) btnLoader.classList.remove('hidden');
+        btn.disabled = true;
+    }
 
     try {
         // Build the DALL-E prompt
@@ -3157,9 +3336,9 @@ OVERALL TONE: ${state.results.sentiment}
         // Store URL for download
         generatedImageUrl = imageUrl;
         state.exportMeta.artifacts.infographic = {
-            preset: isCustom ? null : selectedInfographicPreset,
+            preset: 'executive',
             styleName,
-            customPrompt: isCustom ? customPrompt : null,
+            customPrompt: null,
             prompt: dallePrompt,
             size: '1536x1024',
             generatedAt: new Date().toISOString()
@@ -3172,9 +3351,14 @@ OVERALL TONE: ${state.results.sentiment}
         console.error('Infographic generation error:', error);
         showError(error.message || 'Failed to generate infographic.');
     } finally {
-        btnText.classList.remove('hidden');
-        btnLoader.classList.add('hidden');
-        btn.disabled = false;
+        // Reset button state if it exists
+        if (btn) {
+            const btnText = btn.querySelector('.btn-text');
+            const btnLoader = btn.querySelector('.btn-loader');
+            if (btnText) btnText.classList.remove('hidden');
+            if (btnLoader) btnLoader.classList.add('hidden');
+            btn.disabled = false;
+        }
     }
 }
 
@@ -3394,28 +3578,6 @@ function clearUrlContent() {
 // Chat with Data
 // ============================================
 
-/**
- * Update the chat mode toggle UI to reflect current state
- */
-function updateChatModeUI() {
-    if (!elements.modeDirectLabel || !elements.modeRlmLabel) return;
-
-    const isRlm = state.chatMode === 'rlm';
-
-    if (isRlm) {
-        elements.modeDirectLabel.classList.remove('mode-active');
-        elements.modeRlmLabel.classList.add('mode-active');
-    } else {
-        elements.modeDirectLabel.classList.add('mode-active');
-        elements.modeRlmLabel.classList.remove('mode-active');
-    }
-
-    // Show/hide RLM warning
-    const rlmWarning = document.getElementById('rlm-warning');
-    if (rlmWarning) {
-        rlmWarning.classList.toggle('hidden', !isRlm);
-    }
-}
 
 /**
  * Sync meeting data to RLM context store
@@ -4737,40 +4899,143 @@ function toggleAboutDropdown() {
 }
 
 // ============================================
-// Wearable Modal (Coming Soon)
+// Settings Panel
 // ============================================
-function showWearableModal() {
-    const modal = document.getElementById('wearable-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
+function openSettingsPanel() {
+    if (elements.settingsPanel && elements.settingsOverlay) {
+        elements.settingsPanel.classList.add('visible');
+        elements.settingsPanel.classList.remove('hidden');
+        elements.settingsOverlay.classList.add('visible');
+        elements.settingsOverlay.classList.remove('hidden');
+        // Sync API key from main input to settings
+        if (elements.settingsApiKey && state.apiKey) {
+            elements.settingsApiKey.value = state.apiKey;
+        }
     }
 }
 
-function hideWearableModal() {
-    const modal = document.getElementById('wearable-modal');
-    if (modal) {
-        modal.classList.add('hidden');
+function closeSettingsPanel() {
+    if (elements.settingsPanel && elements.settingsOverlay) {
+        elements.settingsPanel.classList.remove('visible');
+        elements.settingsOverlay.classList.remove('visible');
     }
 }
 
-// Initialize wearable modal event listeners
-function initWearableModal() {
-    const modal = document.getElementById('wearable-modal');
-    const closeBtn = document.getElementById('wearable-modal-close');
-    const gotItBtn = document.getElementById('wearable-modal-close-btn');
-    
-    if (closeBtn) {
-        closeBtn.addEventListener('click', hideWearableModal);
-    }
-    if (gotItBtn) {
-        gotItBtn.addEventListener('click', hideWearableModal);
-    }
-    if (modal) {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) hideWearableModal();
-        });
+function toggleSettingsApiKeyVisibility() {
+    if (elements.settingsApiKey && elements.settingsToggleKey) {
+        const isPassword = elements.settingsApiKey.type === 'password';
+        elements.settingsApiKey.type = isPassword ? 'text' : 'password';
+        elements.settingsToggleKey.textContent = isPassword ? '🙈' : '👁️';
     }
 }
+
+function saveSettingsApiKey() {
+    if (elements.settingsApiKey) {
+        const newKey = elements.settingsApiKey.value.trim();
+        if (newKey && newKey !== state.apiKey) {
+            state.apiKey = newKey;
+            // Sync to main API key input
+            if (elements.apiKeyInput) {
+                elements.apiKeyInput.value = newKey;
+            }
+            localStorage.setItem('openai_api_key', newKey);
+            updateAnalyzeButton();
+            console.log('[Settings] API key saved');
+        }
+    }
+}
+
+function loadSettings() {
+    // Load voice response toggle
+    const voiceResponse = localStorage.getItem('settings_voice_response');
+    if (voiceResponse !== null) {
+        const enabled = voiceResponse === 'true';
+        state.voiceResponseEnabled = enabled;
+        if (elements.settingsVoiceResponse) {
+            elements.settingsVoiceResponse.checked = enabled;
+        }
+        if (elements.voiceResponseToggle) {
+            elements.voiceResponseToggle.checked = enabled;
+        }
+    }
+
+    // Load default voice
+    const defaultVoice = localStorage.getItem('settings_default_voice');
+    if (defaultVoice && elements.settingsVoice) {
+        elements.settingsVoice.value = defaultVoice;
+    }
+
+    // Load show metrics
+    const showMetrics = localStorage.getItem('settings_show_metrics');
+    if (showMetrics !== null) {
+        const enabled = showMetrics === 'true';
+        if (elements.settingsShowMetrics) {
+            elements.settingsShowMetrics.checked = enabled;
+        }
+        // Apply metrics visibility
+        const metricsCard = document.getElementById('metrics-card');
+        if (metricsCard) {
+            if (enabled) {
+                metricsCard.classList.remove('hidden');
+            } else {
+                metricsCard.classList.add('hidden');
+            }
+        }
+    }
+
+    // Load debug mode
+    const debugMode = localStorage.getItem('settings_debug_mode');
+    if (debugMode !== null) {
+        const enabled = debugMode === 'true';
+        if (elements.settingsDebugMode) {
+            elements.settingsDebugMode.checked = enabled;
+        }
+        window.DEBUG_MODE = enabled;
+    }
+}
+
+function saveSettings() {
+    // Save voice response toggle
+    if (elements.settingsVoiceResponse) {
+        const enabled = elements.settingsVoiceResponse.checked;
+        localStorage.setItem('settings_voice_response', enabled.toString());
+        state.voiceResponseEnabled = enabled;
+        // Sync to chat voice toggle
+        if (elements.voiceResponseToggle) {
+            elements.voiceResponseToggle.checked = enabled;
+        }
+    }
+
+    // Save default voice
+    if (elements.settingsVoice) {
+        localStorage.setItem('settings_default_voice', elements.settingsVoice.value);
+    }
+
+    // Save debug mode
+    if (elements.settingsDebugMode) {
+        const enabled = elements.settingsDebugMode.checked;
+        localStorage.setItem('settings_debug_mode', enabled.toString());
+        window.DEBUG_MODE = enabled;
+        console.log('[Settings] Debug mode:', enabled ? 'enabled' : 'disabled');
+    }
+}
+
+function handleMetricsToggle() {
+    if (elements.settingsShowMetrics) {
+        const enabled = elements.settingsShowMetrics.checked;
+        localStorage.setItem('settings_show_metrics', enabled.toString());
+        const metricsCard = document.getElementById('metrics-card');
+        if (metricsCard) {
+            if (enabled) {
+                metricsCard.classList.remove('hidden');
+            } else {
+                metricsCard.classList.add('hidden');
+            }
+        }
+        console.log('[Settings] Show metrics:', enabled ? 'enabled' : 'disabled');
+    }
+}
+
 
 function confirmExportAgent() {
     const agentName = elements.agentNameInput.value.trim();
@@ -5490,7 +5755,7 @@ function importAgentSession(agentData) {
     displayResults();
     
     // Show a success message
-    showTemporaryMessage(elements.importAgentBtn, 'Loaded!', '📥 Import Agent');
+    console.log('[Agent] Successfully imported agent');
     
     // Scroll to results
     elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
